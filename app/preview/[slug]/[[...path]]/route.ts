@@ -5,8 +5,28 @@ import { readPreviewFile } from "@/lib/preview/serve";
 
 export const runtime = "nodejs";
 
+const LOCAL_PREVIEW_ORIGIN_PATTERN = /https?:\/\/(?:localhost|127\.0\.0\.1):10000/gi;
+const REWRITABLE_CONTENT_TYPES = [
+  "text/html",
+  "text/css",
+  "text/javascript",
+  "application/json",
+];
+
 interface RouteContext {
   params: Promise<{ slug: string; path?: string[] }>;
+}
+
+function rewriteLocalPreviewOrigins(body: Buffer, contentType: string): Buffer | string {
+  const canRewrite = REWRITABLE_CONTENT_TYPES.some((rewritableType) =>
+    contentType.startsWith(rewritableType),
+  );
+
+  if (!canRewrite) {
+    return body;
+  }
+
+  return body.toString("utf8").replace(LOCAL_PREVIEW_ORIGIN_PATTERN, "");
 }
 
 export async function GET(request: Request, context: RouteContext) {
@@ -35,7 +55,9 @@ export async function GET(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Preview not found" }, { status: 404 });
   }
 
-  return new NextResponse(file.body, {
+  const body = rewriteLocalPreviewOrigins(file.body, file.contentType);
+
+  return new NextResponse(body, {
     headers: {
       "Content-Type": file.contentType,
       "Cache-Control": "public, max-age=60",
