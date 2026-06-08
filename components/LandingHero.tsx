@@ -94,12 +94,12 @@ export default function LandingHero({
             value={url}
             onChange={(event) => onUrlChange(event.target.value)}
             disabled={disabled}
-            className="h-12 flex-1 rounded-full border border-black/15 bg-white px-5 text-base text-black outline-none transition placeholder:text-black/35 focus:border-black/30 disabled:cursor-not-allowed disabled:opacity-50"
+            className="box-border h-12 min-h-12 w-full shrink-0 rounded-full border border-black/15 bg-white px-5 text-base text-black outline-none transition placeholder:text-black/35 focus:border-black/30 disabled:cursor-not-allowed disabled:opacity-50 sm:min-w-0 sm:flex-1"
           />
           <button
             type="submit"
             disabled={disabled || !url.trim()}
-            className="h-12 shrink-0 rounded-full bg-kiwi-green px-6 text-base font-medium text-black transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-50"
+            className="box-border h-12 min-h-12 w-full shrink-0 rounded-full bg-kiwi-green px-6 text-base font-medium text-black transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
           >
             {isRefreshing ? "Refreshing…" : "Refresh My Website"}
           </button>
