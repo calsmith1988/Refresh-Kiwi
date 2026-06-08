@@ -79,11 +79,11 @@ export default function LandingHero({
           }`}
         >
           <h1 className="mb-4 text-4xl font-semibold tracking-tight text-black sm:text-5xl">
-            Modernise your website in minutes
+            A fresher website in 90 seconds
           </h1>
           <p className="mb-10 text-base leading-relaxed text-black/60 sm:text-lg">
-            Paste your current site URL. We&apos;ll rebuild it with a fresh,
-            award-worthy design — no coding required.
+            Drop in your site&apos;s URL. We rebuild it with a fresh,
+            award-worthy design in seconds. No code, no designers, no fuss.
           </p>
         </div>
 
@@ -104,7 +104,7 @@ export default function LandingHero({
           <button
             type="submit"
             disabled={disabled || !url.trim()}
-            className="box-border h-12 min-h-12 w-full shrink-0 rounded-full bg-kiwi-green px-6 text-base font-medium text-black transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+            className="box-border h-12 min-h-12 w-full shrink-0 rounded-full border-2 border-black bg-kiwi-green px-6 text-base font-medium text-black transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
           >
             {isRefreshing ? "Refreshing…" : "Refresh My Website"}
           </button>
