@@ -19,6 +19,16 @@ const HOMEPAGE_READY_STATUSES = new Set<JobResponse["status"]>([
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLL_FAILURES = 10;
 
+function normalizePreviewUrl(previewUrl: string | null): string | null {
+  if (!previewUrl || typeof window === "undefined") {
+    return previewUrl;
+  }
+
+  const url = new URL(previewUrl, window.location.origin);
+
+  return `${window.location.origin}${url.pathname}${url.search}${url.hash}`;
+}
+
 export default function RefreshPage() {
   const [url, setUrl] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -127,7 +137,7 @@ export default function RefreshPage() {
         disabled={isRefreshing}
         isRefreshing={isRefreshing}
         statusMessage={job?.statusMessage ?? null}
-        previewUrl={job?.previewUrl ?? null}
+        previewUrl={normalizePreviewUrl(job?.previewUrl ?? null)}
         errorMessage={errorMessage}
       />
     </main>
