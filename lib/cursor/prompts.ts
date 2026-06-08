@@ -4,59 +4,39 @@ export interface PromptParams {
 }
 
 export function buildHomepagePrompt({ sourceUrl, slug }: PromptParams): string {
-  return `Rebuild a small-business website for Refresh Kiwi.
+  return `Rebuild the homepage for Refresh Kiwi. Work fast — target ~2 minutes.
 
-SOURCE WEBSITE: ${sourceUrl}
-OUTPUT DIRECTORY: sites/${slug}/
+SOURCE: ${sourceUrl}
+OUTPUT: sites/${slug}/
 
-## Phase: homepage only (prioritize speed)
+## Speed-first scope (homepage only)
 
-Visit the source URL. Understand the business — name, tone, services, audience, and visual identity from the existing site.
-
-Build ONLY the homepage in this phase. Discover other same-domain pages but do not build them yet.
-
-## Creative direction
-
-Design something fresh, distinctive, and award-worthy for this specific business.
-- Do NOT follow a fixed template or repeat the same layout patterns across projects.
-- Avoid generic "AI landing page" clichés unless they genuinely suit this brand.
-- Let the business personality drive typography, color, spacing, imagery, and motion.
-- Reuse real copy and images from the source where they add value. Save images to sites/${slug}/assets/.
-
-## Technical requirements
-
-1. Start from template/ if helpful, but you may restructure or replace it entirely.
-2. Produce a static site (HTML/CSS/JS, or a static build output in dist/).
-3. Create sites/${slug}/site.json with:
+1. Visit the source URL once. Read the homepage only — do not crawl other pages yet.
+2. Build a single static homepage (index.html + CSS/JS, or dist/ if you prefer a quick build).
+3. Reuse key copy and logo/hero images from the source. Save images to sites/${slug}/assets/.
+4. Write sites/${slug}/site.json:
    - brandName, slug ("${slug}"), sourceUrl
    - pages: [{ "path": "/", "title": "Home", "gated": false }]
-   - discoveredPages: same-domain pages you found (max 15), not built yet
-4. Commit all files when the homepage is complete.
+   - discoveredPages: nav links you can see on the homepage only (max 8, paths only — do not visit them)
+5. Commit to the repo when done.
 
-Do not build secondary pages in this phase. Focus on one excellent homepage the owner can preview quickly.`;
+## Design
+
+Be creative and distinctive for this business — not a generic AI template. But keep scope small: one polished homepage, not a full site.
+
+Do not build secondary pages in this phase.`;
 }
 
 export function buildAdditionalPagesPrompt({ sourceUrl, slug }: PromptParams): string {
-  return `Continue the Refresh Kiwi rebuild for sites/${slug}/.
+  return `Continue Refresh Kiwi rebuild for sites/${slug}/. Work in the background.
 
-SOURCE WEBSITE: ${sourceUrl}
+SOURCE: ${sourceUrl}
 
-## Phase: remaining pages (background)
+Read sites/${slug}/site.json and match the homepage design language.
 
-Read sites/${slug}/site.json and the homepage you already built.
+Build each path in discoveredPages that is not already in pages. Keep each page purposeful — not copy-paste layouts.
 
-Build each page listed in discoveredPages that is not yet in pages.
+Update site.json: homepage gated false, all other pages gated true. Add simple nav; gated routes can show a brief lock placeholder.
 
-## Creative direction
-
-- Keep visual identity consistent with the homepage, but design each page for its purpose.
-- About, Services, and Contact should not feel like copy-paste templates of each other.
-- Maintain high craft: hierarchy, spacing, typography, and purposeful details.
-
-## Technical requirements
-
-1. Add static page files under sites/${slug}/.
-2. Update site.json pages array — homepage gated: false, all other pages gated: true.
-3. Add site navigation. Gated pages may show a simple lock/upgrade placeholder when visited directly.
-4. Commit all work when finished.`;
+Commit when finished.`;
 }

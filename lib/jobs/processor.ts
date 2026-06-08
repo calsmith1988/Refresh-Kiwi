@@ -40,15 +40,20 @@ export async function processRefreshJob(jobId: string): Promise<void> {
     await updateJob(jobId, { status: "analyzing" });
     await updateJob(jobId, { status: "building_homepage" });
 
-    const homepage = await runHomepagePhase({
-      sourceUrl: job.sourceUrl,
-      slug: job.slug,
-    });
+    console.info(`[refresh-kiwi] job ${jobId} starting homepage phase slug=${job.slug}`);
 
-    await updateJob(jobId, {
-      homepageAgentId: homepage.agentId,
-      homepageRunId: homepage.runId,
-    });
+    const homepage = await runHomepagePhase(
+      {
+        sourceUrl: job.sourceUrl,
+        slug: job.slug,
+      },
+      async (started) => {
+        await updateJob(jobId, {
+          homepageAgentId: started.agentId,
+          homepageRunId: started.runId,
+        });
+      },
+    );
 
     await syncPreviewFromAgent(homepage.agentId, job.slug);
 
@@ -59,16 +64,19 @@ export async function processRefreshJob(jobId: string): Promise<void> {
 
     await updateJob(jobId, { status: "building_pages" });
 
-    const pages = await runAdditionalPagesPhase({
-      sourceUrl: job.sourceUrl,
-      slug: job.slug,
-      agentId: homepage.agentId,
-    });
-
-    await updateJob(jobId, {
-      pagesAgentId: pages.agentId,
-      pagesRunId: pages.runId,
-    });
+    const pages = await runAdditionalPagesPhase(
+      {
+        sourceUrl: job.sourceUrl,
+        slug: job.slug,
+        agentId: homepage.agentId,
+      },
+      async (started) => {
+        await updateJob(jobId, {
+          pagesAgentId: started.agentId,
+          pagesRunId: started.runId,
+        });
+      },
+    );
 
     await syncPreviewFromAgent(pages.agentId, job.slug);
 
@@ -79,6 +87,8 @@ export async function processRefreshJob(jobId: string): Promise<void> {
       : error instanceof Error
         ? error.message
         : "Unknown error";
+
+    console.error(`[refresh-kiwi] job ${jobId} failed: ${message}`);
 
     await updateJob(jobId, {
       status: "failed" as JobStatus,

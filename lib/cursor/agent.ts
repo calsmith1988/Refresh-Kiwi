@@ -5,68 +5,115 @@ import {
   buildAdditionalPagesPrompt,
   buildHomepagePrompt,
 } from "@/lib/cursor/prompts";
+import { RUN_TIMEOUTS, waitForRun } from "@/lib/cursor/run";
 
 const MODEL = { id: "composer-2.5" } as const;
 
 function cloudOptions() {
   return {
     repos: [{ url: getSitesRepoUrl(), startingRef: "main" }],
+    workOnCurrentBranch: true,
     skipReviewerRequest: true,
   };
 }
 
-export async function runHomepagePhase(params: {
-  sourceUrl: string;
-  slug: string;
-}): Promise<{ agentId: string; runId: string }> {
-  const apiKey = getCursorApiKey();
+export interface PhaseRunResult {
+  agentId: string;
+  runId: string;
+}
 
-  await using agent = await Agent.create({
+async function disposeAgent(agent: Awaited<ReturnType<typeof Agent.create>>) {
+  await agent.close();
+}
+
+export async function runHomepagePhase(
+  params: {
+    sourceUrl: string;
+    slug: string;
+  },
+  onStarted?: (info: PhaseRunResult) => Promise<void>,
+): Promise<PhaseRunResult> {
+  const apiKey = getCursorApiKey();
+  const agent = await Agent.create({
     apiKey,
     model: MODEL,
     name: `Refresh Kiwi — ${params.slug} (homepage)`,
     cloud: cloudOptions(),
   });
 
-  const run = await agent.send(buildHomepagePrompt(params));
-  const result = await run.wait();
+  try {
+    const run = await agent.send(buildHomepagePrompt(params));
+    const started = { agentId: agent.agentId, runId: run.id };
 
-  if (result.status === "error") {
-    throw new Error(`Homepage build failed (run ${result.id})`);
+    console.info(
+      `[refresh-kiwi] homepage agent started agentId=${started.agentId} runId=${started.runId} slug=${params.slug}`,
+    );
+
+    await onStarted?.(started);
+
+    const result = await waitForRun(run, RUN_TIMEOUTS.homepage);
+
+    console.info(
+      `[refresh-kiwi] homepage agent finished agentId=${started.agentId} runId=${result.id} status=${result.status}`,
+    );
+
+    if (result.status === "error") {
+      throw new Error(`Homepage build failed (run ${result.id})`);
+    }
+
+    if (result.status === "cancelled") {
+      throw new Error(`Homepage build was cancelled (run ${result.id})`);
+    }
+
+    return { agentId: started.agentId, runId: result.id };
+  } finally {
+    await disposeAgent(agent);
   }
-
-  if (result.status === "cancelled") {
-    throw new Error(`Homepage build was cancelled (run ${result.id})`);
-  }
-
-  return { agentId: agent.agentId, runId: result.id };
 }
 
-export async function runAdditionalPagesPhase(params: {
-  sourceUrl: string;
-  slug: string;
-  agentId: string;
-}): Promise<{ agentId: string; runId: string }> {
+export async function runAdditionalPagesPhase(
+  params: {
+    sourceUrl: string;
+    slug: string;
+    agentId: string;
+  },
+  onStarted?: (info: PhaseRunResult) => Promise<void>,
+): Promise<PhaseRunResult> {
   const apiKey = getCursorApiKey();
-
-  await using agent = await Agent.resume(params.agentId, {
+  const agent = await Agent.resume(params.agentId, {
     apiKey,
     model: MODEL,
     cloud: cloudOptions(),
   });
 
-  const run = await agent.send(buildAdditionalPagesPrompt(params));
-  const result = await run.wait();
+  try {
+    const run = await agent.send(buildAdditionalPagesPrompt(params));
+    const started = { agentId: agent.agentId, runId: run.id };
 
-  if (result.status === "error") {
-    throw new Error(`Additional pages build failed (run ${result.id})`);
+    console.info(
+      `[refresh-kiwi] pages agent started agentId=${started.agentId} runId=${started.runId} slug=${params.slug}`,
+    );
+
+    await onStarted?.(started);
+
+    const result = await waitForRun(run, RUN_TIMEOUTS.pages);
+
+    console.info(
+      `[refresh-kiwi] pages agent finished agentId=${started.agentId} runId=${result.id} status=${result.status}`,
+    );
+
+    if (result.status === "error") {
+      throw new Error(`Additional pages build failed (run ${result.id})`);
+    }
+
+    if (result.status === "cancelled") {
+      throw new Error(`Additional pages build was cancelled (run ${result.id})`);
+    }
+
+    return { agentId: started.agentId, runId: result.id };
+  } finally {
+    await disposeAgent(agent);
   }
-
-  if (result.status === "cancelled") {
-    throw new Error(`Additional pages build was cancelled (run ${result.id})`);
-  }
-
-  return { agentId: agent.agentId, runId: result.id };
 }
 
 export function isCursorStartupError(error: unknown): error is CursorAgentError {
