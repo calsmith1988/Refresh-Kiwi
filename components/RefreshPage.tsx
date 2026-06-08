@@ -11,6 +11,11 @@ const KiwiPitCanvas = dynamic(() => import("@/components/KiwiPitCanvas"), {
 });
 
 const TERMINAL_STATUSES = new Set<JobResponse["status"]>(["complete", "failed"]);
+const HOMEPAGE_READY_STATUSES = new Set<JobResponse["status"]>([
+  "homepage_ready",
+  "building_pages",
+  "complete",
+]);
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLL_FAILURES = 10;
 
@@ -42,9 +47,12 @@ export default function RefreshPage() {
         pollFailuresRef.current = 0;
         setJob(nextJob);
 
+        if (HOMEPAGE_READY_STATUSES.has(nextJob.status)) {
+          setIsRefreshing(false);
+        }
+
         if (TERMINAL_STATUSES.has(nextJob.status)) {
           stopPolling();
-          setIsRefreshing(false);
 
           if (nextJob.status === "failed") {
             setErrorMessage(nextJob.errorMessage ?? "Refresh failed");

@@ -6,8 +6,9 @@ import { Agent } from "@cursor/sdk";
 import { getCursorApiKey, getSitesRepoUrl } from "@/lib/cursor/config";
 import { previewDirectory } from "@/lib/preview/paths";
 
-const ARTIFACT_RETRY_ATTEMPTS = 8;
-const ARTIFACT_RETRY_DELAY_MS = 5_000;
+const GITHUB_SYNC_ATTEMPTS = 8;
+const GITHUB_SYNC_DELAY_MS = 2_000;
+const ARTIFACT_SYNC_ATTEMPTS = 1;
 
 function parseGithubRepo(
   repoUrl: string,
@@ -49,7 +50,7 @@ async function syncFromAgentArtifacts(
 
   await using agent = await Agent.resume(agentId, { apiKey });
 
-  for (let attempt = 1; attempt <= ARTIFACT_RETRY_ATTEMPTS; attempt++) {
+  for (let attempt = 1; attempt <= ARTIFACT_SYNC_ATTEMPTS; attempt++) {
     const relevant = await listRelevantArtifacts(agent, prefix);
 
     if (relevant.length > 0) {
@@ -65,18 +66,17 @@ async function syncFromAgentArtifacts(
       return true;
     }
 
-    if (attempt < ARTIFACT_RETRY_ATTEMPTS) {
+    if (attempt < ARTIFACT_SYNC_ATTEMPTS) {
       console.info(
-        `[refresh-kiwi] no artifacts yet for ${prefix}, retry ${attempt}/${ARTIFACT_RETRY_ATTEMPTS}`,
+        `[refresh-kiwi] no artifacts yet for ${prefix}, retry ${attempt}/${ARTIFACT_SYNC_ATTEMPTS}`,
       );
-      await sleep(ARTIFACT_RETRY_DELAY_MS);
     }
   }
 
   return false;
 }
 
-async function syncFromGithubMain(slug: string, outputDir: string): Promise<void> {
+async function syncFromGithubMain(slug: string, outputDir: string): Promise<boolean> {
   const parsed = parseGithubRepo(getSitesRepoUrl());
 
   if (!parsed) {
@@ -107,7 +107,7 @@ async function syncFromGithubMain(slug: string, outputDir: string): Promise<void
   );
 
   if (files.length === 0) {
-    throw new Error(`No files found on GitHub under ${prefix}`);
+    return false;
   }
 
   for (const file of files) {
@@ -125,6 +125,8 @@ async function syncFromGithubMain(slug: string, outputDir: string): Promise<void
     await mkdir(path.dirname(destination), { recursive: true });
     await writeFile(destination, Buffer.from(await fileResponse.arrayBuffer()));
   }
+
+  return true;
 }
 
 export async function syncPreviewFromAgent(
@@ -134,19 +136,32 @@ export async function syncPreviewFromAgent(
   const prefix = `sites/${slug}/`;
   const outputDir = previewDirectory(slug);
 
+  for (let attempt = 1; attempt <= GITHUB_SYNC_ATTEMPTS; attempt++) {
+    const syncedFromGithub = await syncFromGithubMain(slug, outputDir);
+
+    if (syncedFromGithub) {
+      return;
+    }
+
+    if (attempt < GITHUB_SYNC_ATTEMPTS) {
+      console.info(
+        `[refresh-kiwi] no GitHub files yet for ${prefix}, retry ${attempt}/${GITHUB_SYNC_ATTEMPTS}`,
+      );
+      await sleep(GITHUB_SYNC_DELAY_MS);
+    }
+  }
+
+  console.info(
+    `[refresh-kiwi] falling back to Cursor artifacts for ${prefix} agentId=${agentId}`,
+  );
+
   const syncedFromArtifacts = await syncFromAgentArtifacts(
     agentId,
     slug,
     outputDir,
   );
 
-  if (syncedFromArtifacts) {
-    return;
+  if (!syncedFromArtifacts) {
+    throw new Error(`No files found under ${prefix}`);
   }
-
-  console.info(
-    `[refresh-kiwi] falling back to GitHub sync for ${prefix} agentId=${agentId}`,
-  );
-
-  await syncFromGithubMain(slug, outputDir);
 }

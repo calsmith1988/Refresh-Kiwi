@@ -9,11 +9,18 @@ interface RouteContext {
   params: Promise<{ slug: string; path?: string[] }>;
 }
 
-export async function GET(_request: Request, context: RouteContext) {
+export async function GET(request: Request, context: RouteContext) {
   const { slug, path: pathSegments } = await context.params;
 
   if (!isValidSlug(slug)) {
     return NextResponse.json({ error: "Invalid preview slug" }, { status: 400 });
+  }
+
+  const url = new URL(request.url);
+
+  if ((pathSegments ?? []).length === 0 && !url.pathname.endsWith("/")) {
+    url.pathname = `${url.pathname}/`;
+    return NextResponse.redirect(url);
   }
 
   const file = await readPreviewFile(slug, pathSegments ?? []);

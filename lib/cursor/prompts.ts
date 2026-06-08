@@ -4,7 +4,7 @@ export interface PromptParams {
 }
 
 export function buildHomepagePrompt({ sourceUrl, slug }: PromptParams): string {
-  return `Rebuild the homepage for Refresh Kiwi. Work fast — target ~2 minutes.
+  return `Rebuild the homepage for Refresh Kiwi. Work fast — target ~2 minutes, but the result must look like a premium designed website, not a text extraction.
 
 SOURCE: ${sourceUrl}
 OUTPUT: sites/${slug}/
@@ -12,17 +12,29 @@ OUTPUT: sites/${slug}/
 ## Speed-first scope (homepage only)
 
 1. Visit the source URL once. Read the homepage only — do not crawl other pages yet.
-2. Build a single static homepage (index.html + CSS/JS, or dist/ if you prefer a quick build).
-3. Reuse key copy and logo/hero images from the source. Save images to sites/${slug}/assets/.
-4. Write sites/${slug}/site.json:
+2. Build a single static homepage using plain index.html, styles.css, and optional script.js. Avoid build tools unless absolutely necessary.
+3. Use the source for facts, offer details, testimonials, phone numbers, service areas, and brand clues. Do not paste every paragraph.
+4. Save usable source images to sites/${slug}/assets/ only when they improve the design. Use CSS gradients, shapes, cards, icons, and layout if images are weak or slow.
+5. Write sites/${slug}/site.json:
    - brandName, slug ("${slug}"), sourceUrl
    - pages: [{ "path": "/", "title": "Home", "gated": false }]
    - discoveredPages: nav links you can see on the homepage only (max 8, paths only — do not visit them)
-5. Commit to the repo when done.
+6. Commit to the repo when done.
 
-## Design
+## Design bar
 
-Be creative and distinctive for this business — not a generic AI template. But keep scope small: one polished homepage, not a full site.
+Create a proper landing page redesign:
+- Above-the-fold hero with a clear headline, subheadline, primary CTA, secondary CTA, and visual composition.
+- Strong responsive layout with spacing, contrast, hierarchy, and sections that feel intentionally designed.
+- Convert long source copy into short marketing copy, cards, stats, badges, testimonial blocks, and CTAs.
+- Include only the strongest content: services, trust proof, coverage/location, offer, testimonials, contact CTA.
+- Add micro-interactions or tasteful visual details if useful, but keep it static and fast.
+
+Avoid:
+- A wall of text.
+- A generic Tailwind/AI landing page look.
+- Recreating the old site structure section-for-section.
+- Broken relative asset paths. Reference local assets as ./assets/file.ext from index.html.
 
 Do not build secondary pages in this phase.`;
 }
