@@ -17,13 +17,16 @@ interface RouteContext {
   params: Promise<{ slug: string; path?: string[] }>;
 }
 
-function rewriteLocalPreviewOrigins(body: Buffer, contentType: string): Buffer | string {
+function rewriteLocalPreviewOrigins(
+  body: Buffer,
+  contentType: string,
+): Uint8Array | string {
   const canRewrite = REWRITABLE_CONTENT_TYPES.some((rewritableType) =>
     contentType.startsWith(rewritableType),
   );
 
   if (!canRewrite) {
-    return body;
+    return new Uint8Array(body);
   }
 
   return body.toString("utf8").replace(LOCAL_PREVIEW_ORIGIN_PATTERN, "");
