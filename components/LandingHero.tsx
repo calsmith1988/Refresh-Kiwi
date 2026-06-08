@@ -53,17 +53,22 @@ export default function LandingHero({
     <section className="relative z-10 flex min-h-screen flex-col items-center justify-center px-6 py-16">
       <div className="relative w-full max-w-xl text-center">
         <div className="pointer-events-none absolute inset-x-[-4rem] top-[-3rem] bottom-[-4rem] -z-10 rounded-[3rem] bg-white/75 blur-3xl" />
-        <div className="mb-4 flex items-center justify-center gap-2.5">
-          <Image
-            src="/refresh-kiwi-favicon.png"
-            alt=""
-            width={28}
-            height={28}
-            priority
-            aria-hidden
-          />
-          <p className="font-fraunces text-xl font-medium text-black/80 sm:text-2xl">
-            Refresh Kiwi
+        <div className="mb-5">
+          <div className="flex items-center justify-center gap-2.5">
+            <Image
+              src="/refresh-kiwi-favicon.png"
+              alt=""
+              width={28}
+              height={28}
+              priority
+              aria-hidden
+            />
+            <p className="font-fraunces text-xl font-medium text-black/80 sm:text-2xl">
+              Refresh Kiwi
+            </p>
+          </div>
+          <p className="mt-1.5 text-xs font-medium tracking-wide text-black/45">
+            Same website, fresher skin.
           </p>
         </div>
         <div
