@@ -5,7 +5,8 @@ import { readPreviewFile } from "@/lib/preview/serve";
 
 export const runtime = "nodejs";
 
-const LOCAL_PREVIEW_ORIGIN_PATTERN = /https?:\/\/(?:localhost|127\.0\.0\.1):10000/gi;
+const LOCAL_PREVIEW_ORIGIN_PATTERN =
+  /(?:https?:)?\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?/gi;
 const REWRITABLE_CONTENT_TYPES = [
   "text/html",
   "text/css",
@@ -20,13 +21,18 @@ interface RouteContext {
 function rewriteLocalPreviewOrigins(
   body: Buffer,
   contentType: string,
-): Uint8Array | string {
+): Blob | string {
   const canRewrite = REWRITABLE_CONTENT_TYPES.some((rewritableType) =>
     contentType.startsWith(rewritableType),
   );
 
   if (!canRewrite) {
-    return new Uint8Array(body);
+    const arrayBuffer = body.buffer.slice(
+      body.byteOffset,
+      body.byteOffset + body.byteLength,
+    ) as ArrayBuffer;
+
+    return new Blob([arrayBuffer]);
   }
 
   return body.toString("utf8").replace(LOCAL_PREVIEW_ORIGIN_PATTERN, "");
@@ -42,7 +48,7 @@ export async function GET(request: Request, context: RouteContext) {
   const url = new URL(request.url);
 
   if ((pathSegments ?? []).length === 0 && !url.pathname.endsWith("/")) {
-    const location = `${url.pathname}/${url.search}`;
+    const location = `${url.pathname}/${url.search}${url.hash}`;
 
     return new NextResponse(null, {
       status: 308,

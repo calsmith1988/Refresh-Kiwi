@@ -17,9 +17,6 @@ function toJobResponse(job: typeof jobs.$inferSelect): JobResponse {
   const previewUrl = PREVIEW_READY_STATUSES.has(job.status)
     ? previewPublicPath(job.slug)
     : null;
-  const normalizedPreviewUrl = previewUrl
-    ? new URL(previewUrl, "https://refresh-kiwi.local").pathname
-    : null;
 
   return {
     id: job.id,
@@ -28,7 +25,7 @@ function toJobResponse(job: typeof jobs.$inferSelect): JobResponse {
     brandName: job.brandName,
     status: job.status,
     statusMessage: STATUS_MESSAGES[job.status],
-    previewUrl: normalizedPreviewUrl,
+    previewUrl,
     errorMessage: job.errorMessage,
     createdAt: job.createdAt.toISOString(),
     updatedAt: job.updatedAt.toISOString(),
