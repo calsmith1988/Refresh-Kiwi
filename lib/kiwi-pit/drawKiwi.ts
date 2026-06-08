@@ -4,6 +4,7 @@ import type { KiwiSprite } from "./prepareSprite";
 import {
   FILL_DURATION_MS,
   KIWI_DISPLAY_SIZE,
+  KIWI_SPRITE_SCALE,
   type KiwiMeta,
 } from "./types";
 
@@ -59,7 +60,7 @@ export function drawKiwi(
   meta: KiwiMeta,
   sprite: KiwiSprite,
 ) {
-  const size = KIWI_DISPLAY_SIZE * (meta.scale || 1);
+  const size = KIWI_DISPLAY_SIZE * (meta.scale || 1) * KIWI_SPRITE_SCALE;
   const half = size / 2;
 
   ctx.save();

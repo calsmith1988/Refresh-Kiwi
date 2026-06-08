@@ -37,13 +37,27 @@ export default function RefreshPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [job, setJob] = useState<JobResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [elapsedMs, setElapsedMs] = useState(0);
   const pollTimerRef = useRef<number | null>(null);
   const pollFailuresRef = useRef(0);
+  const elapsedTimerRef = useRef<number | null>(null);
+  const startTimeRef = useRef<number | null>(null);
 
   const stopPolling = useCallback(() => {
     if (pollTimerRef.current !== null) {
       window.clearInterval(pollTimerRef.current);
       pollTimerRef.current = null;
+    }
+  }, []);
+
+  const stopTimer = useCallback(() => {
+    if (elapsedTimerRef.current !== null) {
+      window.clearInterval(elapsedTimerRef.current);
+      elapsedTimerRef.current = null;
+    }
+
+    if (startTimeRef.current !== null) {
+      setElapsedMs(Date.now() - startTimeRef.current);
     }
   }, []);
 
@@ -62,10 +76,12 @@ export default function RefreshPage() {
 
         if (HOMEPAGE_READY_STATUSES.has(nextJob.status)) {
           setIsRefreshing(false);
+          stopTimer();
         }
 
         if (TERMINAL_STATUSES.has(nextJob.status)) {
           stopPolling();
+          stopTimer();
 
           if (nextJob.status === "failed") {
             setErrorMessage(nextJob.errorMessage ?? "Refresh failed");
@@ -76,6 +92,7 @@ export default function RefreshPage() {
 
         if (pollFailuresRef.current >= MAX_POLL_FAILURES) {
           stopPolling();
+          stopTimer();
           setIsRefreshing(false);
           setErrorMessage(
             "Lost connection while checking refresh status. Check Render logs and try again.",
@@ -83,12 +100,15 @@ export default function RefreshPage() {
         }
       }
     },
-    [stopPolling],
+    [stopPolling, stopTimer],
   );
 
   useEffect(() => {
-    return () => stopPolling();
-  }, [stopPolling]);
+    return () => {
+      stopPolling();
+      stopTimer();
+    };
+  }, [stopPolling, stopTimer]);
 
   const handleRefresh = async () => {
     if (!url.trim() || isRefreshing) {
@@ -100,6 +120,15 @@ export default function RefreshPage() {
     setErrorMessage(null);
     pollFailuresRef.current = 0;
     stopPolling();
+
+    startTimeRef.current = Date.now();
+    setElapsedMs(0);
+    stopTimer();
+    elapsedTimerRef.current = window.setInterval(() => {
+      if (startTimeRef.current !== null) {
+        setElapsedMs(Date.now() - startTimeRef.current);
+      }
+    }, 500);
 
     try {
       const response = await fetch("/api/refresh", {
@@ -122,6 +151,7 @@ export default function RefreshPage() {
       }, POLL_INTERVAL_MS);
     } catch (error) {
       setIsRefreshing(false);
+      stopTimer();
       setErrorMessage(
         error instanceof Error ? error.message : "Failed to start refresh",
       );
@@ -142,6 +172,7 @@ export default function RefreshPage() {
         statusMessage={job?.statusMessage ?? null}
         previewUrl={normalizePreviewUrl(job?.previewUrl ?? null)}
         errorMessage={errorMessage}
+        elapsedMs={elapsedMs}
       />
     </main>
   );

@@ -12,6 +12,7 @@ interface LandingHeroProps {
   statusMessage?: string | null;
   previewUrl?: string | null;
   errorMessage?: string | null;
+  elapsedMs?: number | null;
 }
 
 function previewPath(previewUrl: string): string {
@@ -20,6 +21,13 @@ function previewPath(previewUrl: string): string {
   } catch {
     return previewUrl.startsWith("/") ? previewUrl : `/${previewUrl}`;
   }
+}
+
+function formatElapsed(ms: number): string {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
 export default function LandingHero({
@@ -31,12 +39,15 @@ export default function LandingHero({
   statusMessage = null,
   previewUrl = null,
   errorMessage = null,
+  elapsedMs = null,
 }: LandingHeroProps) {
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     onRefresh();
   };
   const previewHref = previewUrl ? previewPath(previewUrl) : null;
+  const hasStarted =
+    isRefreshing || Boolean(statusMessage) || Boolean(previewHref);
 
   return (
     <section className="relative z-10 flex min-h-screen flex-col items-center justify-center px-6 py-16">
@@ -55,13 +66,21 @@ export default function LandingHero({
             Refresh Kiwi
           </p>
         </div>
-        <h1 className="mb-4 text-4xl font-semibold tracking-tight text-black sm:text-5xl">
-          Modernise your website in minutes
-        </h1>
-        <p className="mb-10 text-base leading-relaxed text-black/60 sm:text-lg">
-          Paste your current site URL. We&apos;ll rebuild it with a fresh,
-          award-worthy design — no coding required.
-        </p>
+        <div
+          className={`overflow-hidden transition-all duration-700 ease-out ${
+            hasStarted
+              ? "max-h-0 -translate-y-3 opacity-0"
+              : "max-h-72 translate-y-0 opacity-100"
+          }`}
+        >
+          <h1 className="mb-4 text-4xl font-semibold tracking-tight text-black sm:text-5xl">
+            Modernise your website in minutes
+          </h1>
+          <p className="mb-10 text-base leading-relaxed text-black/60 sm:text-lg">
+            Paste your current site URL. We&apos;ll rebuild it with a fresh,
+            award-worthy design — no coding required.
+          </p>
+        </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row">
           <label htmlFor="website-url" className="sr-only">
@@ -86,23 +105,45 @@ export default function LandingHero({
           </button>
         </form>
 
-        {isRefreshing && statusMessage ? (
-          <p className="mt-6 text-sm text-black/50" role="status" aria-live="polite">
-            {statusMessage}
-          </p>
+        {isRefreshing ? (
+          <div
+            className="mt-7 flex flex-col items-center gap-3"
+            role="status"
+            aria-live="polite"
+          >
+            {statusMessage ? (
+              <p className="text-sm text-black/60">{statusMessage}</p>
+            ) : null}
+            <div className="flex items-center gap-2 rounded-full border border-black/10 bg-white/80 px-4 py-1.5 text-sm font-medium text-black/70 shadow-sm">
+              <span
+                aria-hidden
+                className="h-1.5 w-1.5 animate-pulse rounded-full bg-kiwi-green"
+              />
+              <span className="tabular-nums text-black">
+                {formatElapsed(elapsedMs ?? 0)}
+              </span>
+              <span className="text-black/35">/ usually 2–3 min</span>
+            </div>
+          </div>
         ) : null}
 
         {previewHref ? (
-          <p className="mt-4 text-sm">
+          <div className="preview-pop mt-8 flex justify-center">
             <Link
               href={previewHref}
               target="_blank"
               rel="noopener noreferrer"
-              className="font-medium text-black underline decoration-black/30 underline-offset-4 transition hover:decoration-black"
+              className="group inline-flex items-center gap-2 rounded-full bg-black px-8 py-4 text-base font-semibold text-white shadow-lg shadow-black/15 transition hover:bg-black/85 hover:shadow-xl"
             >
               View your refreshed homepage
+              <span
+                aria-hidden
+                className="transition-transform duration-200 group-hover:translate-x-1"
+              >
+                →
+              </span>
             </Link>
-          </p>
+          </div>
         ) : null}
 
         {errorMessage ? (

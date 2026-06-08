@@ -2,6 +2,13 @@ import type { Body, Engine } from "matter-js";
 
 export const KIWI_RADIUS = 12.5;
 export const KIWI_DISPLAY_SIZE = 25;
+/**
+ * Render-only overdraw. The sprite PNG has transparent padding, so the visible
+ * kiwi is smaller than its physics circle and rested kiwis look gappy. Drawing
+ * slightly larger than the collision diameter closes the gap without touching
+ * the physics bodies.
+ */
+export const KIWI_SPRITE_SCALE = 1.22;
 /** Per-kiwi size variation. 1.0 keeps the current size; never shrinks below it. */
 export const KIWI_MIN_SCALE = 1.0;
 export const KIWI_MAX_SCALE = 1.4;

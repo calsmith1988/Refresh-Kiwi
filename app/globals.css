@@ -23,3 +23,24 @@ body {
   color: var(--color-black);
   font-family: var(--font-sans);
 }
+
+@keyframes preview-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.preview-pop {
+  animation: preview-pop 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .preview-pop {
+    animation: none;
+  }
+}
