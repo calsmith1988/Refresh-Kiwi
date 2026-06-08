@@ -53,6 +53,19 @@ export async function createRefreshJob(sourceUrl: string): Promise<JobResponse> 
   return toJobResponse(job);
 }
 
+export async function failJob(jobId: string, errorMessage: string): Promise<void> {
+  const db = getDb();
+
+  await db
+    .update(jobs)
+    .set({
+      status: "failed",
+      errorMessage,
+      updatedAt: new Date(),
+    })
+    .where(eq(jobs.id, jobId));
+}
+
 export async function getJob(jobId: string): Promise<JobResponse | null> {
   const db = getDb();
 

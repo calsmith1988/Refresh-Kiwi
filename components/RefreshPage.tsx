@@ -12,6 +12,7 @@ const KiwiPitCanvas = dynamic(() => import("@/components/KiwiPitCanvas"), {
 
 const TERMINAL_STATUSES = new Set<JobResponse["status"]>(["complete", "failed"]);
 const POLL_INTERVAL_MS = 3000;
+const MAX_POLL_FAILURES = 10;
 
 export default function RefreshPage() {
   const [url, setUrl] = useState("");
@@ -19,6 +20,7 @@ export default function RefreshPage() {
   const [job, setJob] = useState<JobResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const pollTimerRef = useRef<number | null>(null);
+  const pollFailuresRef = useRef(0);
 
   const stopPolling = useCallback(() => {
     if (pollTimerRef.current !== null) {
@@ -37,6 +39,7 @@ export default function RefreshPage() {
         }
 
         const nextJob = (await response.json()) as JobResponse;
+        pollFailuresRef.current = 0;
         setJob(nextJob);
 
         if (TERMINAL_STATUSES.has(nextJob.status)) {
@@ -48,9 +51,15 @@ export default function RefreshPage() {
           }
         }
       } catch {
-        stopPolling();
-        setIsRefreshing(false);
-        setErrorMessage("Lost connection while checking refresh status");
+        pollFailuresRef.current += 1;
+
+        if (pollFailuresRef.current >= MAX_POLL_FAILURES) {
+          stopPolling();
+          setIsRefreshing(false);
+          setErrorMessage(
+            "Lost connection while checking refresh status. Check Render logs and try again.",
+          );
+        }
       }
     },
     [stopPolling],
@@ -68,6 +77,7 @@ export default function RefreshPage() {
     setIsRefreshing(true);
     setJob(null);
     setErrorMessage(null);
+    pollFailuresRef.current = 0;
     stopPolling();
 
     try {
