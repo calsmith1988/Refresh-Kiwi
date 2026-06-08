@@ -2,7 +2,6 @@ import { eq } from "drizzle-orm";
 
 import {
   isCursorStartupError,
-  runAdditionalPagesPhase,
   runHomepagePhase,
 } from "@/lib/cursor/agent";
 import { getDb, schema } from "@/lib/db";
@@ -10,6 +9,10 @@ import { syncPreviewFromAgent } from "@/lib/preview/sync";
 import type { JobStatus } from "@/lib/jobs/types";
 
 const { jobs } = schema;
+
+function elapsedSeconds(startedAt: number): string {
+  return ((Date.now() - startedAt) / 1000).toFixed(1);
+}
 
 async function updateJob(
   jobId: string,
@@ -37,11 +40,13 @@ export async function processRefreshJob(jobId: string): Promise<void> {
   }
 
   try {
+    const jobStartedAt = Date.now();
     await updateJob(jobId, { status: "analyzing" });
     await updateJob(jobId, { status: "building_homepage" });
 
     console.info(`[refresh-kiwi] job ${jobId} starting homepage phase slug=${job.slug}`);
 
+    const homepageStartedAt = Date.now();
     const homepage = await runHomepagePhase(
       {
         sourceUrl: job.sourceUrl,
@@ -55,32 +60,24 @@ export async function processRefreshJob(jobId: string): Promise<void> {
       },
     );
 
+    console.info(
+      `[refresh-kiwi] job ${jobId} homepage phase finished in ${elapsedSeconds(homepageStartedAt)}s slug=${job.slug}`,
+    );
+
+    const syncStartedAt = Date.now();
     await syncPreviewFromAgent(homepage.agentId, job.slug);
+
+    console.info(
+      `[refresh-kiwi] job ${jobId} preview sync finished in ${elapsedSeconds(syncStartedAt)}s slug=${job.slug}`,
+    );
 
     await updateJob(jobId, {
       status: "homepage_ready",
-      pagesAgentId: homepage.agentId,
     });
 
-    await updateJob(jobId, { status: "building_pages" });
-
-    const pages = await runAdditionalPagesPhase(
-      {
-        sourceUrl: job.sourceUrl,
-        slug: job.slug,
-        agentId: homepage.agentId,
-      },
-      async (started) => {
-        await updateJob(jobId, {
-          pagesAgentId: started.agentId,
-          pagesRunId: started.runId,
-        });
-      },
+    console.info(
+      `[refresh-kiwi] job ${jobId} homepage ready in ${elapsedSeconds(jobStartedAt)}s slug=${job.slug}`,
     );
-
-    await syncPreviewFromAgent(pages.agentId, job.slug);
-
-    await updateJob(jobId, { status: "complete" });
   } catch (error) {
     const message = isCursorStartupError(error)
       ? `Cursor agent failed to start: ${error.message}`

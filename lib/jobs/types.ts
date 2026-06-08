@@ -18,7 +18,7 @@ export const STATUS_MESSAGES: Record<JobStatus, string> = {
   queued: "Starting your refresh…",
   analyzing: "Pulling information from your website…",
   building_homepage: "Rebuilding your homepage — usually takes 2–3 minutes…",
-  homepage_ready: "Your homepage is ready — building additional pages…",
+  homepage_ready: "Your refreshed homepage is ready!",
   building_pages: "Creating your other pages in the background…",
   complete: "Your refreshed site is ready!",
   failed: "Something went wrong. Please try again.",

@@ -14,12 +14,12 @@ OUTPUT: sites/${slug}/
 1. Visit the source URL once. Read the homepage only — do not crawl other pages yet.
 2. Build a single static homepage using plain index.html, styles.css, and optional script.js. Avoid build tools unless absolutely necessary.
 3. Use the source for facts, offer details, testimonials, phone numbers, service areas, and brand clues. Do not paste every paragraph.
-4. Save usable source images to sites/${slug}/assets/ only when they improve the design. Use CSS gradients, shapes, cards, icons, and layout if images are weak or slow.
+4. Save usable source images to sites/${slug}/assets/ only when they clearly improve the design. Prefer CSS gradients, shapes, cards, icons, and layout if images are weak or slow.
 5. Write sites/${slug}/site.json:
    - brandName, slug ("${slug}"), sourceUrl
    - pages: [{ "path": "/", "title": "Home", "gated": false }]
-   - discoveredPages: nav links you can see on the homepage only (max 8, paths only — do not visit them)
-6. Commit to the repo when done.
+   - discoveredPages: [] unless obvious nav paths are already visible without extra browsing
+6. Stop as soon as index.html, styles.css, and site.json are written under sites/${slug}/ and available as run artifacts. Do not wait to commit before finishing.
 
 ## Design bar
 
@@ -36,7 +36,7 @@ Avoid:
 - Recreating the old site structure section-for-section.
 - Broken relative asset paths. Reference local assets as ./assets/file.ext from index.html.
 
-Do not build secondary pages in this phase.`;
+Do not build secondary pages in this phase. Do not spend time on a multi-page plan. The first preview is artifact-first, so the generated files are the deliverable even if no git commit is created.`;
 }
 
 export function buildAdditionalPagesPrompt({ sourceUrl, slug }: PromptParams): string {

@@ -3,15 +3,20 @@ import { eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { previewPublicPath } from "@/lib/preview/paths";
 import { resolveUniqueSlug, slugFromUrl } from "@/lib/jobs/slug";
-import { STATUS_MESSAGES, type JobResponse } from "@/lib/jobs/types";
+import { STATUS_MESSAGES, type JobResponse, type JobStatus } from "@/lib/jobs/types";
 
 const { jobs } = schema;
 
+const PREVIEW_READY_STATUSES = new Set<JobStatus>([
+  "homepage_ready",
+  "building_pages",
+  "complete",
+]);
+
 function toJobResponse(job: typeof jobs.$inferSelect): JobResponse {
-  const previewUrl =
-    job.status === "homepage_ready" || job.status === "complete"
-      ? previewPublicPath(job.slug)
-      : null;
+  const previewUrl = PREVIEW_READY_STATUSES.has(job.status)
+    ? previewPublicPath(job.slug)
+    : null;
 
   return {
     id: job.id,

@@ -136,6 +136,24 @@ export async function syncPreviewFromAgent(
   const prefix = `sites/${slug}/`;
   const outputDir = previewDirectory(slug);
 
+  console.info(
+    `[refresh-kiwi] syncing Cursor artifacts for ${prefix} agentId=${agentId}`,
+  );
+
+  const syncedFromArtifacts = await syncFromAgentArtifacts(
+    agentId,
+    slug,
+    outputDir,
+  );
+
+  if (syncedFromArtifacts) {
+    return;
+  }
+
+  console.info(
+    `[refresh-kiwi] no Cursor artifacts for ${prefix}, falling back to GitHub main`,
+  );
+
   for (let attempt = 1; attempt <= GITHUB_SYNC_ATTEMPTS; attempt++) {
     const syncedFromGithub = await syncFromGithubMain(slug, outputDir);
 
@@ -151,17 +169,5 @@ export async function syncPreviewFromAgent(
     }
   }
 
-  console.info(
-    `[refresh-kiwi] falling back to Cursor artifacts for ${prefix} agentId=${agentId}`,
-  );
-
-  const syncedFromArtifacts = await syncFromAgentArtifacts(
-    agentId,
-    slug,
-    outputDir,
-  );
-
-  if (!syncedFromArtifacts) {
-    throw new Error(`No files found under ${prefix}`);
-  }
+  throw new Error(`No files found under ${prefix}`);
 }
