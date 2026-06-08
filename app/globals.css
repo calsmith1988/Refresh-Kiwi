@@ -1,0 +1,25 @@
+@import "tailwindcss";
+@import "@fontsource/fraunces/500.css";
+@import "@fontsource/fraunces/600.css";
+
+:root {
+  --color-white: #ffffff;
+  --color-black: #0a0a0a;
+  --color-kiwi-green: #c0ea70;
+  --color-kiwi-green-hover: #aed960;
+}
+
+@theme inline {
+  --color-background: var(--color-white);
+  --color-foreground: var(--color-black);
+  --color-kiwi-green: var(--color-kiwi-green);
+  --color-kiwi-green-hover: var(--color-kiwi-green-hover);
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-fraunces: "Fraunces", Georgia, "Times New Roman", serif;
+}
+
+body {
+  background: var(--color-white);
+  color: var(--color-black);
+  font-family: var(--font-sans);
+}
