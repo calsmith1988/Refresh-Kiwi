@@ -14,6 +14,14 @@ interface LandingHeroProps {
   errorMessage?: string | null;
 }
 
+function previewPath(previewUrl: string): string {
+  try {
+    return new URL(previewUrl, "https://refresh-kiwi.local").pathname;
+  } catch {
+    return previewUrl.startsWith("/") ? previewUrl : `/${previewUrl}`;
+  }
+}
+
 export default function LandingHero({
   url,
   onUrlChange,
@@ -28,6 +36,7 @@ export default function LandingHero({
     event.preventDefault();
     onRefresh();
   };
+  const previewHref = previewUrl ? previewPath(previewUrl) : null;
 
   return (
     <section className="relative z-10 flex min-h-screen flex-col items-center justify-center px-6 py-16">
@@ -83,10 +92,10 @@ export default function LandingHero({
           </p>
         ) : null}
 
-        {previewUrl ? (
+        {previewHref ? (
           <p className="mt-4 text-sm">
             <Link
-              href={previewUrl}
+              href={previewHref}
               target="_blank"
               rel="noopener noreferrer"
               className="font-medium text-black underline decoration-black/30 underline-offset-4 transition hover:decoration-black"

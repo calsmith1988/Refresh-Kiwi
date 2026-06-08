@@ -20,13 +20,16 @@ const POLL_INTERVAL_MS = 3000;
 const MAX_POLL_FAILURES = 10;
 
 function normalizePreviewUrl(previewUrl: string | null): string | null {
-  if (!previewUrl || typeof window === "undefined") {
+  if (!previewUrl) {
     return previewUrl;
   }
 
-  const url = new URL(previewUrl, window.location.origin);
-
-  return `${window.location.origin}${url.pathname}${url.search}${url.hash}`;
+  try {
+    const url = new URL(previewUrl, "https://refresh-kiwi.local");
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return previewUrl.startsWith("/") ? previewUrl : `/${previewUrl}`;
+  }
 }
 
 export default function RefreshPage() {
