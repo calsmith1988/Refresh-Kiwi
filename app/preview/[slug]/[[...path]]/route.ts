@@ -38,24 +38,11 @@ function rewriteLocalPreviewOrigins(
   return body.toString("utf8").replace(LOCAL_PREVIEW_ORIGIN_PATTERN, "");
 }
 
-export async function GET(request: Request, context: RouteContext) {
+export async function GET(_request: Request, context: RouteContext) {
   const { slug, path: pathSegments } = await context.params;
 
   if (!isValidSlug(slug)) {
     return NextResponse.json({ error: "Invalid preview slug" }, { status: 400 });
-  }
-
-  const url = new URL(request.url);
-
-  if ((pathSegments ?? []).length === 0 && !url.pathname.endsWith("/")) {
-    const location = `${url.pathname}/${url.search}${url.hash}`;
-
-    return new NextResponse(null, {
-      status: 308,
-      headers: {
-        Location: location,
-      },
-    });
   }
 
   const file = await readPreviewFile(slug, pathSegments ?? []);
