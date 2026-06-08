@@ -10,6 +10,21 @@ const GITHUB_SYNC_ATTEMPTS = 8;
 const GITHUB_SYNC_DELAY_MS = 2_000;
 const ARTIFACT_SYNC_ATTEMPTS = 1;
 
+function githubHeaders(): Record<string, string> {
+  const token = process.env.GITHUB_TOKEN?.trim() || process.env.GH_TOKEN?.trim();
+  const headers: Record<string, string> = {
+    Accept: "application/vnd.github+json",
+    "User-Agent": "refresh-kiwi",
+    "X-GitHub-Api-Version": "2022-11-28",
+  };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  return headers;
+}
+
 function parseGithubRepo(
   repoUrl: string,
 ): { owner: string; repo: string } | null {
@@ -86,13 +101,16 @@ async function syncFromGithubMain(slug: string, outputDir: string): Promise<bool
   const prefix = `sites/${slug}/`;
   const treeUrl = `https://api.github.com/repos/${parsed.owner}/${parsed.repo}/git/trees/main?recursive=1`;
   const treeResponse = await fetch(treeUrl, {
-    headers: {
-      Accept: "application/vnd.github+json",
-      "User-Agent": "refresh-kiwi",
-    },
+    headers: githubHeaders(),
   });
 
   if (!treeResponse.ok) {
+    if (treeResponse.status === 403 || treeResponse.status === 404) {
+      throw new Error(
+        `GitHub sync cannot access ${parsed.owner}/${parsed.repo} (${treeResponse.status}). Set GITHUB_TOKEN on Render with contents read access for CURSOR_SITES_REPO_URL.`,
+      );
+    }
+
     throw new Error(
       `GitHub tree fetch failed (${treeResponse.status}) for ${prefix}`,
     );
@@ -112,9 +130,13 @@ async function syncFromGithubMain(slug: string, outputDir: string): Promise<bool
 
   for (const file of files) {
     const relativePath = file.path.slice(prefix.length);
-    const rawUrl = `https://raw.githubusercontent.com/${parsed.owner}/${parsed.repo}/main/${file.path}`;
-    const fileResponse = await fetch(rawUrl, {
-      headers: { "User-Agent": "refresh-kiwi" },
+    const encodedPath = file.path.split("/").map(encodeURIComponent).join("/");
+    const fileUrl = `https://api.github.com/repos/${parsed.owner}/${parsed.repo}/contents/${encodedPath}?ref=main`;
+    const fileResponse = await fetch(fileUrl, {
+      headers: {
+        ...githubHeaders(),
+        Accept: "application/vnd.github.raw",
+      },
     });
 
     if (!fileResponse.ok) {
