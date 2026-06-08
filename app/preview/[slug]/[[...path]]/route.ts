@@ -19,8 +19,14 @@ export async function GET(request: Request, context: RouteContext) {
   const url = new URL(request.url);
 
   if ((pathSegments ?? []).length === 0 && !url.pathname.endsWith("/")) {
-    url.pathname = `${url.pathname}/`;
-    return NextResponse.redirect(url);
+    const location = `${url.pathname}/${url.search}`;
+
+    return new NextResponse(null, {
+      status: 308,
+      headers: {
+        Location: location,
+      },
+    });
   }
 
   const file = await readPreviewFile(slug, pathSegments ?? []);
