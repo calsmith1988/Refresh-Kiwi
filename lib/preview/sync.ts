@@ -10,7 +10,7 @@ const GITHUB_SYNC_ATTEMPTS = 8;
 const GITHUB_SYNC_DELAY_MS = 2_000;
 const ARTIFACT_SYNC_ATTEMPTS = 1;
 
-function githubHeaders(): Record<string, string> {
+export function githubHeaders(): Record<string, string> {
   const token = process.env.GITHUB_TOKEN?.trim() || process.env.GH_TOKEN?.trim();
   const headers: Record<string, string> = {
     Accept: "application/vnd.github+json",
@@ -25,7 +25,7 @@ function githubHeaders(): Record<string, string> {
   return headers;
 }
 
-function parseGithubRepo(
+export function parseGithubRepo(
   repoUrl: string,
 ): { owner: string; repo: string } | null {
   const match = repoUrl.match(/github\.com[/:]([^/]+)\/([^/.]+)/i);
