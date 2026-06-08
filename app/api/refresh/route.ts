@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 
 import { createRefreshJob, failJob } from "@/lib/jobs/service";
 
@@ -37,16 +37,19 @@ export async function POST(request: Request) {
   try {
     const job = await createRefreshJob(sourceUrl);
 
-    void import("@/lib/jobs/processor")
-      .then(({ processRefreshJob }) => processRefreshJob(job.id))
-      .catch(async (error) => {
+    after(async () => {
+      try {
+        const { processRefreshJob } = await import("@/lib/jobs/processor");
+        await processRefreshJob(job.id);
+      } catch (error) {
         const message =
           error instanceof Error
             ? error.message
             : "Background refresh worker failed to start";
         console.error(`Refresh job ${job.id} failed`, error);
         await failJob(job.id, message);
-      });
+      }
+    });
 
     return NextResponse.json(job, { status: 202 });
   } catch (error) {
