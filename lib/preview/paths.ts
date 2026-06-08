@@ -7,5 +7,5 @@ export function previewDirectory(slug: string): string {
 }
 
 export function previewPublicPath(slug: string): string {
-  return `/preview/${slug}/`;
+  return `/preview/${slug}/index.html`;
 }
