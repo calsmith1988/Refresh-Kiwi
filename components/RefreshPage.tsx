@@ -18,6 +18,22 @@ const HOMEPAGE_READY_STATUSES = new Set<JobResponse["status"]>([
 ]);
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLL_FAILURES = 10;
+const STATUS_ROTATION_INTERVAL_MS = 7000;
+const REFRESH_STATUS_MESSAGES = [
+  "Peeling back the old homepage…",
+  "Scooping up the useful bits…",
+  "Picking out the juiciest proof points…",
+  "Giving the hero section a squeeze…",
+  "Sorting the seeds from the fluff…",
+  "Blending sharper copy with cleaner design…",
+  "Rolling out a fresher layout…",
+  "Checking the mobile crop…",
+  "Polishing the green bits…",
+  "Making sure the buttons are ripe…",
+  "Packing the preview basket…",
+  "One last kiwi quality check…",
+  "Nearly ripe — just finishing the homepage…",
+] as const;
 
 function normalizePreviewUrl(previewUrl: string | null): string | null {
   if (!previewUrl) {
@@ -38,9 +54,11 @@ export default function RefreshPage() {
   const [job, setJob] = useState<JobResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
+  const [statusMessageIndex, setStatusMessageIndex] = useState(0);
   const pollTimerRef = useRef<number | null>(null);
   const pollFailuresRef = useRef(0);
   const elapsedTimerRef = useRef<number | null>(null);
+  const statusTimerRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
 
   const stopPolling = useCallback(() => {
@@ -61,6 +79,13 @@ export default function RefreshPage() {
     }
   }, []);
 
+  const stopStatusRotation = useCallback(() => {
+    if (statusTimerRef.current !== null) {
+      window.clearInterval(statusTimerRef.current);
+      statusTimerRef.current = null;
+    }
+  }, []);
+
   const pollJob = useCallback(
     async (jobId: string) => {
       try {
@@ -77,11 +102,13 @@ export default function RefreshPage() {
         if (HOMEPAGE_READY_STATUSES.has(nextJob.status)) {
           setIsRefreshing(false);
           stopTimer();
+          stopStatusRotation();
         }
 
         if (TERMINAL_STATUSES.has(nextJob.status)) {
           stopPolling();
           stopTimer();
+          stopStatusRotation();
 
           if (nextJob.status === "failed") {
             setErrorMessage(nextJob.errorMessage ?? "Refresh failed");
@@ -93,6 +120,7 @@ export default function RefreshPage() {
         if (pollFailuresRef.current >= MAX_POLL_FAILURES) {
           stopPolling();
           stopTimer();
+          stopStatusRotation();
           setIsRefreshing(false);
           setErrorMessage(
             "Lost connection while checking refresh status. Check Render logs and try again.",
@@ -100,15 +128,16 @@ export default function RefreshPage() {
         }
       }
     },
-    [stopPolling, stopTimer],
+    [stopPolling, stopStatusRotation, stopTimer],
   );
 
   useEffect(() => {
     return () => {
       stopPolling();
       stopTimer();
+      stopStatusRotation();
     };
-  }, [stopPolling, stopTimer]);
+  }, [stopPolling, stopStatusRotation, stopTimer]);
 
   const handleRefresh = async () => {
     if (!url.trim() || isRefreshing) {
@@ -118,8 +147,10 @@ export default function RefreshPage() {
     setIsRefreshing(true);
     setJob(null);
     setErrorMessage(null);
+    setStatusMessageIndex(0);
     pollFailuresRef.current = 0;
     stopPolling();
+    stopStatusRotation();
 
     startTimeRef.current = Date.now();
     setElapsedMs(0);
@@ -129,6 +160,11 @@ export default function RefreshPage() {
         setElapsedMs(Date.now() - startTimeRef.current);
       }
     }, 500);
+    statusTimerRef.current = window.setInterval(() => {
+      setStatusMessageIndex(
+        (current) => (current + 1) % REFRESH_STATUS_MESSAGES.length,
+      );
+    }, STATUS_ROTATION_INTERVAL_MS);
 
     try {
       const response = await fetch("/api/refresh", {
@@ -152,6 +188,7 @@ export default function RefreshPage() {
     } catch (error) {
       setIsRefreshing(false);
       stopTimer();
+      stopStatusRotation();
       setErrorMessage(
         error instanceof Error ? error.message : "Failed to start refresh",
       );
@@ -169,7 +206,11 @@ export default function RefreshPage() {
         }}
         disabled={isRefreshing}
         isRefreshing={isRefreshing}
-        statusMessage={job?.statusMessage ?? null}
+        statusMessage={
+          isRefreshing
+            ? REFRESH_STATUS_MESSAGES[statusMessageIndex]
+            : (job?.statusMessage ?? null)
+        }
         previewUrl={normalizePreviewUrl(job?.previewUrl ?? null)}
         errorMessage={errorMessage}
         elapsedMs={elapsedMs}
