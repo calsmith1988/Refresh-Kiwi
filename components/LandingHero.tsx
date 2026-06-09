@@ -372,8 +372,7 @@ export default function LandingHero({
                 <span className="h-7 w-7 rounded-full border-2 border-white bg-[#d7bfa6]" />
                 <span className="h-7 w-7 rounded-full border-2 border-white bg-[#8da66f]" />
               </div>
-              <span>Loved by 1,000+ business owners</span>
-              <span className="font-bold text-black">4.9/5</span>
+              <span>250+ websites already redesigned</span>
             </div>
           </div>
         </div>
