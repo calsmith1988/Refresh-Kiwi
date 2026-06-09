@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 
 import { getDb, schema } from "@/lib/db";
 
@@ -116,6 +116,14 @@ export async function getOwnedWebsite(params: {
     .limit(1);
 
   return website ?? null;
+}
+
+export async function listOwnedWebsites(userId: string) {
+  return getDb()
+    .select()
+    .from(websites)
+    .where(eq(websites.userId, userId))
+    .orderBy(desc(websites.updatedAt));
 }
 
 export async function userHasProPlan(userId: string): Promise<boolean> {
