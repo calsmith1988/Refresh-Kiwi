@@ -36,7 +36,15 @@ function formatDate(value: string): string {
 }
 
 function previewHref(slug: string): string {
-  return `/preview/${slug}/`;
+  return `/preview/${slug}/index.html`;
+}
+
+function sourceHostname(sourceUrl: string): string {
+  try {
+    return new URL(sourceUrl).hostname.replace(/^www\./, "");
+  } catch {
+    return sourceUrl;
+  }
 }
 
 export default function DashboardPage() {
@@ -265,8 +273,8 @@ export default function DashboardPage() {
                             {isExpired ? "expired" : website.status}
                           </span>
                         </div>
-                        <p className="mt-2 break-all text-sm text-black/50">
-                          {website.sourceUrl}
+                        <p className="mt-2 text-sm text-black/50">
+                          Generated from {sourceHostname(website.sourceUrl)}
                         </p>
                         <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs font-medium text-black/45">
                           <span>

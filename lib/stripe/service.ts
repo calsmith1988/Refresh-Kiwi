@@ -117,8 +117,8 @@ export async function createProCheckoutSession(): Promise<string> {
     mode: "subscription",
     customer: customerId,
     line_items: [{ price: getStripeProPriceId(), quantity: 1 }],
-    success_url: `${appUrl}/?upgraded=1`,
-    cancel_url: `${appUrl}/?upgrade_cancelled=1`,
+    success_url: `${appUrl}/dashboard?upgraded=1`,
+    cancel_url: `${appUrl}/dashboard?upgrade_cancelled=1`,
     metadata: { userId: user.id },
     subscription_data: {
       metadata: { userId: user.id },
