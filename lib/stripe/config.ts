@@ -18,6 +18,16 @@ export function getStripeProPriceId(): string {
   return priceId;
 }
 
+export function getStripeWebhookSecret(): string {
+  const secret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
+
+  if (!secret) {
+    throw new Error("STRIPE_WEBHOOK_SECRET is not configured");
+  }
+
+  return secret;
+}
+
 export function getAppUrl(): string {
   return (
     process.env.NEXT_PUBLIC_APP_URL?.trim() ||
