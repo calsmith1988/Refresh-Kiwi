@@ -98,7 +98,7 @@ export default function LandingHero({
                 aria-hidden
                 className="rounded-full"
               />
-              <p className="font-fraunces text-xl font-semibold text-black sm:text-2xl">
+              <p className="font-montserrat text-xl font-bold text-black sm:text-2xl">
                 Refresh Kiwi
               </p>
             </div>
@@ -122,7 +122,7 @@ export default function LandingHero({
           </nav>
           <a
             href="#website-url"
-            className="hidden rounded-full border border-black bg-kiwi-green px-5 py-2.5 text-sm font-semibold text-black shadow-sm transition hover:bg-kiwi-green-hover sm:inline-flex"
+            className="hidden rounded-full bg-kiwi-green px-5 py-2.5 text-sm font-semibold text-black shadow-sm transition hover:bg-kiwi-green-hover sm:inline-flex"
           >
             Refresh my website
           </a>
@@ -139,7 +139,7 @@ export default function LandingHero({
             >
               <h1 className="text-balance text-5xl font-bold leading-[0.95] tracking-[-0.055em] text-black sm:text-6xl lg:text-7xl">
                 Paste your website.
-                <span className="block text-[#6aaa3a]">
+                <span className="block text-[#c0ea70]">
                   Get a fresh new version in 90 seconds.
                 </span>
               </h1>
@@ -169,7 +169,7 @@ export default function LandingHero({
               <button
                 type="submit"
                 disabled={disabled || !url.trim()}
-                className="box-border h-[42px] min-h-[42px] w-full shrink-0 rounded-full border border-black bg-kiwi-green px-5 text-sm font-semibold text-black shadow-sm transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                className="box-border h-[42px] min-h-[42px] w-full shrink-0 rounded-full bg-kiwi-green px-5 text-sm font-semibold text-black opacity-100 shadow-sm transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
               >
                 {isRefreshing ? "Refreshing…" : "Refresh my website"}
               </button>

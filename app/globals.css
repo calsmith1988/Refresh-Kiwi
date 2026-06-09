@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap");
 @import "@fontsource/fraunces/500.css";
 @import "@fontsource/fraunces/600.css";
 
@@ -16,6 +17,7 @@
   --color-kiwi-green-hover: var(--color-kiwi-green-hover);
   --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-fraunces: "Fraunces", Georgia, "Times New Roman", serif;
+  --font-montserrat: "Montserrat", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
 body {
