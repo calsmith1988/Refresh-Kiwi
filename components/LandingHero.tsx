@@ -89,7 +89,7 @@ export default function LandingHero({
           </nav>
           <a
             href="#website-url"
-            className="hidden rounded-full border-2 border-black bg-kiwi-green px-5 py-2.5 text-sm font-semibold text-black shadow-sm transition hover:bg-kiwi-green-hover sm:inline-flex"
+            className="hidden rounded-full border border-black bg-kiwi-green px-5 py-2.5 text-sm font-semibold text-black shadow-sm transition hover:bg-kiwi-green-hover sm:inline-flex"
           >
             Refresh my website
           </a>
@@ -97,10 +97,6 @@ export default function LandingHero({
 
         <div className="grid flex-1 items-center gap-12 py-12 lg:grid-cols-[minmax(0,0.92fr)_minmax(520px,1.08fr)] lg:gap-14 lg:py-8">
           <div className="text-center lg:text-left">
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-kiwi-green/40 bg-kiwi-green/15 px-3 py-1 text-xs font-semibold text-black/60">
-              <span aria-hidden>✦</span>
-              AI-powered website refresh
-            </div>
             <div
               className={`overflow-hidden transition-all duration-700 ease-out ${
                 hasStarted
@@ -140,18 +136,14 @@ export default function LandingHero({
               <button
                 type="submit"
                 disabled={disabled || !url.trim()}
-                className="box-border h-14 min-h-14 w-full shrink-0 rounded-2xl border-2 border-black bg-kiwi-green px-6 text-base font-semibold text-black shadow-sm transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                className="box-border h-14 min-h-14 w-full shrink-0 rounded-full border border-black bg-kiwi-green px-5 text-sm font-semibold text-black shadow-sm transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
               >
                 {isRefreshing ? "Refreshing…" : "Refresh my website"}
               </button>
             </form>
 
             <div className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs font-medium text-black/45 lg:justify-start">
-              <span>Free preview</span>
-              <span aria-hidden>•</span>
               <span>No signup needed</span>
-              <span aria-hidden>•</span>
-              <span>Built for existing websites</span>
             </div>
 
             {isRefreshing ? (
