@@ -6,6 +6,7 @@ import {
 } from "@/lib/cursor/agent";
 import { getDb, schema } from "@/lib/db";
 import { syncPreviewFromAgent } from "@/lib/preview/sync";
+import { createWebsiteFromJob } from "@/lib/websites/service";
 import type { JobStatus } from "@/lib/jobs/types";
 
 const { jobs } = schema;
@@ -74,6 +75,8 @@ export async function processRefreshJob(jobId: string): Promise<void> {
     await updateJob(jobId, {
       status: "homepage_ready",
     });
+
+    await createWebsiteFromJob(jobId);
 
     console.info(
       `[refresh-kiwi] job ${jobId} homepage ready in ${elapsedSeconds(jobStartedAt)}s slug=${job.slug}`,

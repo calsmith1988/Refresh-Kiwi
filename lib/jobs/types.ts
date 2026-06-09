@@ -28,10 +28,14 @@ export interface JobResponse {
   id: string;
   sourceUrl: string;
   slug: string;
+  websiteId: string | null;
   brandName: string | null;
   status: JobStatus;
   statusMessage: string;
   previewUrl: string | null;
+  expiresAt: string | null;
+  freeEditsRemaining: number | null;
+  isClaimed: boolean;
   errorMessage: string | null;
   createdAt: string;
   updatedAt: string;

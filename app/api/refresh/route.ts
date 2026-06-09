@@ -1,5 +1,6 @@
 import { after, NextResponse } from "next/server";
 
+import { getCurrentUser } from "@/lib/auth/session";
 import { createRefreshJob, failJob } from "@/lib/jobs/service";
 
 export const runtime = "nodejs";
@@ -35,7 +36,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    const job = await createRefreshJob(sourceUrl);
+    const currentUser = await getCurrentUser();
+    const job = await createRefreshJob(sourceUrl, currentUser?.id ?? null);
 
     after(async () => {
       try {

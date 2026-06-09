@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
 
 interface LandingHeroProps {
   url: string;
@@ -13,6 +14,13 @@ interface LandingHeroProps {
   previewUrl?: string | null;
   errorMessage?: string | null;
   elapsedMs?: number | null;
+  expiresAt?: string | null;
+  freeEditsRemaining?: number | null;
+  isClaimed?: boolean;
+  onOpenAccount?: () => void;
+  onUpgrade?: () => void;
+  onSubmitEdit?: (prompt: string) => void;
+  isSubmittingEdit?: boolean;
 }
 
 function previewPath(previewUrl: string): string {
@@ -40,7 +48,15 @@ export default function LandingHero({
   previewUrl = null,
   errorMessage = null,
   elapsedMs = null,
+  expiresAt = null,
+  freeEditsRemaining = null,
+  isClaimed = false,
+  onOpenAccount,
+  onUpgrade,
+  onSubmitEdit,
+  isSubmittingEdit = false,
 }: LandingHeroProps) {
+  const [editPrompt, setEditPrompt] = useState("");
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     onRefresh();
@@ -48,6 +64,23 @@ export default function LandingHero({
   const previewHref = previewUrl ? previewPath(previewUrl) : null;
   const hasStarted =
     isRefreshing || Boolean(statusMessage) || Boolean(previewHref);
+  const expiryLabel = expiresAt
+    ? new Intl.DateTimeFormat("en-GB", {
+        day: "numeric",
+        month: "short",
+      }).format(new Date(expiresAt))
+    : null;
+
+  const handleEditSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!editPrompt.trim() || !onSubmitEdit) {
+      return;
+    }
+
+    onSubmitEdit(editPrompt);
+    setEditPrompt("");
+  };
 
   return (
     <section className="relative z-10 min-h-screen overflow-hidden px-5 py-5 sm:px-8 lg:px-10">
@@ -169,21 +202,84 @@ export default function LandingHero({
             ) : null}
 
             {previewHref ? (
-              <div className="preview-pop mt-8 flex justify-center lg:justify-start">
-                <Link
-                  href={previewHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group inline-flex items-center gap-2 rounded-full bg-black px-8 py-4 text-base font-semibold text-white shadow-lg shadow-black/15 transition hover:bg-black/85 hover:shadow-xl"
-                >
-                  View your refreshed homepage
-                  <span
-                    aria-hidden
-                    className="transition-transform duration-200 group-hover:translate-x-1"
+              <div className="preview-pop mt-8 max-w-xl rounded-[2rem] border border-black/10 bg-white/85 p-4 text-left shadow-xl shadow-black/10 backdrop-blur">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-black">
+                      Your homepage is ready
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-black/55">
+                      {expiryLabel
+                        ? `Free preview stays live until ${expiryLabel}.`
+                        : "Free preview stays live for 7 days."}
+                    </p>
+                  </div>
+                  <Link
+                    href={previewHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex shrink-0 items-center justify-center rounded-full bg-black px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-black/15 transition hover:bg-black/85"
                   >
-                    →
-                  </span>
-                </Link>
+                    View homepage
+                  </Link>
+                </div>
+
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={onOpenAccount}
+                    className="rounded-2xl border border-black/10 bg-[#f7faef] p-4 text-left transition hover:border-black/20"
+                  >
+                    <span className="text-sm font-semibold text-black">
+                      {isClaimed ? "Saved to your account" : "Save and edit"}
+                    </span>
+                    <span className="mt-1 block text-xs leading-5 text-black/55">
+                      {isClaimed
+                        ? `${freeEditsRemaining ?? 0} free edits remaining.`
+                        : "Create a free account to claim 3 edits."}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={onUpgrade}
+                    className="rounded-2xl border border-black bg-kiwi-green p-4 text-left shadow-sm transition hover:bg-kiwi-green-hover"
+                  >
+                    <span className="text-sm font-semibold text-black">
+                      Keep it live
+                    </span>
+                    <span className="mt-1 block text-xs leading-5 text-black/65">
+                      Go Pro for unlimited edits and extra pages.
+                    </span>
+                  </button>
+                </div>
+
+                {isClaimed ? (
+                  <form onSubmit={handleEditSubmit} className="mt-4">
+                    <label
+                      htmlFor="edit-prompt"
+                      className="mb-2 block text-xs font-semibold text-black/55"
+                    >
+                      Ask for a change
+                    </label>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <input
+                        id="edit-prompt"
+                        value={editPrompt}
+                        onChange={(event) => setEditPrompt(event.target.value)}
+                        placeholder="Make the hero more premium, swap the main image..."
+                        className="h-11 flex-1 rounded-full border border-black/10 bg-white px-4 text-sm text-black outline-none placeholder:text-black/30 focus:border-black/30"
+                      />
+                      <button
+                        type="submit"
+                        disabled={isSubmittingEdit || !editPrompt.trim()}
+                        className="h-11 rounded-full border border-black bg-black px-5 text-sm font-semibold text-white transition hover:bg-black/85 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {isSubmittingEdit ? "Sending…" : "Use edit"}
+                      </button>
+                    </div>
+                  </form>
+                ) : null}
               </div>
             ) : null}
 
