@@ -3,9 +3,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Refresh Kiwi",
+  title: "Refresh Kiwi — Same website, fresher skin",
   description:
-    "Modernise your small business website with AI. Paste your URL and get a fresh, award-worthy redesign.",
+    "Paste your web address and get a fresh, modern version of your website in about 2 minutes. Built for local businesses. Same website, fresher skin.",
   icons: {
     icon: "/refresh-kiwi-favicon.png",
   },

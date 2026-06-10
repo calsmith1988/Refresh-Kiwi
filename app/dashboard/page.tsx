@@ -188,6 +188,10 @@ export default function DashboardPage() {
   const [billingAction, setBillingAction] = useState<"checkout" | "portal" | null>(
     null,
   );
+  const [showProSheet, setShowProSheet] = useState(false);
+  const [celebration, setCelebration] = useState<
+    "upgraded" | "cancelled" | null
+  >(null);
 
   const isPro =
     user?.plan === "pro" && PRO_SUBSCRIPTION_STATUSES.has(user.subscriptionStatus);
@@ -246,12 +250,48 @@ export default function DashboardPage() {
   useEffect(() => {
     let cancelled = false;
 
+    // Returning from Stripe: celebrate (or reassure), then tidy the URL.
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("upgraded")) {
+      setCelebration("upgraded");
+    } else if (params.has("upgrade_cancelled")) {
+      setCelebration("cancelled");
+    }
+    if (params.has("upgraded") || params.has("upgrade_cancelled")) {
+      window.history.replaceState(null, "", "/dashboard");
+    }
+
     void loadDashboard(() => cancelled);
 
     return () => {
       cancelled = true;
     };
   }, []);
+
+  // After an upgrade, the Stripe webhook can take a few seconds to flip the
+  // account to Pro — keep refreshing until it lands.
+  useEffect(() => {
+    if (celebration !== "upgraded" || isPro) {
+      return;
+    }
+
+    let cancelled = false;
+    let attempts = 0;
+    const timer = window.setInterval(() => {
+      attempts += 1;
+      if (attempts > 10) {
+        window.clearInterval(timer);
+        return;
+      }
+      void loadDashboard(() => cancelled);
+    }, 3000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [celebration, isPro]);
 
   useEffect(() => {
     if (!hasActiveEdit && !hasActivePageGeneration) {
@@ -268,6 +308,19 @@ export default function DashboardPage() {
       window.clearInterval(timer);
     };
   }, [hasActiveEdit, hasActivePageGeneration]);
+
+  const openProSheet = () => {
+    setErrorMessage(null);
+    setShowProSheet(true);
+  };
+
+  const logout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } finally {
+      window.location.href = "/";
+    }
+  };
 
   const startBillingFlow = async (kind: "checkout" | "portal") => {
     setBillingAction(kind);
@@ -556,15 +609,62 @@ export default function DashboardPage() {
             ) : (
               <button
                 type="button"
-                onClick={() => void startBillingFlow(isPro ? "portal" : "checkout")}
+                onClick={() =>
+                  isPro ? void startBillingFlow("portal") : openProSheet()
+                }
                 disabled={billingAction !== null}
                 className="rounded-full bg-kiwi-green px-5 py-2.5 text-sm font-semibold text-black shadow-sm transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isPro ? "Manage plan" : "Upgrade to add more"}
               </button>
             )}
+            <button
+              type="button"
+              onClick={() => void logout()}
+              className="rounded-full border border-black/10 bg-white px-5 py-2.5 text-sm font-semibold text-black/60 transition hover:border-black/25 hover:text-black"
+            >
+              Log out
+            </button>
           </div>
         </header>
+
+        {celebration === "upgraded" ? (
+          <div className="mt-6 flex items-start justify-between gap-4 rounded-[2rem] border-2 border-kiwi-green bg-[#f4fbe8] p-5 sm:p-6">
+            <div>
+              <p className="text-lg font-bold text-black">
+                You&apos;re on Kiwi Pro! 🥝
+              </p>
+              <p className="mt-1 text-sm leading-6 text-black/60">
+                Your website is going live now. You&apos;ve got unlimited
+                changes, extra pages, and you can connect your own web address
+                below.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setCelebration(null)}
+              className="rounded-full border border-black/10 bg-white px-3 py-1 text-sm text-black/60"
+              aria-label="Dismiss"
+            >
+              Close
+            </button>
+          </div>
+        ) : celebration === "cancelled" ? (
+          <div className="mt-6 flex items-start justify-between gap-4 rounded-[2rem] border border-black/10 bg-white p-5 sm:p-6">
+            <p className="text-sm leading-6 text-black/60">
+              No problem — nothing was charged and your preview is safe. You
+              can go Pro whenever you&apos;re ready.
+            </p>
+            <button
+              type="button"
+              onClick={() => setCelebration(null)}
+              className="rounded-full border border-black/10 bg-white px-3 py-1 text-sm text-black/60"
+              aria-label="Dismiss"
+            >
+              Close
+            </button>
+          </div>
+        ) : null}
 
         <section className="mt-10 rounded-[2rem] border border-black/10 bg-white p-6 shadow-xl shadow-black/5 sm:p-8">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
@@ -608,11 +708,13 @@ export default function DashboardPage() {
             {!isPro ? (
               <button
                 type="button"
-                onClick={() => void startBillingFlow("checkout")}
+                onClick={openProSheet}
                 disabled={billingAction !== null}
                 className="rounded-full bg-kiwi-green px-6 py-3 text-sm font-semibold text-black shadow-sm transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {billingAction === "checkout" ? "Opening…" : "Upgrade to Pro"}
+                {billingAction === "checkout"
+                  ? "Opening…"
+                  : "Go Pro — £10/month"}
               </button>
             ) : null}
             {canAddWebsite ? (
@@ -625,7 +727,9 @@ export default function DashboardPage() {
             ) : (
               <button
                 type="button"
-                onClick={() => void startBillingFlow(isPro ? "portal" : "checkout")}
+                onClick={() =>
+                  isPro ? void startBillingFlow("portal") : openProSheet()
+                }
                 disabled={billingAction !== null}
                 className="rounded-full border border-black/10 bg-white px-6 py-3 text-center text-sm font-semibold text-black transition hover:border-black/25 disabled:cursor-not-allowed disabled:opacity-50"
               >
@@ -645,7 +749,7 @@ export default function DashboardPage() {
                 aria-hidden
                 className="h-1.5 w-1.5 animate-pulse rounded-full bg-kiwi-green"
               />
-              Checking edit progress…
+              Making your change — usually takes a few minutes…
             </p>
           ) : null}
           {hasActivePageGeneration ? (
@@ -654,7 +758,7 @@ export default function DashboardPage() {
                 aria-hidden
                 className="h-1.5 w-1.5 animate-pulse rounded-full bg-kiwi-green"
               />
-              Generating additional pages. This can take a few minutes...
+              Building your other pages — this can take a few minutes…
             </p>
           ) : null}
         </section>
@@ -716,8 +820,8 @@ export default function DashboardPage() {
                         <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs font-medium text-black/45">
                           <span>
                             {isPro
-                              ? "Edits: unlimited"
-                              : `Free edits: ${website.freeEditsRemaining}/${website.freeEditsLimit}`}
+                              ? "Changes: unlimited"
+                              : `Free changes left: ${website.freeEditsRemaining} of ${website.freeEditsLimit}`}
                           </span>
                           {!isPro && website.status !== "live" ? (
                             <span>Free preview until {formatDate(website.expiresAt)}</span>
@@ -728,13 +832,16 @@ export default function DashboardPage() {
                         </div>
                         {website.latestEditRequest ? (
                           <p className="mt-3 text-xs font-medium text-black/45">
-                            Latest edit:{" "}
-                            <span className="capitalize">
-                              {website.latestEditRequest.status}
-                            </span>
+                            Latest change:{" "}
+                            {website.latestEditRequest.status === "queued" ||
+                            website.latestEditRequest.status === "running"
+                              ? "working on it — usually takes a few minutes"
+                              : website.latestEditRequest.status === "complete"
+                                ? "done — open your website to see it"
+                                : "didn't work — please try again"}
                             {website.latestEditRequest.status === "failed" &&
                             website.latestEditRequest.errorMessage
-                              ? ` — ${website.latestEditRequest.errorMessage}`
+                              ? ` (${website.latestEditRequest.errorMessage})`
                               : null}
                           </p>
                         ) : null}
@@ -785,12 +892,12 @@ export default function DashboardPage() {
                         {!isPro && state.showKeepLive ? (
                           <button
                             type="button"
-                            onClick={() => void startBillingFlow("checkout")}
+                            onClick={openProSheet}
                             className="rounded-full bg-kiwi-green px-5 py-2.5 text-sm font-semibold text-black transition hover:bg-kiwi-green-hover"
                           >
                             {state.label === "Expired preview"
-                              ? "Restore with Pro"
-                              : "Keep live"}
+                              ? "Go live again — £10/mo"
+                              : "Put it online — £10/mo"}
                           </button>
                         ) : null}
                         {state.canView && isPro ? (
@@ -939,12 +1046,12 @@ export default function DashboardPage() {
                           {website.customDomain ? (
                             <div className="mt-4 rounded-2xl border border-black/10 bg-white p-4">
                               <p className="text-sm font-semibold text-black">
-                                What to change where you bought your domain
+                                One last step — point your domain at us
                               </p>
                               <ol className="mt-2 space-y-1 text-xs leading-5 text-black/55">
-                                <li>1. Log in to GoDaddy, Namecheap, Cloudflare, or wherever you bought the domain.</li>
-                                <li>2. Find DNS settings or manage DNS.</li>
-                                <li>3. Add this record:</li>
+                                <li>1. Log in where you bought the domain (GoDaddy, Namecheap, 123-reg, Cloudflare…).</li>
+                                <li>2. Find “DNS settings” or “Manage DNS”.</li>
+                                <li>3. Add this record exactly as shown:</li>
                               </ol>
                               <div className="mt-3 grid gap-2 rounded-2xl bg-[#fbfaf6] p-3 text-xs sm:grid-cols-3">
                                 <div>
@@ -963,8 +1070,12 @@ export default function DashboardPage() {
                                 </div>
                               </div>
                               <p className="mt-2 text-xs leading-5 text-black/45">
-                                After saving, come back and click Check connection. It
-                                can work in a few minutes, but sometimes takes longer.
+                                After saving, come back and press Check
+                                connection. It often works within minutes, but
+                                can take up to a day. Not comfortable with
+                                this? Send these three values to whoever looks
+                                after your domain — it&apos;s a 2-minute job
+                                for them.
                               </p>
                               <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                                 <button
@@ -1113,7 +1224,7 @@ export default function DashboardPage() {
                                 [website.id]: event.target.value,
                               }))
                             }
-                            placeholder="Make the hero more premium, change the CTA, update the colours..."
+                            placeholder="Make the phone number bigger, swap the main photo, try different colours..."
                             className="h-11 flex-1 rounded-full border border-black/10 bg-white px-4 text-sm outline-none placeholder:text-black/30 focus:border-black/30"
                           />
                           <button
@@ -1126,12 +1237,12 @@ export default function DashboardPage() {
                           >
                             {submittingEditId === website.id
                               ? "Sending…"
-                              : "Send edit"}
+                              : "Make the change"}
                           </button>
                         </div>
                         <p className="mt-2 text-xs leading-5 text-black/45">
-                          Edits are applied by the editor agent and may take a
-                          few minutes.
+                          We&apos;ll make your change — it usually takes a few
+                          minutes. Check back here to see when it&apos;s done.
                         </p>
                       </form>
                     ) : null}
@@ -1142,6 +1253,53 @@ export default function DashboardPage() {
           )}
         </section>
       </div>
+
+      {showProSheet ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-5 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-[2rem] bg-white p-6 shadow-2xl sm:p-8">
+            <div className="flex items-start justify-between gap-4">
+              <h2 className="text-2xl font-bold tracking-tight text-black">
+                Kiwi Pro — £10/month
+              </h2>
+              <button
+                type="button"
+                onClick={() => setShowProSheet(false)}
+                className="rounded-full border border-black/10 px-3 py-1 text-sm text-black/60"
+              >
+                Close
+              </button>
+            </div>
+            <ul className="mt-5 space-y-2.5 text-sm leading-6 text-black/60">
+              <li>Your new website live on the internet — we host it</li>
+              <li>Unlimited changes, just ask in plain English</li>
+              <li>Your own web address (like www.yourbusiness.com)</li>
+              <li>Extra pages built for you</li>
+            </ul>
+            <p className="mt-4 text-xs leading-5 text-black/45">
+              Cancel anytime — no contracts, no hidden fees. Payment is handled
+              securely by Stripe.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setShowProSheet(false);
+                void startBillingFlow("checkout");
+              }}
+              disabled={billingAction !== null}
+              className="mt-5 h-12 w-full rounded-full border border-black bg-kiwi-green px-5 text-sm font-semibold text-black transition hover:bg-kiwi-green-hover disabled:opacity-50"
+            >
+              Continue to secure payment
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowProSheet(false)}
+              className="mt-3 h-11 w-full rounded-full text-sm font-medium text-black/55 transition hover:text-black"
+            >
+              Not now
+            </button>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }

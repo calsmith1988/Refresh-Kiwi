@@ -19,6 +19,19 @@ export function middleware(request: NextRequest) {
   const host = normalizeHost(request);
   const { pathname } = request.nextUrl;
 
+  // Server-side guard: visiting the dashboard signed out bounces straight
+  // home instead of flashing an empty dashboard first.
+  if (
+    pathname.startsWith("/dashboard") &&
+    !request.cookies.has("refresh_kiwi_session")
+  ) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    url.search = "";
+
+    return NextResponse.redirect(url);
+  }
+
   if (
     !host ||
     APP_HOSTS.has(host) ||

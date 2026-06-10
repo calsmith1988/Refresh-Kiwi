@@ -82,17 +82,20 @@ export async function processRefreshJob(jobId: string): Promise<void> {
       `[refresh-kiwi] job ${jobId} homepage ready in ${elapsedSeconds(jobStartedAt)}s slug=${job.slug}`,
     );
   } catch (error) {
-    const message = isCursorStartupError(error)
+    const technicalMessage = isCursorStartupError(error)
       ? `Cursor agent failed to start: ${error.message}`
       : error instanceof Error
         ? error.message
         : "Unknown error";
 
-    console.error(`[refresh-kiwi] job ${jobId} failed: ${message}`);
+    console.error(`[refresh-kiwi] job ${jobId} failed: ${technicalMessage}`);
 
+    // Users only ever see this friendly message; the technical detail above
+    // stays in the server logs.
     await updateJob(jobId, {
       status: "failed" as JobStatus,
-      errorMessage: message,
+      errorMessage:
+        "We couldn't finish refreshing your website this time. It's not you — some sites are tricky to read.",
     });
   }
 }

@@ -54,7 +54,7 @@ export async function POST(request: Request, context: RouteContext) {
 
   if (isExpiredPreview) {
     return NextResponse.json(
-      { error: "This free preview has expired. Upgrade to Pro to restore edits." },
+      { error: "This free preview has ended. Go Pro (£10/month) to bring it back and keep making changes." },
       { status: 402 },
     );
   }
@@ -66,7 +66,7 @@ export async function POST(request: Request, context: RouteContext) {
 
   if (!hasPro && freeEditsRemaining <= 0) {
     return NextResponse.json(
-      { error: "You have used your 3 free edits. Upgrade to Pro for unlimited edits." },
+      { error: "You've used your 3 free changes. Go Pro (£10/month) for unlimited changes." },
       { status: 402 },
     );
   }

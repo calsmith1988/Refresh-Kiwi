@@ -19,6 +19,15 @@ const HOMEPAGE_READY_STATUSES = new Set<JobResponse["status"]>([
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLL_FAILURES = 10;
 const STATUS_ROTATION_INTERVAL_MS = 7000;
+const OVERTIME_THRESHOLD_MS = 3 * 60 * 1000;
+const OVERTIME_MESSAGE =
+  "Taking a little longer than usual — still working on it…";
+// Elapsed-time boundaries for the three visible loading stages. The backend
+// only reports one long "building_homepage" status, so stage progress within
+// it is time-based (healthy runs complete in ~2-3 minutes).
+const STAGE_2_AT_MS = 25 * 1000;
+const STAGE_3_AT_MS = 95 * 1000;
+const ACTIVE_JOB_STORAGE_KEY = "refresh-kiwi:active-job";
 const REFRESH_STATUS_MESSAGES = [
   "Peeling back the old homepage…",
   "Scooping up the useful bits…",
@@ -41,6 +50,38 @@ interface AuthUser {
   name: string | null;
   plan: "free" | "pro";
   subscriptionStatus: string;
+}
+
+function readStoredJob(): { jobId: string; url: string } | null {
+  try {
+    const raw = window.localStorage.getItem(ACTIVE_JOB_STORAGE_KEY);
+    if (!raw) {
+      return null;
+    }
+    const parsed = JSON.parse(raw) as { jobId?: string; url?: string };
+    return parsed.jobId ? { jobId: parsed.jobId, url: parsed.url ?? "" } : null;
+  } catch {
+    return null;
+  }
+}
+
+function storeJob(jobId: string, url: string) {
+  try {
+    window.localStorage.setItem(
+      ACTIVE_JOB_STORAGE_KEY,
+      JSON.stringify({ jobId, url }),
+    );
+  } catch {
+    // Storage unavailable (private mode etc.) — refresh resume just won't work.
+  }
+}
+
+function clearStoredJob() {
+  try {
+    window.localStorage.removeItem(ACTIVE_JOB_STORAGE_KEY);
+  } catch {
+    // Ignore.
+  }
 }
 
 function normalizePreviewUrl(previewUrl: string | null): string | null {
@@ -68,6 +109,12 @@ export default function RefreshPage() {
   const [authName, setAuthName] = useState("");
   const [isSubmittingAuth, setIsSubmittingAuth] = useState(false);
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
+  const [editStatus, setEditStatus] = useState<
+    "idle" | "working" | "done" | "failed"
+  >("idle");
+  const [showProSheet, setShowProSheet] = useState(false);
+  const [isStartingCheckout, setIsStartingCheckout] = useState(false);
+  const editPollTimerRef = useRef<number | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [statusMessageIndex, setStatusMessageIndex] = useState(0);
   const pollTimerRef = useRef<number | null>(null);
@@ -80,6 +127,13 @@ export default function RefreshPage() {
     if (pollTimerRef.current !== null) {
       window.clearInterval(pollTimerRef.current);
       pollTimerRef.current = null;
+    }
+  }, []);
+
+  const stopEditPolling = useCallback(() => {
+    if (editPollTimerRef.current !== null) {
+      window.clearInterval(editPollTimerRef.current);
+      editPollTimerRef.current = null;
     }
   }, []);
 
@@ -126,7 +180,14 @@ export default function RefreshPage() {
           stopStatusRotation();
 
           if (nextJob.status === "failed") {
-            setErrorMessage(nextJob.errorMessage ?? "Refresh failed");
+            // Stop the kiwi animation and playful status copy the moment we
+            // know the refresh failed.
+            setIsRefreshing(false);
+            clearStoredJob();
+            setErrorMessage(
+              nextJob.errorMessage ??
+                "We couldn't finish refreshing your website this time.",
+            );
           }
         }
       } catch {
@@ -138,12 +199,42 @@ export default function RefreshPage() {
           stopStatusRotation();
           setIsRefreshing(false);
           setErrorMessage(
-            "Lost connection while checking refresh status. Check Render logs and try again.",
+            "We lost the connection while checking on your refresh. Please try again.",
           );
         }
       }
     },
     [stopPolling, stopStatusRotation, stopTimer],
+  );
+
+  const startProgressTimers = useCallback(() => {
+    startTimeRef.current = Date.now();
+    setElapsedMs(0);
+    stopTimer();
+    elapsedTimerRef.current = window.setInterval(() => {
+      if (startTimeRef.current !== null) {
+        setElapsedMs(Date.now() - startTimeRef.current);
+      }
+    }, 500);
+    stopStatusRotation();
+    statusTimerRef.current = window.setInterval(() => {
+      // Advance to the last message and hold there — never loop back to the
+      // start, which read as the refresh being stuck or restarting.
+      setStatusMessageIndex((current) =>
+        Math.min(current + 1, REFRESH_STATUS_MESSAGES.length - 1),
+      );
+    }, STATUS_ROTATION_INTERVAL_MS);
+  }, [stopStatusRotation, stopTimer]);
+
+  const beginPolling = useCallback(
+    (jobId: string) => {
+      stopPolling();
+      pollFailuresRef.current = 0;
+      pollTimerRef.current = window.setInterval(() => {
+        void pollJob(jobId);
+      }, POLL_INTERVAL_MS);
+    },
+    [pollJob, stopPolling],
   );
 
   useEffect(() => {
@@ -156,12 +247,50 @@ export default function RefreshPage() {
         setUser(null);
       });
 
+    // Resume an in-flight or finished refresh after a page reload, so users
+    // (and accidental tab refreshes) never lose their result.
+    const stored = readStoredJob();
+    if (stored) {
+      setUrl((current) => current || stored.url);
+
+      void fetch(`/api/refresh/${stored.jobId}`)
+        .then(async (response) => {
+          if (!response.ok) {
+            clearStoredJob();
+            return;
+          }
+
+          const resumedJob = (await response.json()) as JobResponse;
+
+          if (resumedJob.status === "failed") {
+            clearStoredJob();
+            return;
+          }
+
+          setJob(resumedJob);
+
+          if (!HOMEPAGE_READY_STATUSES.has(resumedJob.status)) {
+            setIsRefreshing(true);
+            setStatusMessageIndex(0);
+            startProgressTimers();
+            beginPolling(resumedJob.id);
+          } else if (!TERMINAL_STATUSES.has(resumedJob.status)) {
+            beginPolling(resumedJob.id);
+          }
+        })
+        .catch(() => {
+          // Leave the stored job in place; a later visit may reach the API.
+        });
+    }
+
     return () => {
       stopPolling();
+      stopEditPolling();
       stopTimer();
       stopStatusRotation();
     };
-  }, [stopPolling, stopStatusRotation, stopTimer]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const claimCurrentWebsite = useCallback(async () => {
     if (!job) {
@@ -243,6 +372,18 @@ export default function RefreshPage() {
 
     try {
       await claimCurrentWebsite();
+      setShowProSheet(true);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Failed to save website",
+      );
+    }
+  };
+
+  const startCheckout = async () => {
+    setIsStartingCheckout(true);
+
+    try {
       const response = await fetch("/api/stripe/checkout", { method: "POST" });
       const payload = await response.json();
 
@@ -252,11 +393,54 @@ export default function RefreshPage() {
 
       window.location.href = payload.url;
     } catch (error) {
+      setIsStartingCheckout(false);
+      setShowProSheet(false);
       setErrorMessage(
         error instanceof Error ? error.message : "Failed to start checkout",
       );
     }
   };
+
+  const pollEditStatus = useCallback(
+    (websiteId: string, editRequestId: string) => {
+      stopEditPolling();
+      setEditStatus("working");
+
+      editPollTimerRef.current = window.setInterval(() => {
+        void fetch("/api/websites")
+          .then(async (response) => {
+            if (!response.ok) {
+              return;
+            }
+
+            const payload = (await response.json()) as {
+              websites: Array<{
+                id: string;
+                latestEditRequest: { id: string; status: string } | null;
+              }>;
+            };
+            const website = payload.websites.find((w) => w.id === websiteId);
+            const latest = website?.latestEditRequest;
+
+            if (!latest || latest.id !== editRequestId) {
+              return;
+            }
+
+            if (latest.status === "complete") {
+              stopEditPolling();
+              setEditStatus("done");
+            } else if (latest.status === "failed") {
+              stopEditPolling();
+              setEditStatus("failed");
+            }
+          })
+          .catch(() => {
+            // Transient network error — keep polling.
+          });
+      }, POLL_INTERVAL_MS);
+    },
+    [stopEditPolling],
+  );
 
   const handleSubmitEdit = async (prompt: string) => {
     if (!job?.websiteId) {
@@ -266,6 +450,7 @@ export default function RefreshPage() {
 
     setIsSubmittingEdit(true);
     setErrorMessage(null);
+    setEditStatus("idle");
 
     try {
       const response = await fetch(`/api/websites/${job.websiteId}/edits`, {
@@ -277,6 +462,11 @@ export default function RefreshPage() {
 
       if (!response.ok) {
         throw new Error(payload.error ?? "Failed to request edit");
+      }
+
+      const created = payload as { editRequest?: { id: string } };
+      if (created.editRequest?.id) {
+        pollEditStatus(job.websiteId, created.editRequest.id);
       }
 
       const refreshed = await fetch(`/api/refresh/${job.id}`);
@@ -301,23 +491,8 @@ export default function RefreshPage() {
     setJob(null);
     setErrorMessage(null);
     setStatusMessageIndex(0);
-    pollFailuresRef.current = 0;
     stopPolling();
-    stopStatusRotation();
-
-    startTimeRef.current = Date.now();
-    setElapsedMs(0);
-    stopTimer();
-    elapsedTimerRef.current = window.setInterval(() => {
-      if (startTimeRef.current !== null) {
-        setElapsedMs(Date.now() - startTimeRef.current);
-      }
-    }, 500);
-    statusTimerRef.current = window.setInterval(() => {
-      setStatusMessageIndex(
-        (current) => (current + 1) % REFRESH_STATUS_MESSAGES.length,
-      );
-    }, STATUS_ROTATION_INTERVAL_MS);
+    startProgressTimers();
 
     try {
       const response = await fetch("/api/refresh", {
@@ -334,10 +509,8 @@ export default function RefreshPage() {
 
       const createdJob = payload as JobResponse;
       setJob(createdJob);
-
-      pollTimerRef.current = window.setInterval(() => {
-        void pollJob(createdJob.id);
-      }, POLL_INTERVAL_MS);
+      storeJob(createdJob.id, url);
+      beginPolling(createdJob.id);
     } catch (error) {
       setIsRefreshing(false);
       stopTimer();
@@ -347,6 +520,14 @@ export default function RefreshPage() {
       );
     }
   };
+
+  const loadingStage = !isRefreshing
+    ? 0
+    : elapsedMs >= STAGE_3_AT_MS
+      ? 2
+      : elapsedMs >= STAGE_2_AT_MS
+        ? 1
+        : 0;
 
   return (
     <main className="relative isolate min-h-screen overflow-hidden bg-white">
@@ -359,9 +540,12 @@ export default function RefreshPage() {
         }}
         disabled={isRefreshing}
         isRefreshing={isRefreshing}
+        loadingStage={loadingStage}
         statusMessage={
           isRefreshing
-            ? REFRESH_STATUS_MESSAGES[statusMessageIndex]
+            ? elapsedMs > OVERTIME_THRESHOLD_MS
+              ? OVERTIME_MESSAGE
+              : REFRESH_STATUS_MESSAGES[statusMessageIndex]
             : (job?.statusMessage ?? null)
         }
         previewUrl={normalizePreviewUrl(job?.previewUrl ?? null)}
@@ -374,7 +558,55 @@ export default function RefreshPage() {
         onUpgrade={handleUpgrade}
         onSubmitEdit={handleSubmitEdit}
         isSubmittingEdit={isSubmittingEdit}
+        editStatus={editStatus}
+        isLoggedIn={Boolean(user)}
       />
+
+      {showProSheet ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-5 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-[2rem] bg-white p-6 shadow-2xl sm:p-8">
+            <div className="flex items-start justify-between gap-4">
+              <h2 className="text-2xl font-bold tracking-tight text-black">
+                Kiwi Pro — £10/month
+              </h2>
+              <button
+                type="button"
+                onClick={() => setShowProSheet(false)}
+                className="rounded-full border border-black/10 px-3 py-1 text-sm text-black/60"
+              >
+                Close
+              </button>
+            </div>
+            <ul className="mt-5 space-y-2.5 text-sm leading-6 text-black/60">
+              <li>Your new website live on the internet — we host it</li>
+              <li>Unlimited changes, just ask in plain English</li>
+              <li>Your own web address (like www.yourbusiness.com)</li>
+              <li>Extra pages built for you</li>
+            </ul>
+            <p className="mt-4 text-xs leading-5 text-black/45">
+              Cancel anytime — no contracts, no hidden fees. Payment is handled
+              securely by Stripe.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                void startCheckout();
+              }}
+              disabled={isStartingCheckout}
+              className="mt-5 h-12 w-full rounded-full border border-black bg-kiwi-green px-5 text-sm font-semibold text-black transition hover:bg-kiwi-green-hover disabled:opacity-50"
+            >
+              {isStartingCheckout ? "Opening…" : "Continue to secure payment"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowProSheet(false)}
+              className="mt-3 h-11 w-full rounded-full text-sm font-medium text-black/55 transition hover:text-black"
+            >
+              Not now
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {accountMode !== "closed" ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-5 backdrop-blur-sm">
@@ -382,11 +614,11 @@ export default function RefreshPage() {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 className="text-2xl font-bold tracking-tight text-black">
-                  {accountMode === "login" ? "Log in" : "Save your website"}
+                  {accountMode === "login" ? "Log in" : "Save your new website"}
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-black/60">
-                  Create a free account to keep this preview for 7 days and use
-                  your 3 free edits.
+                  Save it to a free account so it&apos;s still here tomorrow —
+                  and get 3 free changes included.
                 </p>
               </div>
               <button

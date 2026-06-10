@@ -95,9 +95,9 @@ function expiredPreviewResponse() {
   </head>
   <body>
     <main>
-      <h1>This free preview has expired.</h1>
-      <p>Log in or upgrade to Pro to keep your refreshed website live.</p>
-      <a href="/dashboard">Open dashboard</a>
+      <h1>This preview has had its 7 days.</h1>
+      <p>Good news: your refreshed website is saved and we can bring it back in one click. Go Pro (£10/month) and it goes live again — fresher than ever.</p>
+      <a href="/dashboard">Bring my website back</a>
     </main>
   </body>
 </html>`,

@@ -34,6 +34,13 @@ function getMaxBodies() {
   return window.innerWidth < 768 ? MAX_BODIES_MOBILE : MAX_BODIES_DESKTOP;
 }
 
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+}
+
 export default function KiwiPitCanvas({
   active,
   onComplete,
@@ -150,7 +157,7 @@ export default function KiwiPitCanvas({
       }
     };
 
-    if (!active) {
+    if (!active || prefersReducedMotion()) {
       clearSpawnTimer();
       clearCompleteTimer();
       return;
