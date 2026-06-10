@@ -118,6 +118,29 @@ export async function getOwnedWebsite(params: {
   return website ?? null;
 }
 
+export async function publishOwnedWebsite(params: {
+  websiteId: string;
+  userId: string;
+}) {
+  const website = await getOwnedWebsite(params);
+
+  if (!website) {
+    throw new Error("Website not found");
+  }
+
+  const [updated] = await getDb()
+    .update(websites)
+    .set({
+      status: "live",
+      publishedAt: website.publishedAt ?? new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(websites.id, website.id))
+    .returning();
+
+  return updated;
+}
+
 export async function listOwnedWebsites(userId: string) {
   return getDb()
     .select()

@@ -66,6 +66,7 @@ export default function DashboardPage() {
   const [editingWebsiteId, setEditingWebsiteId] = useState<string | null>(null);
   const [editPrompts, setEditPrompts] = useState<Record<string, string>>({});
   const [submittingEditId, setSubmittingEditId] = useState<string | null>(null);
+  const [publishingWebsiteId, setPublishingWebsiteId] = useState<string | null>(null);
   const [billingAction, setBillingAction] = useState<"checkout" | "portal" | null>(
     null,
   );
@@ -201,6 +202,30 @@ export default function DashboardPage() {
       );
     } finally {
       setSubmittingEditId(null);
+    }
+  };
+
+  const publishWebsite = async (websiteId: string) => {
+    setPublishingWebsiteId(websiteId);
+    setErrorMessage(null);
+
+    try {
+      const response = await fetch(`/api/websites/${websiteId}/publish`, {
+        method: "POST",
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Failed to keep website live");
+      }
+
+      await loadDashboard();
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Failed to keep website live",
+      );
+    } finally {
+      setPublishingWebsiteId(null);
     }
   };
 
@@ -357,11 +382,14 @@ export default function DashboardPage() {
                         </p>
                         <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs font-medium text-black/45">
                           <span>
-                            Free edits: {website.freeEditsRemaining}/
-                            {website.freeEditsLimit}
+                            {isPro
+                              ? "Edits: unlimited"
+                              : `Free edits: ${website.freeEditsRemaining}/${website.freeEditsLimit}`}
                           </span>
                           <span>
-                            Free preview expires: {formatDate(website.expiresAt)}
+                            {isPro || website.status === "live"
+                              ? "Live while Pro is active"
+                              : `Free preview expires: ${formatDate(website.expiresAt)}`}
                           </span>
                           {website.publishedAt ? (
                             <span>Published: {formatDate(website.publishedAt)}</span>
@@ -401,13 +429,26 @@ export default function DashboardPage() {
                           Edit website
                         </button>
                         {isPro ? (
-                          <button
-                            type="button"
-                            onClick={() => void startBillingFlow("portal")}
-                            className="rounded-full border border-black/10 bg-white px-5 py-2.5 text-sm font-semibold text-black transition hover:border-black/25"
-                          >
-                            Billing
-                          </button>
+                          website.status === "live" ? (
+                            <button
+                              type="button"
+                              onClick={() => void startBillingFlow("portal")}
+                              className="rounded-full border border-black/10 bg-white px-5 py-2.5 text-sm font-semibold text-black transition hover:border-black/25"
+                            >
+                              Billing
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => void publishWebsite(website.id)}
+                              disabled={publishingWebsiteId === website.id}
+                              className="rounded-full bg-kiwi-green px-5 py-2.5 text-sm font-semibold text-black transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              {publishingWebsiteId === website.id
+                                ? "Publishing…"
+                                : "Keep live"}
+                            </button>
+                          )
                         ) : (
                           <button
                             type="button"
