@@ -37,6 +37,8 @@ type Website = {
 
 const EDIT_POLL_INTERVAL_MS = 5000;
 const ACTIVE_EDIT_STATUSES = new Set(["queued", "running"]);
+const PRO_SUBSCRIPTION_STATUSES = new Set(["active", "trialing"]);
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 function formatDate(value: string): string {
   return new Intl.DateTimeFormat("en-GB", {
@@ -58,6 +60,82 @@ function sourceHostname(sourceUrl: string): string {
   }
 }
 
+function daysUntil(value: string): number {
+  return Math.ceil((new Date(value).getTime() - Date.now()) / DAY_MS);
+}
+
+function pluralise(count: number, singular: string, plural = `${singular}s`) {
+  return count === 1 ? singular : plural;
+}
+
+function websiteState(website: Website, isPro: boolean) {
+  const daysLeft = daysUntil(website.expiresAt);
+  const isDateExpired = daysLeft <= 0;
+  const isExpired =
+    website.status === "expired" ||
+    (!isPro && website.status !== "live" && isDateExpired);
+  const isArchived = website.status === "archived";
+  const isLive = website.status === "live";
+  const isExpiringSoon = !isPro && !isLive && !isExpired && daysLeft <= 2;
+
+  if (isArchived) {
+    return {
+      label: "Archived",
+      badgeClass: "bg-black/5 text-black/45",
+      description: "This website is archived.",
+      canView: false,
+      canEdit: false,
+      showKeepLive: false,
+    };
+  }
+
+  if (isExpired) {
+    return {
+      label: "Expired preview",
+      badgeClass: "bg-red-50 text-red-700",
+      description: `Expired on ${formatDate(website.expiresAt)}.`,
+      canView: false,
+      canEdit: false,
+      showKeepLive: true,
+    };
+  }
+
+  if (isLive) {
+    return {
+      label: "Live",
+      badgeClass: "bg-kiwi-green text-black",
+      description: isPro
+        ? "Live while your Pro plan is active."
+        : "This website is currently live.",
+      canView: true,
+      canEdit: true,
+      showKeepLive: false,
+    };
+  }
+
+  if (isPro) {
+    return {
+      label: "Ready to publish",
+      badgeClass: "bg-[#f0f4e7] text-black/70",
+      description: "Publish this preview to keep it live.",
+      canView: true,
+      canEdit: true,
+      showKeepLive: true,
+    };
+  }
+
+  return {
+    label: isExpiringSoon ? "Expires soon" : "Free preview",
+    badgeClass: isExpiringSoon
+      ? "bg-amber-50 text-amber-700"
+      : "bg-[#f0f4e7] text-black/60",
+    description: `${daysLeft} ${pluralise(daysLeft, "day")} left in your free preview.`,
+    canView: true,
+    canEdit: true,
+    showKeepLive: true,
+  };
+}
+
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [websites, setWebsites] = useState<Website[]>([]);
@@ -71,8 +149,10 @@ export default function DashboardPage() {
     null,
   );
 
-  const isPro = user?.plan === "pro" && user.subscriptionStatus === "active";
+  const isPro =
+    user?.plan === "pro" && PRO_SUBSCRIPTION_STATUSES.has(user.subscriptionStatus);
   const websiteLimit = isPro ? 3 : 1;
+  const canAddWebsite = websites.length < websiteLimit;
   const websiteCountLabel = useMemo(
     () => `${websites.length}/${websiteLimit} websites`,
     [websiteLimit, websites.length],
@@ -246,12 +326,23 @@ export default function DashboardPage() {
               Refresh Kiwi
             </span>
           </Link>
-          <Link
-            href="/"
-            className="rounded-full bg-kiwi-green px-5 py-2.5 text-sm font-semibold text-black shadow-sm transition hover:bg-kiwi-green-hover"
-          >
-            Add website
-          </Link>
+          {canAddWebsite ? (
+            <Link
+              href="/"
+              className="rounded-full bg-kiwi-green px-5 py-2.5 text-sm font-semibold text-black shadow-sm transition hover:bg-kiwi-green-hover"
+            >
+              Add website
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void startBillingFlow(isPro ? "portal" : "checkout")}
+              disabled={billingAction !== null}
+              className="rounded-full bg-kiwi-green px-5 py-2.5 text-sm font-semibold text-black shadow-sm transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isPro ? "Manage plan" : "Upgrade to add more"}
+            </button>
+          )}
         </header>
 
         <section className="mt-10 rounded-[2rem] border border-black/10 bg-white p-6 shadow-xl shadow-black/5 sm:p-8">
@@ -312,12 +403,23 @@ export default function DashboardPage() {
                 {billingAction === "checkout" ? "Opening…" : "Upgrade to Pro"}
               </button>
             )}
-            <Link
-              href="/"
-              className="rounded-full border border-black/10 bg-white px-6 py-3 text-center text-sm font-semibold text-black transition hover:border-black/25"
-            >
-              Add another website
-            </Link>
+            {canAddWebsite ? (
+              <Link
+                href="/"
+                className="rounded-full border border-black/10 bg-white px-6 py-3 text-center text-sm font-semibold text-black transition hover:border-black/25"
+              >
+                Add another website
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={() => void startBillingFlow(isPro ? "portal" : "checkout")}
+                disabled={billingAction !== null}
+                className="rounded-full border border-black/10 bg-white px-6 py-3 text-center text-sm font-semibold text-black transition hover:border-black/25 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isPro ? "Plan limit reached" : "Upgrade to add another"}
+              </button>
+            )}
           </div>
 
           {errorMessage ? (
@@ -357,15 +459,16 @@ export default function DashboardPage() {
           ) : (
             <div className="grid gap-4">
               {websites.map((website) => {
-                const isExpired =
-                  !isPro &&
-                  website.status !== "live" &&
-                  new Date(website.expiresAt).getTime() < Date.now();
+                const state = websiteState(website, isPro);
 
                 return (
                   <article
                     key={website.id}
-                    className="rounded-[2rem] border border-black/10 bg-white p-5 shadow-lg shadow-black/5 sm:p-6"
+                    className={`rounded-[2rem] border p-5 shadow-lg shadow-black/5 sm:p-6 ${
+                      state.canView
+                        ? "border-black/10 bg-white"
+                        : "border-red-100 bg-white"
+                    }`}
                   >
                     <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
                       <div>
@@ -373,12 +476,17 @@ export default function DashboardPage() {
                           <h2 className="text-xl font-bold">
                             {website.brandName || website.slug}
                           </h2>
-                          <span className="rounded-full bg-[#f0f4e7] px-3 py-1 text-xs font-semibold capitalize text-black/60">
-                            {isExpired ? "expired" : website.status}
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-semibold ${state.badgeClass}`}
+                          >
+                            {state.label}
                           </span>
                         </div>
                         <p className="mt-2 text-sm text-black/50">
                           Generated from {sourceHostname(website.sourceUrl)}
+                        </p>
+                        <p className="mt-2 text-sm font-medium text-black/60">
+                          {state.description}
                         </p>
                         <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs font-medium text-black/45">
                           <span>
@@ -386,11 +494,9 @@ export default function DashboardPage() {
                               ? "Edits: unlimited"
                               : `Free edits: ${website.freeEditsRemaining}/${website.freeEditsLimit}`}
                           </span>
-                          <span>
-                            {isPro || website.status === "live"
-                              ? "Live while Pro is active"
-                              : `Free preview expires: ${formatDate(website.expiresAt)}`}
-                          </span>
+                          {!isPro && website.status !== "live" ? (
+                            <span>Free preview until {formatDate(website.expiresAt)}</span>
+                          ) : null}
                           {website.publishedAt ? (
                             <span>Published: {formatDate(website.publishedAt)}</span>
                           ) : null}
@@ -410,54 +516,62 @@ export default function DashboardPage() {
                       </div>
 
                       <div className="flex flex-col gap-2 sm:flex-row lg:shrink-0">
-                        <Link
-                          href={previewHref(website.slug)}
-                          target="_blank"
-                          className="rounded-full bg-black px-5 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-black/85"
-                        >
-                          View website
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setEditingWebsiteId((current) =>
-                              current === website.id ? null : website.id,
-                            )
-                          }
-                          className="rounded-full border border-black/10 bg-white px-5 py-2.5 text-sm font-semibold text-black transition hover:border-black/25"
-                        >
-                          Edit website
-                        </button>
-                        {isPro ? (
-                          website.status === "live" ? (
-                            <button
-                              type="button"
-                              onClick={() => void startBillingFlow("portal")}
-                              className="rounded-full border border-black/10 bg-white px-5 py-2.5 text-sm font-semibold text-black transition hover:border-black/25"
-                            >
-                              Billing
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => void publishWebsite(website.id)}
-                              disabled={publishingWebsiteId === website.id}
-                              className="rounded-full bg-kiwi-green px-5 py-2.5 text-sm font-semibold text-black transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                              {publishingWebsiteId === website.id
-                                ? "Publishing…"
-                                : "Keep live"}
-                            </button>
-                          )
-                        ) : (
+                        {state.canView ? (
+                          <Link
+                            href={previewHref(website.slug)}
+                            target="_blank"
+                            className="rounded-full bg-black px-5 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-black/85"
+                          >
+                            {website.status === "live" ? "View live site" : "View preview"}
+                          </Link>
+                        ) : null}
+                        {state.canEdit ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setEditingWebsiteId((current) =>
+                                current === website.id ? null : website.id,
+                              )
+                            }
+                            className="rounded-full border border-black/10 bg-white px-5 py-2.5 text-sm font-semibold text-black transition hover:border-black/25"
+                          >
+                            Edit website
+                          </button>
+                        ) : null}
+                        {isPro && state.showKeepLive ? (
+                          <button
+                            type="button"
+                            onClick={() => void publishWebsite(website.id)}
+                            disabled={publishingWebsiteId === website.id}
+                            className="rounded-full bg-kiwi-green px-5 py-2.5 text-sm font-semibold text-black transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {publishingWebsiteId === website.id
+                              ? "Publishing…"
+                              : state.label === "Expired preview"
+                                ? "Restore live"
+                                : "Publish live"}
+                          </button>
+                        ) : null}
+                        {!isPro && state.showKeepLive ? (
                           <button
                             type="button"
                             onClick={() => void startBillingFlow("checkout")}
                             className="rounded-full bg-kiwi-green px-5 py-2.5 text-sm font-semibold text-black transition hover:bg-kiwi-green-hover"
                           >
-                            Keep live
+                            {state.label === "Expired preview"
+                              ? "Restore with Pro"
+                              : "Keep live"}
                           </button>
-                        )}
+                        ) : null}
+                        {isPro && website.status === "live" ? (
+                          <button
+                            type="button"
+                            onClick={() => void startBillingFlow("portal")}
+                            className="rounded-full border border-black/10 bg-white px-5 py-2.5 text-sm font-semibold text-black transition hover:border-black/25"
+                          >
+                            Billing
+                          </button>
+                        ) : null}
                       </div>
                     </div>
 

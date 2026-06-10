@@ -39,6 +39,26 @@ export async function POST(request: Request, context: RouteContext) {
   }
 
   const hasPro = await userHasProPlan(user.id);
+  const isExpiredPreview =
+    website.status === "expired" ||
+    (!hasPro &&
+      website.status !== "live" &&
+      website.expiresAt.getTime() <= Date.now());
+
+  if (website.status === "archived") {
+    return NextResponse.json(
+      { error: "Archived websites cannot be edited." },
+      { status: 400 },
+    );
+  }
+
+  if (isExpiredPreview) {
+    return NextResponse.json(
+      { error: "This free preview has expired. Upgrade to Pro to restore edits." },
+      { status: 402 },
+    );
+  }
+
   const freeEditsRemaining = Math.max(
     0,
     website.freeEditsLimit - website.freeEditsUsed,

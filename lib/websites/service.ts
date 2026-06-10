@@ -5,6 +5,25 @@ import { getDb, schema } from "@/lib/db";
 const { editRequests, jobs, users, websites } = schema;
 
 const PREVIEW_EXPIRY_DAYS = 7;
+const FREE_WEBSITE_LIMIT = 1;
+const PRO_WEBSITE_LIMIT = 3;
+
+type ProPlanCandidate = {
+  plan: typeof users.$inferSelect.plan | null;
+  subscriptionStatus: typeof users.$inferSelect.subscriptionStatus | null;
+};
+
+const PRO_SUBSCRIPTION_STATUSES = new Set<
+  typeof users.$inferSelect.subscriptionStatus
+>(["active", "trialing"]);
+
+function isProUser(user: ProPlanCandidate) {
+  return (
+    user.plan === "pro" &&
+    user.subscriptionStatus !== null &&
+    PRO_SUBSCRIPTION_STATUSES.has(user.subscriptionStatus)
+  );
+}
 
 export function previewExpiresAt(): Date {
   return new Date(Date.now() + PREVIEW_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
@@ -76,6 +95,31 @@ export async function claimWebsite(params: { jobId: string; userId: string }) {
     throw new Error("This website is already claimed");
   }
 
+  const [user] = await db
+    .select({
+      plan: users.plan,
+      subscriptionStatus: users.subscriptionStatus,
+    })
+    .from(users)
+    .where(eq(users.id, params.userId))
+    .limit(1);
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  const ownedWebsites = await listOwnedWebsites(params.userId);
+  const alreadyOwnsWebsite = ownedWebsites.some((owned) => owned.id === website.id);
+  const websiteLimit = isProUser(user) ? PRO_WEBSITE_LIMIT : FREE_WEBSITE_LIMIT;
+
+  if (!alreadyOwnsWebsite && ownedWebsites.length >= websiteLimit) {
+    throw new Error(
+      isProUser(user)
+        ? "Your Pro plan includes up to 3 websites. Contact us to add more."
+        : "Free accounts can save 1 website. Upgrade to Pro for up to 3 websites.",
+    );
+  }
+
   const [updated] = await db
     .update(websites)
     .set({ userId: params.userId, updatedAt: new Date() })
@@ -141,6 +185,40 @@ export async function publishOwnedWebsite(params: {
   return updated;
 }
 
+export async function getWebsiteAccessBySlug(slug: string) {
+  const [website] = await getDb()
+    .select({
+      id: websites.id,
+      status: websites.status,
+      slug: websites.slug,
+      expiresAt: websites.expiresAt,
+      user: {
+        plan: users.plan,
+        subscriptionStatus: users.subscriptionStatus,
+      },
+    })
+    .from(websites)
+    .leftJoin(users, eq(websites.userId, users.id))
+    .where(eq(websites.slug, slug))
+    .limit(1);
+
+  if (!website) {
+    return null;
+  }
+
+  const userIsPro = website.user ? isProUser(website.user) : false;
+  const isLive = website.status === "live";
+  const isExpired =
+    !isLive && !userIsPro && website.expiresAt.getTime() < Date.now();
+
+  return {
+    ...website,
+    isAllowed: !isExpired && website.status !== "expired" && website.status !== "archived",
+    isExpired,
+    userIsPro,
+  };
+}
+
 export async function listOwnedWebsites(userId: string) {
   return getDb()
     .select()
@@ -178,5 +256,5 @@ export async function userHasProPlan(userId: string): Promise<boolean> {
     .where(eq(users.id, userId))
     .limit(1);
 
-  return user?.plan === "pro" && user.subscriptionStatus === "active";
+  return user ? isProUser(user) : false;
 }

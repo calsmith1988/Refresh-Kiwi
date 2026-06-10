@@ -60,24 +60,75 @@ async function updateUserSubscription(params: {
           updatedAt: new Date(),
         })
         .where(eq(websites.userId, params.userId));
+    } else {
+      await db
+        .update(websites)
+        .set({
+          status: "preview",
+          updatedAt: new Date(),
+        })
+        .where(eq(websites.userId, params.userId));
     }
 
     return;
   }
 
   if (params.stripeCustomerId) {
-    await db
+    const [user] = await db
       .update(users)
       .set(values)
-      .where(eq(users.stripeCustomerId, params.stripeCustomerId));
+      .where(eq(users.stripeCustomerId, params.stripeCustomerId))
+      .returning({ id: users.id });
+
+    if (user && plan === "pro") {
+      await db
+        .update(websites)
+        .set({
+          status: "live",
+          publishedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(websites.userId, user.id));
+    } else if (user) {
+      await db
+        .update(websites)
+        .set({
+          status: "preview",
+          updatedAt: new Date(),
+        })
+        .where(eq(websites.userId, user.id));
+    }
+
     return;
   }
 
   if (params.stripeSubscriptionId) {
-    await db
+    const [user] = await db
       .update(users)
       .set(values)
-      .where(eq(users.stripeSubscriptionId, params.stripeSubscriptionId));
+      .where(eq(users.stripeSubscriptionId, params.stripeSubscriptionId))
+      .returning({ id: users.id });
+
+    if (user && plan === "pro") {
+      await db
+        .update(websites)
+        .set({
+          status: "live",
+          publishedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(websites.userId, user.id));
+    } else if (user) {
+      await db
+        .update(websites)
+        .set({
+          status: "preview",
+          updatedAt: new Date(),
+        })
+        .where(eq(websites.userId, user.id));
+    }
+
+    return;
   }
 }
 
