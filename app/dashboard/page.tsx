@@ -14,9 +14,19 @@ type User = {
 
 type Website = {
   id: string;
+  jobId: string;
   sourceUrl: string;
   slug: string;
   brandName: string | null;
+  jobStatus:
+    | "queued"
+    | "analyzing"
+    | "building_homepage"
+    | "homepage_ready"
+    | "building_pages"
+    | "complete"
+    | "failed"
+    | null;
   status: "preview" | "live" | "expired" | "archived";
   freeEditsUsed: number;
   freeEditsLimit: number;
@@ -33,6 +43,13 @@ type Website = {
     createdAt: string;
     updatedAt: string;
   } | null;
+  pages: Array<{
+    id: string;
+    path: string;
+    title: string;
+    gated: boolean;
+    status: "pending" | "building" | "ready";
+  }>;
 };
 
 const EDIT_POLL_INTERVAL_MS = 5000;
@@ -50,6 +67,18 @@ function formatDate(value: string): string {
 
 function previewHref(slug: string): string {
   return `/preview/${slug}/index.html`;
+}
+
+function pageHref(slug: string, pagePath: string): string {
+  const pathWithSlash = pagePath.startsWith("/") ? pagePath : `/${pagePath}`;
+  const normalizedPath =
+    pathWithSlash === "/"
+      ? "/index.html"
+      : pathWithSlash.endsWith("/")
+        ? `${pathWithSlash}index.html`
+        : pathWithSlash;
+
+  return `/preview/${slug}${normalizedPath}`;
 }
 
 function sourceHostname(sourceUrl: string): string {
@@ -143,8 +172,12 @@ export default function DashboardPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [editingWebsiteId, setEditingWebsiteId] = useState<string | null>(null);
   const [editPrompts, setEditPrompts] = useState<Record<string, string>>({});
+  const [editTargets, setEditTargets] = useState<Record<string, string>>({});
   const [submittingEditId, setSubmittingEditId] = useState<string | null>(null);
   const [publishingWebsiteId, setPublishingWebsiteId] = useState<string | null>(null);
+  const [generatingPagesWebsiteId, setGeneratingPagesWebsiteId] = useState<string | null>(
+    null,
+  );
   const [billingAction, setBillingAction] = useState<"checkout" | "portal" | null>(
     null,
   );
@@ -161,6 +194,9 @@ export default function DashboardPage() {
     (website) =>
       website.latestEditRequest &&
       ACTIVE_EDIT_STATUSES.has(website.latestEditRequest.status),
+  );
+  const hasActivePageGeneration = websites.some(
+    (website) => website.jobStatus === "building_pages",
   );
 
   const loadDashboard = async (cancelled?: () => boolean) => {
@@ -211,7 +247,7 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    if (!hasActiveEdit) {
+    if (!hasActiveEdit && !hasActivePageGeneration) {
       return;
     }
 
@@ -224,7 +260,7 @@ export default function DashboardPage() {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [hasActiveEdit]);
+  }, [hasActiveEdit, hasActivePageGeneration]);
 
   const startBillingFlow = async (kind: "checkout" | "portal") => {
     setBillingAction(kind);
@@ -252,6 +288,13 @@ export default function DashboardPage() {
 
   const submitEditRequest = async (websiteId: string) => {
     const prompt = editPrompts[websiteId]?.trim() ?? "";
+    const website = websites.find((item) => item.id === websiteId);
+    const editTarget = editTargets[websiteId] ?? "__site__";
+    const targetPage = website?.pages.find((page) => page.path === editTarget);
+    const finalPrompt =
+      targetPage && editTarget !== "__site__"
+        ? `On the "${targetPage.title}" page (${targetPage.path}), ${prompt}`
+        : prompt;
 
     if (prompt.length < 5) {
       setErrorMessage("Tell us what you want changed");
@@ -265,7 +308,7 @@ export default function DashboardPage() {
       const response = await fetch(`/api/websites/${websiteId}/edits`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt: finalPrompt }),
       });
       const payload = await response.json();
 
@@ -306,6 +349,32 @@ export default function DashboardPage() {
       );
     } finally {
       setPublishingWebsiteId(null);
+    }
+  };
+
+  const generateAdditionalPages = async (websiteId: string) => {
+    setGeneratingPagesWebsiteId(websiteId);
+    setErrorMessage(null);
+
+    try {
+      const response = await fetch(`/api/websites/${websiteId}/pages`, {
+        method: "POST",
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Failed to generate additional pages");
+      }
+
+      await loadDashboard();
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Failed to generate additional pages",
+      );
+    } finally {
+      setGeneratingPagesWebsiteId(null);
     }
   };
 
@@ -436,6 +505,15 @@ export default function DashboardPage() {
               Checking edit progress…
             </p>
           ) : null}
+          {hasActivePageGeneration ? (
+            <p className="mt-4 flex items-center gap-2 text-sm font-medium text-black/50">
+              <span
+                aria-hidden
+                className="h-1.5 w-1.5 animate-pulse rounded-full bg-kiwi-green"
+              />
+              Generating additional pages…
+            </p>
+          ) : null}
         </section>
 
         <section className="mt-6">
@@ -460,6 +538,10 @@ export default function DashboardPage() {
             <div className="grid gap-4">
               {websites.map((website) => {
                 const state = websiteState(website, isPro);
+                const generatedPages = website.pages.filter(
+                  (page) => page.path !== "/",
+                );
+                const isGeneratingPages = website.jobStatus === "building_pages";
 
                 return (
                   <article
@@ -511,6 +593,11 @@ export default function DashboardPage() {
                             website.latestEditRequest.errorMessage
                               ? ` — ${website.latestEditRequest.errorMessage}`
                               : null}
+                          </p>
+                        ) : null}
+                        {isGeneratingPages ? (
+                          <p className="mt-3 text-xs font-medium text-black/45">
+                            Page generation is running in the background.
                           </p>
                         ) : null}
                       </div>
@@ -572,8 +659,57 @@ export default function DashboardPage() {
                             Billing
                           </button>
                         ) : null}
+                        {state.canView && isPro ? (
+                          <button
+                            type="button"
+                            onClick={() => void generateAdditionalPages(website.id)}
+                            disabled={
+                              isGeneratingPages ||
+                              generatingPagesWebsiteId === website.id
+                            }
+                            className="rounded-full border border-black/10 bg-white px-5 py-2.5 text-sm font-semibold text-black transition hover:border-black/25 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {isGeneratingPages ||
+                            generatingPagesWebsiteId === website.id
+                              ? "Generating…"
+                              : generatedPages.length > 0
+                                ? "Regenerate pages"
+                                : "Generate pages"}
+                          </button>
+                        ) : null}
                       </div>
                     </div>
+
+                    {generatedPages.length > 0 ? (
+                      <div className="mt-5 rounded-2xl bg-[#f7faef] p-4">
+                        <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                          <div>
+                            <p className="text-sm font-semibold text-black">
+                              Generated pages
+                            </p>
+                            <p className="mt-1 text-xs text-black/45">
+                              View any page, then use Edit website for changes.
+                            </p>
+                          </div>
+                          <span className="text-xs font-medium text-black/40">
+                            {generatedPages.length}{" "}
+                            {pluralise(generatedPages.length, "page")}
+                          </span>
+                        </div>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {generatedPages.map((page) => (
+                            <Link
+                              key={page.id}
+                              href={pageHref(website.slug, page.path)}
+                              target="_blank"
+                              className="rounded-full border border-black/10 bg-white px-3 py-1.5 text-xs font-semibold text-black/65 transition hover:border-black/25 hover:text-black"
+                            >
+                              {page.title}
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
 
                     {editingWebsiteId === website.id ? (
                       <form
@@ -590,6 +726,26 @@ export default function DashboardPage() {
                           What would you like changed?
                         </label>
                         <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+                          {website.pages.length > 0 ? (
+                            <select
+                              value={editTargets[website.id] ?? "__site__"}
+                              onChange={(event) =>
+                                setEditTargets((current) => ({
+                                  ...current,
+                                  [website.id]: event.target.value,
+                                }))
+                              }
+                              className="h-11 rounded-full border border-black/10 bg-white px-4 text-sm font-semibold text-black outline-none focus:border-black/30 sm:w-48"
+                              aria-label="Edit target"
+                            >
+                              <option value="__site__">Entire site</option>
+                              {website.pages.map((page) => (
+                                <option key={page.id} value={page.path}>
+                                  {page.path === "/" ? "Homepage" : page.title}
+                                </option>
+                              ))}
+                            </select>
+                          ) : null}
                           <input
                             id={`edit-${website.id}`}
                             value={editPrompts[website.id] ?? ""}

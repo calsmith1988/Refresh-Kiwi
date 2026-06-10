@@ -44,17 +44,38 @@ Do not build secondary pages in this phase. Do not spend time on a multi-page pl
 }
 
 export function buildAdditionalPagesPrompt({ sourceUrl, slug }: PromptParams): string {
-  return `Continue Refresh Kiwi rebuild for sites/${slug}/. Work in the background.
+  return `Generate additional pages for an existing Refresh Kiwi static website.
 
 SOURCE: ${sourceUrl}
+SITE: sites/${slug}/
 
-Read sites/${slug}/site.json and match the homepage design language.
+## Goal
 
-Build each path in discoveredPages that is not already in pages. Keep each page purposeful — not copy-paste layouts.
+The homepage already exists. Your job is to crawl the source website for important internal pages, rebuild those pages in the same design language, and update navigation so the refreshed site becomes a structural replica of the original site.
 
-Update site.json: homepage gated false, all other pages gated true. Add simple nav; gated routes can show a brief lock placeholder.
+## Scope
 
-Commit when finished.`;
+1. Work only inside sites/${slug}/.
+2. Read the existing files first, especially index.html, styles.css, script.js if present, and site.json.
+3. Crawl the source site's main navigation and obvious internal links. Prioritize useful pages like About, Services, Products, Case Studies, Contact, Pricing, FAQs, and location/service pages.
+4. Build up to 6 additional pages. If the source site has fewer meaningful pages, build only those. Do not invent filler pages.
+5. Pull useful source images into sites/${slug}/assets/ when they improve the result. Keep all asset references relative and local.
+6. Match the homepage design system, spacing, typography, visual style, header/nav/footer, and responsive behavior.
+7. Update the homepage navigation to link to the generated pages.
+8. Update site.json with:
+   - pages: include "/" plus each generated page with path, title, and gated false
+   - discoveredPages: include any meaningful internal pages you found but did not generate
+9. Commit the finished multi-page site to the repo.
+
+## Quality bar
+
+- These should be real refreshed pages, not lock placeholders.
+- Convert old copy into polished, concise marketing sections.
+- Preserve factual details, services, contact details, proof points, and useful imagery.
+- Avoid broken links and broken asset paths.
+- Avoid rebuilding the homepage from scratch unless a small nav/footer update is needed.
+
+Stop when the generated pages and updated site.json are complete.`;
 }
 
 export function buildEditPrompt({

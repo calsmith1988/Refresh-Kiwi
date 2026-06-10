@@ -76,16 +76,23 @@ export async function runAdditionalPagesPhase(
   params: {
     sourceUrl: string;
     slug: string;
-    agentId: string;
+    agentId?: string | null;
   },
   onStarted?: (info: PhaseRunResult) => Promise<void>,
 ): Promise<PhaseRunResult> {
   const apiKey = getCursorApiKey();
-  const agent = await Agent.resume(params.agentId, {
-    apiKey,
-    model: MODEL,
-    cloud: cloudOptions(),
-  });
+  const agent = params.agentId
+    ? await Agent.resume(params.agentId, {
+        apiKey,
+        model: MODEL,
+        cloud: cloudOptions(),
+      })
+    : await Agent.create({
+        apiKey,
+        model: MODEL,
+        name: `Refresh Kiwi — ${params.slug} (pages)`,
+        cloud: cloudOptions(),
+      });
 
   try {
     const run = await agent.send(buildAdditionalPagesPrompt(params));

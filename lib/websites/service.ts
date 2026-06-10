@@ -3,6 +3,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 
 const { editRequests, jobs, users, websites } = schema;
+const { jobPages } = schema;
 
 const PREVIEW_EXPIRY_DAYS = 7;
 const FREE_WEBSITE_LIMIT = 1;
@@ -50,6 +51,18 @@ export function toWebsiteResponse(website: typeof websites.$inferSelect) {
     publishedAt: website.publishedAt?.toISOString() ?? null,
     createdAt: website.createdAt.toISOString(),
     updatedAt: website.updatedAt.toISOString(),
+  };
+}
+
+export function toPageResponse(page: typeof jobPages.$inferSelect) {
+  return {
+    id: page.id,
+    jobId: page.jobId,
+    path: page.path,
+    title: page.title,
+    gated: page.gated,
+    status: page.status,
+    createdAt: page.createdAt.toISOString(),
   };
 }
 
@@ -142,6 +155,60 @@ export async function getWebsiteForJob(jobId: string) {
     .limit(1);
 
   return website ?? null;
+}
+
+export async function listPagesForJob(jobId: string) {
+  return getDb()
+    .select()
+    .from(jobPages)
+    .where(eq(jobPages.jobId, jobId))
+    .orderBy(jobPages.path);
+}
+
+export async function upsertPagesForJob(
+  jobId: string,
+  pages: Array<{ path: string; title: string; gated?: boolean; status?: "pending" | "building" | "ready" }>,
+) {
+  const db = getDb();
+  const existingPages = await listPagesForJob(jobId);
+  const existingByPath = new Map(existingPages.map((page) => [page.path, page]));
+  const updatedPages: Array<typeof jobPages.$inferSelect> = [];
+
+  for (const page of pages) {
+    const normalizedPath = page.path.startsWith("/") ? page.path : `/${page.path}`;
+    const title = page.title.trim() || normalizedPath;
+    const existing = existingByPath.get(normalizedPath);
+
+    if (existing) {
+      const [updated] = await db
+        .update(jobPages)
+        .set({
+          title,
+          gated: page.gated ?? existing.gated,
+          status: page.status ?? existing.status,
+        })
+        .where(eq(jobPages.id, existing.id))
+        .returning();
+
+      updatedPages.push(updated);
+      continue;
+    }
+
+    const [created] = await db
+      .insert(jobPages)
+      .values({
+        jobId,
+        path: normalizedPath,
+        title,
+        gated: page.gated ?? false,
+        status: page.status ?? "ready",
+      })
+      .returning();
+
+    updatedPages.push(created);
+  }
+
+  return updatedPages;
 }
 
 export async function getOwnedWebsite(params: {

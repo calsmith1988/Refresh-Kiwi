@@ -35,6 +35,8 @@ async function resolveFile(
   const candidates = [
     path.join(baseDir, relativePath),
     path.join(baseDir, "dist", relativePath),
+    path.join(baseDir, relativePath, "index.html"),
+    path.join(baseDir, "dist", relativePath, "index.html"),
     path.join(baseDir, `${relativePath}.html`),
     path.join(baseDir, "dist", `${relativePath}.html`),
   ];
@@ -79,6 +81,8 @@ async function readGithubPreviewFile(slug: string, segments: string[]) {
   const candidates = [
     relativePath,
     `dist/${relativePath}`,
+    `${relativePath}/index.html`,
+    `dist/${relativePath}/index.html`,
     `${relativePath}.html`,
     `dist/${relativePath}.html`,
   ];
