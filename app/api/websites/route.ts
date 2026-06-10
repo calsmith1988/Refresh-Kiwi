@@ -9,6 +9,7 @@ import {
   toWebsiteResponse,
 } from "@/lib/websites/service";
 import { getDb, schema } from "@/lib/db";
+import { getRenderDnsTarget } from "@/lib/render/domains";
 import { eq } from "drizzle-orm";
 
 export const runtime = "nodejs";
@@ -58,6 +59,7 @@ export async function GET() {
       return {
         ...toWebsiteResponse(website),
         jobStatus: statusByJob.get(website.jobId),
+        customDomainDnsTarget: getRenderDnsTarget(),
         pages: pages.map(toPageResponse),
         latestEditRequest: latestEditRequest
           ? {

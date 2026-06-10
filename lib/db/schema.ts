@@ -120,6 +120,15 @@ export const websites = pgTable("websites", {
   freeEditsUsed: integer("free_edits_used").notNull().default(0),
   freeEditsLimit: integer("free_edits_limit").notNull().default(3),
   customDomain: text("custom_domain"),
+  customDomainStatus: text("custom_domain_status").notNull().default("none"),
+  customDomainRenderId: text("custom_domain_render_id"),
+  customDomainError: text("custom_domain_error"),
+  customDomainVerifiedAt: timestamp("custom_domain_verified_at", {
+    withTimezone: true,
+  }),
+  customDomainLastCheckedAt: timestamp("custom_domain_last_checked_at", {
+    withTimezone: true,
+  }),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   publishedAt: timestamp("published_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })

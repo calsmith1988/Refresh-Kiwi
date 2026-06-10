@@ -47,11 +47,131 @@ export function toWebsiteResponse(website: typeof websites.$inferSelect) {
     freeEditsLimit: website.freeEditsLimit,
     freeEditsRemaining: editsRemaining,
     customDomain: website.customDomain,
+    customDomainStatus: website.customDomainStatus,
+    customDomainError: website.customDomainError,
+    customDomainVerifiedAt: website.customDomainVerifiedAt?.toISOString() ?? null,
+    customDomainLastCheckedAt:
+      website.customDomainLastCheckedAt?.toISOString() ?? null,
     expiresAt: website.expiresAt.toISOString(),
     publishedAt: website.publishedAt?.toISOString() ?? null,
     createdAt: website.createdAt.toISOString(),
     updatedAt: website.updatedAt.toISOString(),
   };
+}
+
+export function normalizeCustomDomain(input: string): string {
+  const trimmed = input.trim().toLowerCase();
+  const withoutProtocol = trimmed.replace(/^https?:\/\//, "");
+  const domain = withoutProtocol.split("/")[0]?.replace(/\.$/, "") ?? "";
+
+  if (!domain || domain.length > 253 || domain.includes("..")) {
+    throw new Error("Enter a valid domain, like www.example.com");
+  }
+
+  if (domain === "refresh.kiwi" || domain.endsWith(".refresh.kiwi")) {
+    throw new Error("Use a domain you own, not a Refresh Kiwi domain.");
+  }
+
+  if (!/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$/.test(domain)) {
+    throw new Error("Enter a valid domain, like www.example.com");
+  }
+
+  return domain;
+}
+
+export async function connectOwnedWebsiteDomain(params: {
+  websiteId: string;
+  userId: string;
+  domain: string;
+  renderDomainId?: string | null;
+}) {
+  const website = await getOwnedWebsite({
+    websiteId: params.websiteId,
+    userId: params.userId,
+  });
+
+  if (!website) {
+    throw new Error("Website not found");
+  }
+
+  const domain = normalizeCustomDomain(params.domain);
+  const [updated] = await getDb()
+    .update(websites)
+    .set({
+      customDomain: domain,
+      customDomainStatus: "pending",
+      customDomainRenderId: params.renderDomainId ?? website.customDomainRenderId,
+      customDomainError: null,
+      customDomainVerifiedAt: null,
+      customDomainLastCheckedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(websites.id, website.id))
+    .returning();
+
+  return updated;
+}
+
+export async function updateOwnedWebsiteDomainStatus(params: {
+  websiteId: string;
+  userId: string;
+  status: "pending" | "connected" | "failed";
+  error?: string | null;
+  renderDomainId?: string | null;
+}) {
+  const website = await getOwnedWebsite({
+    websiteId: params.websiteId,
+    userId: params.userId,
+  });
+
+  if (!website) {
+    throw new Error("Website not found");
+  }
+
+  const [updated] = await getDb()
+    .update(websites)
+    .set({
+      customDomainStatus: params.status,
+      customDomainError: params.error ?? null,
+      customDomainRenderId: params.renderDomainId ?? website.customDomainRenderId,
+      customDomainVerifiedAt:
+        params.status === "connected"
+          ? new Date()
+          : website.customDomainVerifiedAt,
+      customDomainLastCheckedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(websites.id, website.id))
+    .returning();
+
+  return updated;
+}
+
+export async function removeOwnedWebsiteDomain(params: {
+  websiteId: string;
+  userId: string;
+}) {
+  const website = await getOwnedWebsite(params);
+
+  if (!website) {
+    throw new Error("Website not found");
+  }
+
+  const [updated] = await getDb()
+    .update(websites)
+    .set({
+      customDomain: null,
+      customDomainStatus: "none",
+      customDomainRenderId: null,
+      customDomainError: null,
+      customDomainVerifiedAt: null,
+      customDomainLastCheckedAt: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(websites.id, website.id))
+    .returning();
+
+  return updated;
 }
 
 export function toPageResponse(page: typeof jobPages.$inferSelect) {
@@ -351,6 +471,44 @@ export async function getWebsiteAccessBySlug(slug: string) {
   return {
     ...website,
     isAllowed: !isExpired && website.status !== "expired" && website.status !== "archived",
+    isExpired,
+    userIsPro,
+  };
+}
+
+export async function getWebsiteAccessByCustomDomain(hostname: string) {
+  const domain = normalizeCustomDomain(hostname);
+  const [website] = await getDb()
+    .select({
+      id: websites.id,
+      status: websites.status,
+      slug: websites.slug,
+      expiresAt: websites.expiresAt,
+      customDomain: websites.customDomain,
+      customDomainStatus: websites.customDomainStatus,
+      user: {
+        plan: users.plan,
+        subscriptionStatus: users.subscriptionStatus,
+      },
+    })
+    .from(websites)
+    .leftJoin(users, eq(websites.userId, users.id))
+    .where(eq(websites.customDomain, domain))
+    .limit(1);
+
+  if (!website || website.customDomainStatus !== "connected") {
+    return null;
+  }
+
+  const userIsPro = website.user ? isProUser(website.user) : false;
+  const isLive = website.status === "live";
+  const isExpired =
+    !isLive && !userIsPro && website.expiresAt.getTime() < Date.now();
+
+  return {
+    ...website,
+    isAllowed:
+      !isExpired && website.status !== "expired" && website.status !== "archived",
     isExpired,
     userIsPro,
   };

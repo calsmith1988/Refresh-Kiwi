@@ -32,6 +32,11 @@ type Website = {
   freeEditsLimit: number;
   freeEditsRemaining: number;
   customDomain: string | null;
+  customDomainStatus: "none" | "pending" | "connected" | "failed" | string;
+  customDomainError: string | null;
+  customDomainVerifiedAt: string | null;
+  customDomainLastCheckedAt: string | null;
+  customDomainDnsTarget: string;
   expiresAt: string;
   publishedAt: string | null;
   updatedAt: string;
@@ -171,6 +176,7 @@ export default function DashboardPage() {
   const [managingWebsiteId, setManagingWebsiteId] = useState<string | null>(null);
   const [renameValues, setRenameValues] = useState<Record<string, string>>({});
   const [deleteConfirmations, setDeleteConfirmations] = useState<Record<string, string>>({});
+  const [domainValues, setDomainValues] = useState<Record<string, string>>({});
   const [submittingEditId, setSubmittingEditId] = useState<string | null>(null);
   const [publishingWebsiteId, setPublishingWebsiteId] = useState<string | null>(null);
   const [generatingPagesWebsiteId, setGeneratingPagesWebsiteId] = useState<string | null>(
@@ -178,6 +184,7 @@ export default function DashboardPage() {
   );
   const [renamingWebsiteId, setRenamingWebsiteId] = useState<string | null>(null);
   const [deletingWebsiteId, setDeletingWebsiteId] = useState<string | null>(null);
+  const [domainActionWebsiteId, setDomainActionWebsiteId] = useState<string | null>(null);
   const [billingAction, setBillingAction] = useState<"checkout" | "portal" | null>(
     null,
   );
@@ -432,6 +439,82 @@ export default function DashboardPage() {
       );
     } finally {
       setDeletingWebsiteId(null);
+    }
+  };
+
+  const connectDomain = async (website: Website) => {
+    const domain = (domainValues[website.id] ?? website.customDomain ?? "").trim();
+
+    setDomainActionWebsiteId(website.id);
+    setErrorMessage(null);
+
+    try {
+      const response = await fetch(`/api/websites/${website.id}/domain`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domain }),
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Failed to connect domain");
+      }
+
+      await loadDashboard();
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Failed to connect domain",
+      );
+    } finally {
+      setDomainActionWebsiteId(null);
+    }
+  };
+
+  const checkDomain = async (website: Website) => {
+    setDomainActionWebsiteId(website.id);
+    setErrorMessage(null);
+
+    try {
+      const response = await fetch(`/api/websites/${website.id}/domain`, {
+        method: "PATCH",
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Failed to check domain");
+      }
+
+      await loadDashboard();
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Failed to check domain",
+      );
+    } finally {
+      setDomainActionWebsiteId(null);
+    }
+  };
+
+  const removeDomain = async (website: Website) => {
+    setDomainActionWebsiteId(website.id);
+    setErrorMessage(null);
+
+    try {
+      const response = await fetch(`/api/websites/${website.id}/domain`, {
+        method: "DELETE",
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Failed to remove domain");
+      }
+
+      await loadDashboard();
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Failed to remove domain",
+      );
+    } finally {
+      setDomainActionWebsiteId(null);
     }
   };
 
@@ -782,6 +865,129 @@ export default function DashboardPage() {
 
                     {managingWebsiteId === website.id ? (
                       <div className="mt-5 rounded-2xl border border-black/10 bg-white p-4">
+                        <div className="mb-5 rounded-2xl bg-[#f7faef] p-4">
+                          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                            <div>
+                              <p className="text-sm font-semibold text-black">
+                                Connect your domain
+                              </p>
+                              <p className="mt-1 text-xs leading-5 text-black/50">
+                                Use a domain you already own, like www.yourbusiness.com.
+                                We will set up the Refresh Kiwi side automatically.
+                              </p>
+                              {website.customDomain ? (
+                                <p className="mt-2 text-xs font-semibold text-black/60">
+                                  Status:{" "}
+                                  <span className="capitalize">
+                                    {website.customDomainStatus}
+                                  </span>
+                                </p>
+                              ) : null}
+                              {website.customDomainError ? (
+                                <p className="mt-2 text-xs text-amber-700">
+                                  {website.customDomainError}
+                                </p>
+                              ) : null}
+                            </div>
+                            {website.customDomainStatus === "connected" &&
+                            website.customDomain ? (
+                              <a
+                                href={`https://${website.customDomain}`}
+                                target="_blank"
+                                className="rounded-full bg-black px-5 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-black/85"
+                              >
+                                Open domain
+                              </a>
+                            ) : null}
+                          </div>
+
+                          <form
+                            className="mt-4 flex flex-col gap-3 sm:flex-row"
+                            onSubmit={(event) => {
+                              event.preventDefault();
+                              void connectDomain(website);
+                            }}
+                          >
+                            <input
+                              value={
+                                domainValues[website.id] ??
+                                website.customDomain ??
+                                ""
+                              }
+                              onChange={(event) =>
+                                setDomainValues((current) => ({
+                                  ...current,
+                                  [website.id]: event.target.value,
+                                }))
+                              }
+                              placeholder="www.yourbusiness.com"
+                              className="h-11 flex-1 rounded-full border border-black/10 bg-white px-4 text-sm outline-none placeholder:text-black/30 focus:border-black/30"
+                            />
+                            <button
+                              type="submit"
+                              disabled={domainActionWebsiteId === website.id}
+                              className="h-11 rounded-full bg-kiwi-green px-5 text-sm font-semibold text-black transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              {domainActionWebsiteId === website.id
+                                ? "Working..."
+                                : website.customDomain
+                                  ? "Update domain"
+                                  : "Connect domain"}
+                            </button>
+                          </form>
+
+                          {website.customDomain ? (
+                            <div className="mt-4 rounded-2xl border border-black/10 bg-white p-4">
+                              <p className="text-sm font-semibold text-black">
+                                What to change where you bought your domain
+                              </p>
+                              <ol className="mt-2 space-y-1 text-xs leading-5 text-black/55">
+                                <li>1. Log in to GoDaddy, Namecheap, Cloudflare, or wherever you bought the domain.</li>
+                                <li>2. Find DNS settings or manage DNS.</li>
+                                <li>3. Add this record:</li>
+                              </ol>
+                              <div className="mt-3 grid gap-2 rounded-2xl bg-[#fbfaf6] p-3 text-xs sm:grid-cols-3">
+                                <div>
+                                  <p className="font-semibold text-black/40">Type</p>
+                                  <p className="mt-1 font-bold text-black">CNAME</p>
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-black/40">Name</p>
+                                  <p className="mt-1 font-bold text-black">www</p>
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-black/40">Points to</p>
+                                  <p className="mt-1 break-all font-bold text-black">
+                                    {website.customDomainDnsTarget}
+                                  </p>
+                                </div>
+                              </div>
+                              <p className="mt-2 text-xs leading-5 text-black/45">
+                                After saving, come back and click Check connection. It
+                                can work in a few minutes, but sometimes takes longer.
+                              </p>
+                              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                                <button
+                                  type="button"
+                                  onClick={() => void checkDomain(website)}
+                                  disabled={domainActionWebsiteId === website.id}
+                                  className="rounded-full bg-black px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-black/85 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  Check connection
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => void removeDomain(website)}
+                                  disabled={domainActionWebsiteId === website.id}
+                                  className="rounded-full border border-black/10 bg-white px-5 py-2.5 text-sm font-semibold text-black transition hover:border-black/25 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  Remove domain
+                                </button>
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
+
                         <div className="grid gap-4 lg:grid-cols-2">
                           <form
                             onSubmit={(event) => {
