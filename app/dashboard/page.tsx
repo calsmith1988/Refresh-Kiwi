@@ -572,7 +572,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#fbfaf6] px-5 py-5 text-black sm:px-8 lg:px-10">
+    <main className="min-h-screen bg-[#faf8f1] px-5 py-5 text-[#141811] sm:px-8 lg:px-10">
       <div className="mx-auto w-full max-w-6xl">
         <header className="flex items-center justify-between gap-4">
           <Link href="/" className="flex items-center gap-2.5">
@@ -629,9 +629,9 @@ export default function DashboardPage() {
         </header>
 
         {celebration === "upgraded" ? (
-          <div className="mt-6 flex items-start justify-between gap-4 rounded-[2rem] border-2 border-kiwi-green bg-[#f4fbe8] p-5 sm:p-6">
+          <div className="mt-6 flex items-start justify-between gap-4 rounded-3xl border-2 border-kiwi-green bg-[#f4fbe8] p-5 sm:p-6">
             <div>
-              <p className="text-lg font-bold text-black">
+              <p className="font-fraunces text-xl font-semibold text-black">
                 You&apos;re on Kiwi Pro! 🥝
               </p>
               <p className="mt-1 text-sm leading-6 text-black/60">
@@ -650,7 +650,7 @@ export default function DashboardPage() {
             </button>
           </div>
         ) : celebration === "cancelled" ? (
-          <div className="mt-6 flex items-start justify-between gap-4 rounded-[2rem] border border-black/10 bg-white p-5 sm:p-6">
+          <div className="mt-6 flex items-start justify-between gap-4 rounded-3xl border border-black/10 bg-white p-5 sm:p-6">
             <p className="text-sm leading-6 text-black/60">
               No problem — nothing was charged and your preview is safe. You
               can go Pro whenever you&apos;re ready.
@@ -666,11 +666,11 @@ export default function DashboardPage() {
           </div>
         ) : null}
 
-        <section className="mt-10 rounded-[2rem] border border-black/10 bg-white p-6 shadow-xl shadow-black/5 sm:p-8">
+        <section className="mt-10 rounded-3xl border border-black/10 bg-white p-6 shadow-xl shadow-black/5 sm:p-8">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p className="text-sm font-medium text-black/45">Dashboard</p>
-              <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
+              <h1 className="mt-2 font-fraunces text-3xl font-semibold tracking-tight sm:text-4xl">
                 Your refreshed websites
               </h1>
               {user ? (
@@ -679,7 +679,7 @@ export default function DashboardPage() {
             </div>
 
             <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[28rem]">
-              <div className="rounded-2xl bg-[#f7faef] p-4">
+              <div className="rounded-2xl bg-[#faf8f1] p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-black/40">
                   Plan
                 </p>
@@ -687,7 +687,7 @@ export default function DashboardPage() {
                   {user?.plan ?? "free"}
                 </p>
               </div>
-              <div className="rounded-2xl bg-[#f7faef] p-4">
+              <div className="rounded-2xl bg-[#faf8f1] p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-black/40">
                   Status
                 </p>
@@ -695,7 +695,7 @@ export default function DashboardPage() {
                   {user?.subscriptionStatus?.replaceAll("_", " ") ?? "none"}
                 </p>
               </div>
-              <div className="rounded-2xl bg-[#f7faef] p-4">
+              <div className="rounded-2xl bg-[#faf8f1] p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-black/40">
                   Usage
                 </p>
@@ -765,12 +765,14 @@ export default function DashboardPage() {
 
         <section className="mt-6">
           {isLoading ? (
-            <div className="rounded-[2rem] border border-black/10 bg-white p-8 text-center text-sm text-black/50">
+            <div className="rounded-3xl border border-black/10 bg-white p-8 text-center text-sm text-black/50">
               Loading your websites…
             </div>
           ) : websites.length === 0 ? (
-            <div className="rounded-[2rem] border border-black/10 bg-white p-8 text-center">
-              <h2 className="text-xl font-bold">No websites saved yet</h2>
+            <div className="rounded-3xl border border-black/10 bg-white p-8 text-center">
+              <h2 className="font-fraunces text-2xl font-semibold">
+                No websites saved yet
+              </h2>
               <p className="mt-2 text-sm text-black/55">
                 Generate a homepage preview, then save it to your account.
               </p>
@@ -793,7 +795,7 @@ export default function DashboardPage() {
                 return (
                   <article
                     key={website.id}
-                    className={`rounded-[2rem] border p-5 shadow-lg shadow-black/5 sm:p-6 ${
+                    className={`rounded-3xl border p-5 shadow-lg shadow-black/5 sm:p-6 ${
                       state.canView
                         ? "border-black/10 bg-white"
                         : "border-red-100 bg-white"
@@ -802,7 +804,7 @@ export default function DashboardPage() {
                     <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <h2 className="text-xl font-bold">
+                          <h2 className="font-fraunces text-2xl font-semibold">
                             {website.brandName || website.slug}
                           </h2>
                           <span
@@ -857,7 +859,7 @@ export default function DashboardPage() {
                           <Link
                             href={previewHref(website.slug)}
                             target="_blank"
-                            className="rounded-full bg-black px-5 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-black/85"
+                            className="rounded-full bg-[#141811] px-5 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-black"
                           >
                             {website.status === "live" ? "View live site" : "View preview"}
                           </Link>
@@ -940,7 +942,7 @@ export default function DashboardPage() {
                     </div>
 
                     {generatedPages.length > 0 ? (
-                      <div className="mt-5 rounded-2xl bg-[#f7faef] p-4">
+                      <div className="mt-5 rounded-2xl bg-[#faf8f1] p-4">
                         <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
                           <div>
                             <p className="text-sm font-semibold text-black">
@@ -972,7 +974,7 @@ export default function DashboardPage() {
 
                     {managingWebsiteId === website.id ? (
                       <div className="mt-5 rounded-2xl border border-black/10 bg-white p-4">
-                        <div className="mb-5 rounded-2xl bg-[#f7faef] p-4">
+                        <div className="mb-5 rounded-2xl bg-[#faf8f1] p-4">
                           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                             <div>
                               <p className="text-sm font-semibold text-black">
@@ -1001,7 +1003,7 @@ export default function DashboardPage() {
                               <a
                                 href={`https://${website.customDomain}`}
                                 target="_blank"
-                                className="rounded-full bg-black px-5 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-black/85"
+                                className="rounded-full bg-[#141811] px-5 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-black"
                               >
                                 Open domain
                               </a>
@@ -1082,7 +1084,7 @@ export default function DashboardPage() {
                                   type="button"
                                   onClick={() => void checkDomain(website)}
                                   disabled={domainActionWebsiteId === website.id}
-                                  className="rounded-full bg-black px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-black/85 disabled:cursor-not-allowed disabled:opacity-50"
+                                  className="rounded-full bg-[#141811] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                   Check connection
                                 </button>
@@ -1131,7 +1133,7 @@ export default function DashboardPage() {
                               <button
                                 type="submit"
                                 disabled={renamingWebsiteId === website.id}
-                                className="h-11 rounded-full bg-black px-5 text-sm font-semibold text-white transition hover:bg-black/85 disabled:cursor-not-allowed disabled:opacity-50"
+                                className="h-11 rounded-full bg-[#141811] px-5 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
                               >
                                 {renamingWebsiteId === website.id
                                   ? "Saving..."
@@ -1182,7 +1184,7 @@ export default function DashboardPage() {
 
                     {editingWebsiteId === website.id ? (
                       <form
-                        className="mt-5 rounded-2xl bg-[#f7faef] p-4"
+                        className="mt-5 rounded-2xl bg-[#faf8f1] p-4"
                         onSubmit={(event) => {
                           event.preventDefault();
                           void submitEditRequest(website.id);
@@ -1233,7 +1235,7 @@ export default function DashboardPage() {
                               submittingEditId === website.id ||
                               !(editPrompts[website.id] ?? "").trim()
                             }
-                            className="h-11 rounded-full bg-black px-5 text-sm font-semibold text-white transition hover:bg-black/85 disabled:cursor-not-allowed disabled:opacity-50"
+                            className="h-11 rounded-full bg-[#141811] px-5 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             {submittingEditId === website.id
                               ? "Sending…"
@@ -1256,9 +1258,9 @@ export default function DashboardPage() {
 
       {showProSheet ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-5 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-[2rem] bg-white p-6 shadow-2xl sm:p-8">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
             <div className="flex items-start justify-between gap-4">
-              <h2 className="text-2xl font-bold tracking-tight text-black">
+              <h2 className="font-fraunces text-2xl font-semibold tracking-tight">
                 Kiwi Pro — £10/month
               </h2>
               <button
