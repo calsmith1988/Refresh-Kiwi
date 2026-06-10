@@ -142,7 +142,9 @@ async function readGithubPreviewFile(slug: string, segments: string[]) {
     if (response.ok) {
       return {
         body: Buffer.from(await response.arrayBuffer()),
-        contentType: contentType(candidate),
+        contentType: contentType(
+          htmlContentTypePathForExtensionless(candidate, "index.html"),
+        ),
       };
     }
 

@@ -73,6 +73,8 @@ The homepage already exists. Your job is to crawl the source website for importa
 - Convert old copy into polished, concise marketing sections.
 - Preserve factual details, services, contact details, proof points, and useful imagery.
 - Avoid broken links and broken asset paths.
+- Every generated page must load the shared CSS and assets correctly from preview subpaths. Prefer root-relative preview paths like /preview/${slug}/styles.css, /preview/${slug}/script.js, /preview/${slug}/assets/file.png, and /preview/${slug}/page-path for navigation links.
+- Do not use href="styles.css" or src="assets/..." on additional pages, because nested preview paths will resolve those relative to the page path and break styling.
 - Avoid rebuilding the homepage from scratch unless a small nav/footer update is needed.
 
 Stop when the generated pages and updated site.json are complete.`;
