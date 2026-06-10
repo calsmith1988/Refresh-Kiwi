@@ -40,23 +40,35 @@ function rewriteLocalPreviewOrigins(
 
 export async function GET(request: Request, context: RouteContext) {
   const url = new URL(request.url);
-  const host = url.searchParams.get("host");
+  const host =
+    url.searchParams.get("host") ??
+    request.headers.get("host")?.split(":")[0]?.toLowerCase() ??
+    null;
 
   if (!host) {
-    return NextResponse.json({ error: "Website not found" }, { status: 404 });
+    return NextResponse.json(
+      { error: "Website not found", reason: "missing_host" },
+      { status: 404 },
+    );
   }
 
   const websiteAccess = await getWebsiteAccessByCustomDomain(host);
 
   if (!websiteAccess || !websiteAccess.isAllowed) {
-    return NextResponse.json({ error: "Website not found" }, { status: 404 });
+    return NextResponse.json(
+      { error: "Website not found", reason: "domain_not_connected", host },
+      { status: 404 },
+    );
   }
 
   const { path } = await context.params;
   const file = await readPreviewFile(websiteAccess.slug, path ?? []);
 
   if (!file) {
-    return NextResponse.json({ error: "Page not found" }, { status: 404 });
+    return NextResponse.json(
+      { error: "Page not found", reason: "file_not_found", slug: websiteAccess.slug },
+      { status: 404 },
+    );
   }
 
   const body = rewriteLocalPreviewOrigins(file.body, file.contentType);

@@ -10,7 +10,7 @@ const APP_HOSTS = new Set([
 
 function normalizeHost(request: NextRequest): string {
   const host =
-    request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? "";
+    request.headers.get("host") ?? request.headers.get("x-forwarded-host") ?? "";
 
   return host.split(":")[0]?.toLowerCase() ?? "";
 }
