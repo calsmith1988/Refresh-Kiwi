@@ -65,11 +65,17 @@ async function renderRequest<T>(path: string, init: RequestInit = {}): Promise<T
     );
   }
 
-  if (response.status === 204) {
+  if (response.status === 202 || response.status === 204) {
     return undefined as T;
   }
 
-  return (await response.json()) as T;
+  const text = await response.text();
+
+  if (!text) {
+    return undefined as T;
+  }
+
+  return JSON.parse(text) as T;
 }
 
 export async function addRenderCustomDomain(domain: string) {
