@@ -2,6 +2,7 @@ import type { Run, RunResult } from "@cursor/sdk";
 
 const DEFAULT_HOMEPAGE_TIMEOUT_MS = 5 * 60 * 1000;
 const DEFAULT_PAGES_TIMEOUT_MS = 8 * 60 * 1000;
+const DEFAULT_EDIT_TIMEOUT_MS = 6 * 60 * 1000;
 
 export async function waitForRun(
   run: Run,
@@ -31,4 +32,5 @@ export async function waitForRun(
 export const RUN_TIMEOUTS = {
   homepage: DEFAULT_HOMEPAGE_TIMEOUT_MS,
   pages: DEFAULT_PAGES_TIMEOUT_MS,
+  edit: DEFAULT_EDIT_TIMEOUT_MS,
 } as const;

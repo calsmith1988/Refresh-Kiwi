@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { after } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth/session";
 import { getDb, schema } from "@/lib/db";
@@ -52,12 +53,15 @@ export async function POST(request: Request, context: RouteContext) {
 
   const db = getDb();
 
-  await db.insert(editRequests).values({
-    websiteId: website.id,
-    userId: user.id,
-    prompt,
-    status: "queued",
-  });
+  const [editRequest] = await db
+    .insert(editRequests)
+    .values({
+      websiteId: website.id,
+      userId: user.id,
+      prompt,
+      status: "queued",
+    })
+    .returning();
 
   const [updatedWebsite] = await db
     .update(websites)
@@ -68,10 +72,23 @@ export async function POST(request: Request, context: RouteContext) {
     .where(eq(websites.id, website.id))
     .returning();
 
+  after(async () => {
+    try {
+      const { processEditRequest } = await import("@/lib/edits/processor");
+      await processEditRequest(editRequest.id);
+    } catch (error) {
+      console.error(
+        `[refresh-kiwi] failed to start edit request ${editRequest.id}`,
+        error,
+      );
+    }
+  });
+
   return NextResponse.json({
+    editRequest,
     website: toWebsiteResponse(updatedWebsite),
     queued: true,
     message:
-      "Edit request queued. The editor agent will apply this change in the next Phase 3 build step.",
+      "Edit request queued. The editor agent is applying this change now.",
   });
 }

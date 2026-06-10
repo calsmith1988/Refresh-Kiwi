@@ -3,6 +3,10 @@ export interface PromptParams {
   slug: string;
 }
 
+export interface EditPromptParams extends PromptParams {
+  editPrompt: string;
+}
+
 export function buildHomepagePrompt({ sourceUrl, slug }: PromptParams): string {
   return `Rebuild the homepage for Refresh Kiwi. Work fast — target ~2 minutes, but the result must look like a premium designed website, not a text extraction.
 
@@ -51,4 +55,32 @@ Build each path in discoveredPages that is not already in pages. Keep each page 
 Update site.json: homepage gated false, all other pages gated true. Add simple nav; gated routes can show a brief lock placeholder.
 
 Commit when finished.`;
+}
+
+export function buildEditPrompt({
+  sourceUrl,
+  slug,
+  editPrompt,
+}: EditPromptParams): string {
+  return `Apply this user-requested edit to the existing Refresh Kiwi static website.
+
+SOURCE: ${sourceUrl}
+SITE: sites/${slug}/
+USER REQUEST: ${editPrompt}
+
+## Scope
+
+1. Work only inside sites/${slug}/.
+2. Read the existing files first, especially index.html, styles.css, script.js if present, and site.json.
+3. Apply the requested change while preserving the current design language, layout quality, responsive behavior, and asset paths.
+4. Do not rebuild the whole site from scratch unless the request explicitly requires a major redesign.
+5. Keep paths relative and local. Existing local assets should stay referenced as ./assets/file.ext from HTML.
+6. Update site.json only if the edit changes metadata, page titles, or page structure.
+7. Commit the finished edit to the repo.
+
+## Quality bar
+
+- Make the smallest high-quality change that satisfies the request.
+- Avoid breaking existing sections, forms, navigation, or mobile layout.
+- If the request is ambiguous, make the most reasonable interpretation and keep the result polished.`;
 }

@@ -25,7 +25,18 @@ type Website = {
   expiresAt: string;
   publishedAt: string | null;
   updatedAt: string;
+  latestEditRequest: {
+    id: string;
+    prompt: string;
+    status: "queued" | "running" | "complete" | "failed";
+    errorMessage: string | null;
+    createdAt: string;
+    updatedAt: string;
+  } | null;
 };
+
+const EDIT_POLL_INTERVAL_MS = 5000;
+const ACTIVE_EDIT_STATUSES = new Set(["queued", "running"]);
 
 function formatDate(value: string): string {
   return new Intl.DateTimeFormat("en-GB", {
@@ -52,6 +63,9 @@ export default function DashboardPage() {
   const [websites, setWebsites] = useState<Website[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [editingWebsiteId, setEditingWebsiteId] = useState<string | null>(null);
+  const [editPrompts, setEditPrompts] = useState<Record<string, string>>({});
+  const [submittingEditId, setSubmittingEditId] = useState<string | null>(null);
   const [billingAction, setBillingAction] = useState<"checkout" | "portal" | null>(
     null,
   );
@@ -62,53 +76,74 @@ export default function DashboardPage() {
     () => `${websites.length}/${websiteLimit} websites`,
     [websiteLimit, websites.length],
   );
+  const hasActiveEdit = websites.some(
+    (website) =>
+      website.latestEditRequest &&
+      ACTIVE_EDIT_STATUSES.has(website.latestEditRequest.status),
+  );
+
+  const loadDashboard = async (cancelled?: () => boolean) => {
+    try {
+      const [meResponse, websitesResponse] = await Promise.all([
+        fetch("/api/auth/me"),
+        fetch("/api/websites"),
+      ]);
+
+      const mePayload = await meResponse.json();
+
+      if (!meResponse.ok || !mePayload.user) {
+        window.location.href = "/";
+        return;
+      }
+
+      const websitesPayload = await websitesResponse.json();
+
+      if (!websitesResponse.ok) {
+        throw new Error(websitesPayload.error ?? "Failed to load websites");
+      }
+
+      if (!cancelled?.()) {
+        setUser(mePayload.user);
+        setWebsites(websitesPayload.websites ?? []);
+      }
+    } catch (error) {
+      if (!cancelled?.()) {
+        setErrorMessage(
+          error instanceof Error ? error.message : "Failed to load dashboard",
+        );
+      }
+    } finally {
+      if (!cancelled?.()) {
+        setIsLoading(false);
+      }
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
 
-    async function loadDashboard() {
-      try {
-        const [meResponse, websitesResponse] = await Promise.all([
-          fetch("/api/auth/me"),
-          fetch("/api/websites"),
-        ]);
-
-        const mePayload = await meResponse.json();
-
-        if (!meResponse.ok || !mePayload.user) {
-          window.location.href = "/";
-          return;
-        }
-
-        const websitesPayload = await websitesResponse.json();
-
-        if (!websitesResponse.ok) {
-          throw new Error(websitesPayload.error ?? "Failed to load websites");
-        }
-
-        if (!cancelled) {
-          setUser(mePayload.user);
-          setWebsites(websitesPayload.websites ?? []);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setErrorMessage(
-            error instanceof Error ? error.message : "Failed to load dashboard",
-          );
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      }
-    }
-
-    void loadDashboard();
+    void loadDashboard(() => cancelled);
 
     return () => {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!hasActiveEdit) {
+      return;
+    }
+
+    let cancelled = false;
+    const timer = window.setInterval(() => {
+      void loadDashboard(() => cancelled);
+    }, EDIT_POLL_INTERVAL_MS);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [hasActiveEdit]);
 
   const startBillingFlow = async (kind: "checkout" | "portal") => {
     setBillingAction(kind);
@@ -131,6 +166,41 @@ export default function DashboardPage() {
         error instanceof Error ? error.message : "Billing action failed",
       );
       setBillingAction(null);
+    }
+  };
+
+  const submitEditRequest = async (websiteId: string) => {
+    const prompt = editPrompts[websiteId]?.trim() ?? "";
+
+    if (prompt.length < 5) {
+      setErrorMessage("Tell us what you want changed");
+      return;
+    }
+
+    setSubmittingEditId(websiteId);
+    setErrorMessage(null);
+
+    try {
+      const response = await fetch(`/api/websites/${websiteId}/edits`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt }),
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Failed to queue edit");
+      }
+
+      setEditPrompts((current) => ({ ...current, [websiteId]: "" }));
+      setEditingWebsiteId(null);
+      await loadDashboard();
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Failed to queue edit",
+      );
+    } finally {
+      setSubmittingEditId(null);
     }
   };
 
@@ -230,6 +300,15 @@ export default function DashboardPage() {
               {errorMessage}
             </p>
           ) : null}
+          {hasActiveEdit ? (
+            <p className="mt-4 flex items-center gap-2 text-sm font-medium text-black/50">
+              <span
+                aria-hidden
+                className="h-1.5 w-1.5 animate-pulse rounded-full bg-kiwi-green"
+              />
+              Checking edit progress…
+            </p>
+          ) : null}
         </section>
 
         <section className="mt-6">
@@ -288,6 +367,18 @@ export default function DashboardPage() {
                             <span>Published: {formatDate(website.publishedAt)}</span>
                           ) : null}
                         </div>
+                        {website.latestEditRequest ? (
+                          <p className="mt-3 text-xs font-medium text-black/45">
+                            Latest edit:{" "}
+                            <span className="capitalize">
+                              {website.latestEditRequest.status}
+                            </span>
+                            {website.latestEditRequest.status === "failed" &&
+                            website.latestEditRequest.errorMessage
+                              ? ` — ${website.latestEditRequest.errorMessage}`
+                              : null}
+                          </p>
+                        ) : null}
                       </div>
 
                       <div className="flex flex-col gap-2 sm:flex-row lg:shrink-0">
@@ -300,6 +391,11 @@ export default function DashboardPage() {
                         </Link>
                         <button
                           type="button"
+                          onClick={() =>
+                            setEditingWebsiteId((current) =>
+                              current === website.id ? null : website.id,
+                            )
+                          }
                           className="rounded-full border border-black/10 bg-white px-5 py-2.5 text-sm font-semibold text-black transition hover:border-black/25"
                         >
                           Edit website
@@ -323,6 +419,53 @@ export default function DashboardPage() {
                         )}
                       </div>
                     </div>
+
+                    {editingWebsiteId === website.id ? (
+                      <form
+                        className="mt-5 rounded-2xl bg-[#f7faef] p-4"
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          void submitEditRequest(website.id);
+                        }}
+                      >
+                        <label
+                          htmlFor={`edit-${website.id}`}
+                          className="text-sm font-semibold text-black"
+                        >
+                          What would you like changed?
+                        </label>
+                        <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+                          <input
+                            id={`edit-${website.id}`}
+                            value={editPrompts[website.id] ?? ""}
+                            onChange={(event) =>
+                              setEditPrompts((current) => ({
+                                ...current,
+                                [website.id]: event.target.value,
+                              }))
+                            }
+                            placeholder="Make the hero more premium, change the CTA, update the colours..."
+                            className="h-11 flex-1 rounded-full border border-black/10 bg-white px-4 text-sm outline-none placeholder:text-black/30 focus:border-black/30"
+                          />
+                          <button
+                            type="submit"
+                            disabled={
+                              submittingEditId === website.id ||
+                              !(editPrompts[website.id] ?? "").trim()
+                            }
+                            className="h-11 rounded-full bg-black px-5 text-sm font-semibold text-white transition hover:bg-black/85 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {submittingEditId === website.id
+                              ? "Sending…"
+                              : "Send edit"}
+                          </button>
+                        </div>
+                        <p className="mt-2 text-xs leading-5 text-black/45">
+                          Edits are applied by the editor agent and may take a
+                          few minutes.
+                        </p>
+                      </form>
+                    ) : null}
                   </article>
                 );
               })}

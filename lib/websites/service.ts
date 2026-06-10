@@ -2,7 +2,7 @@ import { and, desc, eq } from "drizzle-orm";
 
 import { getDb, schema } from "@/lib/db";
 
-const { jobs, users, websites } = schema;
+const { editRequests, jobs, users, websites } = schema;
 
 const PREVIEW_EXPIRY_DAYS = 7;
 
@@ -124,6 +124,25 @@ export async function listOwnedWebsites(userId: string) {
     .from(websites)
     .where(eq(websites.userId, userId))
     .orderBy(desc(websites.updatedAt));
+}
+
+export async function getLatestEditRequestsForUser(userId: string) {
+  const ownedWebsites = await listOwnedWebsites(userId);
+
+  const latestEdits = await Promise.all(
+    ownedWebsites.map(async (website) => {
+      const [editRequest] = await getDb()
+        .select()
+        .from(editRequests)
+        .where(eq(editRequests.websiteId, website.id))
+        .orderBy(desc(editRequests.createdAt))
+        .limit(1);
+
+      return [website.id, editRequest ?? null] as const;
+    }),
+  );
+
+  return new Map(latestEdits);
 }
 
 export async function userHasProPlan(userId: string): Promise<boolean> {
