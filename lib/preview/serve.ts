@@ -26,30 +26,67 @@ function contentType(filePath: string): string {
   return MIME_TYPES[extension] ?? "application/octet-stream";
 }
 
+function htmlContentTypePathForExtensionless(
+  relativePath: string,
+  fallback: string,
+): string {
+  return path.extname(relativePath) ? relativePath : fallback;
+}
+
 async function resolveFile(
   slug: string,
   segments: string[],
-): Promise<string | null> {
+): Promise<{ path: string; contentTypePath: string } | null> {
   const baseDir = previewDirectory(slug);
   const relativePath = segments.length > 0 ? segments.join("/") : "index.html";
   const candidates = [
-    path.join(baseDir, relativePath),
-    path.join(baseDir, "dist", relativePath),
-    path.join(baseDir, relativePath, "index.html"),
-    path.join(baseDir, "dist", relativePath, "index.html"),
-    path.join(baseDir, `${relativePath}.html`),
-    path.join(baseDir, "dist", `${relativePath}.html`),
+    {
+      path: path.join(baseDir, relativePath),
+      contentTypePath: htmlContentTypePathForExtensionless(
+        relativePath,
+        "index.html",
+      ),
+    },
+    {
+      path: path.join(baseDir, "dist", relativePath),
+      contentTypePath: htmlContentTypePathForExtensionless(
+        relativePath,
+        "index.html",
+      ),
+    },
+    {
+      path: path.join(baseDir, relativePath, "index.html"),
+      contentTypePath: "index.html",
+    },
+    {
+      path: path.join(baseDir, "dist", relativePath, "index.html"),
+      contentTypePath: "index.html",
+    },
+    {
+      path: path.join(baseDir, `${relativePath}.html`),
+      contentTypePath: `${relativePath}.html`,
+    },
+    {
+      path: path.join(baseDir, "dist", `${relativePath}.html`),
+      contentTypePath: `${relativePath}.html`,
+    },
   ];
 
   if (segments.length === 0) {
     candidates.unshift(
-      path.join(baseDir, "index.html"),
-      path.join(baseDir, "dist", "index.html"),
+      {
+        path: path.join(baseDir, "index.html"),
+        contentTypePath: "index.html",
+      },
+      {
+        path: path.join(baseDir, "dist", "index.html"),
+        contentTypePath: "index.html",
+      },
     );
   }
 
   for (const candidate of candidates) {
-    const resolved = path.resolve(candidate);
+    const resolved = path.resolve(candidate.path);
     const resolvedBase = path.resolve(baseDir);
 
     if (!resolved.startsWith(resolvedBase)) {
@@ -60,7 +97,7 @@ async function resolveFile(
       const fileStat = await stat(resolved);
 
       if (fileStat.isFile()) {
-        return resolved;
+        return { path: resolved, contentTypePath: candidate.contentTypePath };
       }
     } catch {
       continue;
@@ -124,10 +161,10 @@ export async function readPreviewFile(slug: string, segments: string[]) {
     return readGithubPreviewFile(slug, segments);
   }
 
-  const body = await readFile(filePath);
+  const body = await readFile(filePath.path);
 
   return {
     body,
-    contentType: contentType(filePath),
+    contentType: contentType(filePath.contentTypePath),
   };
 }

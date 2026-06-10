@@ -71,12 +71,7 @@ function previewHref(slug: string): string {
 
 function pageHref(slug: string, pagePath: string): string {
   const pathWithSlash = pagePath.startsWith("/") ? pagePath : `/${pagePath}`;
-  const normalizedPath =
-    pathWithSlash === "/"
-      ? "/index.html"
-      : pathWithSlash.endsWith("/")
-        ? `${pathWithSlash}index.html`
-        : pathWithSlash;
+  const normalizedPath = pathWithSlash === "/" ? "/index.html" : pathWithSlash;
 
   return `/preview/${slug}${normalizedPath}`;
 }
@@ -173,11 +168,16 @@ export default function DashboardPage() {
   const [editingWebsiteId, setEditingWebsiteId] = useState<string | null>(null);
   const [editPrompts, setEditPrompts] = useState<Record<string, string>>({});
   const [editTargets, setEditTargets] = useState<Record<string, string>>({});
+  const [managingWebsiteId, setManagingWebsiteId] = useState<string | null>(null);
+  const [renameValues, setRenameValues] = useState<Record<string, string>>({});
+  const [deleteConfirmations, setDeleteConfirmations] = useState<Record<string, string>>({});
   const [submittingEditId, setSubmittingEditId] = useState<string | null>(null);
   const [publishingWebsiteId, setPublishingWebsiteId] = useState<string | null>(null);
   const [generatingPagesWebsiteId, setGeneratingPagesWebsiteId] = useState<string | null>(
     null,
   );
+  const [renamingWebsiteId, setRenamingWebsiteId] = useState<string | null>(null);
+  const [deletingWebsiteId, setDeletingWebsiteId] = useState<string | null>(null);
   const [billingAction, setBillingAction] = useState<"checkout" | "portal" | null>(
     null,
   );
@@ -378,6 +378,63 @@ export default function DashboardPage() {
     }
   };
 
+  const renameWebsite = async (website: Website) => {
+    const name = (renameValues[website.id] ?? website.brandName ?? website.slug).trim();
+
+    setRenamingWebsiteId(website.id);
+    setErrorMessage(null);
+
+    try {
+      const response = await fetch(`/api/websites/${website.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Failed to rename website");
+      }
+
+      await loadDashboard();
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Failed to rename website",
+      );
+    } finally {
+      setRenamingWebsiteId(null);
+    }
+  };
+
+  const deleteWebsite = async (website: Website) => {
+    setDeletingWebsiteId(website.id);
+    setErrorMessage(null);
+
+    try {
+      const response = await fetch(`/api/websites/${website.id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          confirmation: deleteConfirmations[website.id] ?? "",
+        }),
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Failed to delete website");
+      }
+
+      setManagingWebsiteId(null);
+      await loadDashboard();
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Failed to delete website",
+      );
+    } finally {
+      setDeletingWebsiteId(null);
+    }
+  };
+
   return (
     <main className="min-h-screen bg-[#fbfaf6] px-5 py-5 text-black sm:px-8 lg:px-10">
       <div className="mx-auto w-full max-w-6xl">
@@ -395,23 +452,35 @@ export default function DashboardPage() {
               Refresh Kiwi
             </span>
           </Link>
-          {canAddWebsite ? (
-            <Link
-              href="/"
-              className="rounded-full bg-kiwi-green px-5 py-2.5 text-sm font-semibold text-black shadow-sm transition hover:bg-kiwi-green-hover"
-            >
-              Add website
-            </Link>
-          ) : (
-            <button
-              type="button"
-              onClick={() => void startBillingFlow(isPro ? "portal" : "checkout")}
-              disabled={billingAction !== null}
-              className="rounded-full bg-kiwi-green px-5 py-2.5 text-sm font-semibold text-black shadow-sm transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isPro ? "Manage plan" : "Upgrade to add more"}
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {isPro ? (
+              <button
+                type="button"
+                onClick={() => void startBillingFlow("portal")}
+                disabled={billingAction !== null}
+                className="rounded-full border border-black/10 bg-white px-5 py-2.5 text-sm font-semibold text-black transition hover:border-black/25 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {billingAction === "portal" ? "Opening..." : "Manage billing"}
+              </button>
+            ) : null}
+            {canAddWebsite ? (
+              <Link
+                href="/"
+                className="rounded-full bg-kiwi-green px-5 py-2.5 text-sm font-semibold text-black shadow-sm transition hover:bg-kiwi-green-hover"
+              >
+                Add website
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={() => void startBillingFlow(isPro ? "portal" : "checkout")}
+                disabled={billingAction !== null}
+                className="rounded-full bg-kiwi-green px-5 py-2.5 text-sm font-semibold text-black shadow-sm transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isPro ? "Manage plan" : "Upgrade to add more"}
+              </button>
+            )}
+          </div>
         </header>
 
         <section className="mt-10 rounded-[2rem] border border-black/10 bg-white p-6 shadow-xl shadow-black/5 sm:p-8">
@@ -453,16 +522,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            {isPro ? (
-              <button
-                type="button"
-                onClick={() => void startBillingFlow("portal")}
-                disabled={billingAction !== null}
-                className="rounded-full bg-black px-6 py-3 text-sm font-semibold text-white transition hover:bg-black/85 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {billingAction === "portal" ? "Opening…" : "Manage billing"}
-              </button>
-            ) : (
+            {!isPro ? (
               <button
                 type="button"
                 onClick={() => void startBillingFlow("checkout")}
@@ -471,7 +531,7 @@ export default function DashboardPage() {
               >
                 {billingAction === "checkout" ? "Opening…" : "Upgrade to Pro"}
               </button>
-            )}
+            ) : null}
             {canAddWebsite ? (
               <Link
                 href="/"
@@ -511,7 +571,7 @@ export default function DashboardPage() {
                 aria-hidden
                 className="h-1.5 w-1.5 animate-pulse rounded-full bg-kiwi-green"
               />
-              Generating additional pages…
+              Generating additional pages. This can take a few minutes...
             </p>
           ) : null}
         </section>
@@ -650,15 +710,6 @@ export default function DashboardPage() {
                               : "Keep live"}
                           </button>
                         ) : null}
-                        {isPro && website.status === "live" ? (
-                          <button
-                            type="button"
-                            onClick={() => void startBillingFlow("portal")}
-                            className="rounded-full border border-black/10 bg-white px-5 py-2.5 text-sm font-semibold text-black transition hover:border-black/25"
-                          >
-                            Billing
-                          </button>
-                        ) : null}
                         {state.canView && isPro ? (
                           <button
                             type="button"
@@ -677,6 +728,24 @@ export default function DashboardPage() {
                                 : "Generate pages"}
                           </button>
                         ) : null}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setManagingWebsiteId((current) =>
+                              current === website.id ? null : website.id,
+                            );
+                            setRenameValues((current) => ({
+                              ...current,
+                              [website.id]:
+                                current[website.id] ??
+                                website.brandName ??
+                                website.slug,
+                            }));
+                          }}
+                          className="rounded-full border border-black/10 bg-white px-5 py-2.5 text-sm font-semibold text-black transition hover:border-black/25"
+                        >
+                          Manage
+                        </button>
                       </div>
                     </div>
 
@@ -685,7 +754,7 @@ export default function DashboardPage() {
                         <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
                           <div>
                             <p className="text-sm font-semibold text-black">
-                              Generated pages
+                              Additional pages
                             </p>
                             <p className="mt-1 text-xs text-black/45">
                               View any page, then use Edit website for changes.
@@ -707,6 +776,89 @@ export default function DashboardPage() {
                               {page.title}
                             </Link>
                           ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {managingWebsiteId === website.id ? (
+                      <div className="mt-5 rounded-2xl border border-black/10 bg-white p-4">
+                        <div className="grid gap-4 lg:grid-cols-2">
+                          <form
+                            onSubmit={(event) => {
+                              event.preventDefault();
+                              void renameWebsite(website);
+                            }}
+                          >
+                            <label
+                              htmlFor={`rename-${website.id}`}
+                              className="text-sm font-semibold text-black"
+                            >
+                              Rename website
+                            </label>
+                            <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+                              <input
+                                id={`rename-${website.id}`}
+                                value={
+                                  renameValues[website.id] ??
+                                  website.brandName ??
+                                  website.slug
+                                }
+                                onChange={(event) =>
+                                  setRenameValues((current) => ({
+                                    ...current,
+                                    [website.id]: event.target.value,
+                                  }))
+                                }
+                                className="h-11 flex-1 rounded-full border border-black/10 bg-white px-4 text-sm outline-none placeholder:text-black/30 focus:border-black/30"
+                              />
+                              <button
+                                type="submit"
+                                disabled={renamingWebsiteId === website.id}
+                                className="h-11 rounded-full bg-black px-5 text-sm font-semibold text-white transition hover:bg-black/85 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                {renamingWebsiteId === website.id
+                                  ? "Saving..."
+                                  : "Save name"}
+                              </button>
+                            </div>
+                          </form>
+
+                          <div>
+                            <p className="text-sm font-semibold text-red-700">
+                              Delete website
+                            </p>
+                            <p className="mt-2 text-xs leading-5 text-black/45">
+                              Type{" "}
+                              <span className="font-semibold text-black">
+                                {website.brandName || website.slug}
+                              </span>{" "}
+                              to delete it from your dashboard.
+                            </p>
+                            <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+                              <input
+                                value={deleteConfirmations[website.id] ?? ""}
+                                onChange={(event) =>
+                                  setDeleteConfirmations((current) => ({
+                                    ...current,
+                                    [website.id]: event.target.value,
+                                  }))
+                                }
+                                placeholder={website.brandName || website.slug}
+                                className="h-11 flex-1 rounded-full border border-red-100 bg-white px-4 text-sm outline-none placeholder:text-black/25 focus:border-red-200"
+                                aria-label="Delete confirmation"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => void deleteWebsite(website)}
+                                disabled={deletingWebsiteId === website.id}
+                                className="h-11 rounded-full bg-red-600 px-5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                {deletingWebsiteId === website.id
+                                  ? "Deleting..."
+                                  : "Delete"}
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     ) : null}

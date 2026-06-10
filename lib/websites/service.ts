@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, ne } from "drizzle-orm";
 
 import { getDb, schema } from "@/lib/db";
 
@@ -229,6 +229,76 @@ export async function getOwnedWebsite(params: {
   return website ?? null;
 }
 
+export async function renameOwnedWebsite(params: {
+  websiteId: string;
+  userId: string;
+  name: string;
+}) {
+  const name = params.name.trim();
+
+  if (name.length < 2) {
+    throw new Error("Website name must be at least 2 characters");
+  }
+
+  if (name.length > 80) {
+    throw new Error("Website name must be 80 characters or fewer");
+  }
+
+  const website = await getOwnedWebsite(params);
+
+  if (!website) {
+    throw new Error("Website not found");
+  }
+
+  const [updated] = await getDb()
+    .update(websites)
+    .set({
+      brandName: name,
+      updatedAt: new Date(),
+    })
+    .where(eq(websites.id, website.id))
+    .returning();
+
+  await getDb()
+    .update(jobs)
+    .set({
+      brandName: name,
+      updatedAt: new Date(),
+    })
+    .where(eq(jobs.id, website.jobId));
+
+  return updated;
+}
+
+export async function archiveOwnedWebsite(params: {
+  websiteId: string;
+  userId: string;
+  confirmation: string;
+}) {
+  const website = await getOwnedWebsite(params);
+
+  if (!website) {
+    throw new Error("Website not found");
+  }
+
+  const expectedConfirmation = website.brandName || website.slug;
+
+  if (params.confirmation.trim() !== expectedConfirmation) {
+    throw new Error(`Type "${expectedConfirmation}" to delete this website.`);
+  }
+
+  const [updated] = await getDb()
+    .update(websites)
+    .set({
+      status: "archived",
+      updatedAt: new Date(),
+    })
+    .where(eq(websites.id, website.id))
+    .returning();
+
+  return updated;
+}
+
 export async function publishOwnedWebsite(params: {
   websiteId: string;
   userId: string;
@@ -290,7 +360,7 @@ export async function listOwnedWebsites(userId: string) {
   return getDb()
     .select()
     .from(websites)
-    .where(eq(websites.userId, userId))
+    .where(and(eq(websites.userId, userId), ne(websites.status, "archived")))
     .orderBy(desc(websites.updatedAt));
 }
 
