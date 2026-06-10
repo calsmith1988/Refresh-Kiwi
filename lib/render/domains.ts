@@ -91,13 +91,23 @@ export async function addRenderCustomDomain(domain: string) {
 }
 
 export async function refreshRenderCustomDomain(domain: string) {
-  return renderRequest<RenderCustomDomain>(
+  await renderRequest<void>(
     `/services/${getRenderServiceId()}/custom-domains/${encodeURIComponent(
       domain,
-    )}/refresh`,
+    )}/verify`,
     {
       method: "POST",
     },
+  );
+
+  return getRenderCustomDomain(domain);
+}
+
+export async function getRenderCustomDomain(domain: string) {
+  return renderRequest<RenderCustomDomain>(
+    `/services/${getRenderServiceId()}/custom-domains/${encodeURIComponent(
+      domain,
+    )}`,
   );
 }
 

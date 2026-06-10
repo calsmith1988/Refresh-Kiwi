@@ -6,6 +6,7 @@ import {
   deleteRenderCustomDomain,
   getRenderDnsTarget,
   isRenderDomainVerified,
+  RenderApiError,
   refreshRenderCustomDomain,
 } from "@/lib/render/domains";
 import {
@@ -150,6 +151,26 @@ export async function PATCH(_request: Request, context: RouteContext) {
       },
     });
   } catch (error) {
+    if (error instanceof RenderApiError && error.status === 404) {
+      const { websiteId } = await context.params;
+      const website = await updateOwnedWebsiteDomainStatus({
+        websiteId,
+        userId: auth.user.id,
+        status: "failed",
+        error:
+          "Render could not find this domain yet. Click Connect domain again, then check the connection.",
+      });
+
+      return NextResponse.json(
+        {
+          error:
+            "Render could not find this domain yet. Click Connect domain again, then check the connection.",
+          website: toWebsiteResponse(website),
+        },
+        { status: 400 },
+      );
+    }
+
     const message =
       error instanceof Error ? error.message : "Failed to check domain";
 
