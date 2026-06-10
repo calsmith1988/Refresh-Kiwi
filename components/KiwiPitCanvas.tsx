@@ -11,8 +11,10 @@ import { setupLandingDetection } from "@/lib/kiwi-pit/landing";
 import { spawnKiwi } from "@/lib/kiwi-pit/spawnKiwi";
 import {
   createDefaultMeta,
-  MAX_BODIES_DESKTOP,
-  MAX_BODIES_MOBILE,
+  KIWI_FOOTPRINT_PX,
+  MAX_BODIES_CAP_DESKTOP,
+  MAX_BODIES_CAP_MOBILE,
+  PILE_FILL_TARGET_MS,
   SPAWN_INTERVAL_MS,
   type KiwiPitWorld,
 } from "@/lib/kiwi-pit/types";
@@ -28,10 +30,26 @@ interface KiwiPitCanvasProps {
 
 function getMaxBodies() {
   if (typeof window === "undefined") {
-    return MAX_BODIES_DESKTOP;
+    return MAX_BODIES_CAP_DESKTOP;
   }
 
-  return window.innerWidth < 768 ? MAX_BODIES_MOBILE : MAX_BODIES_DESKTOP;
+  // Size the pile to the viewport so kiwis can stack all the way to the top
+  // of the screen, capped for physics performance.
+  const target = Math.ceil(
+    (window.innerWidth * window.innerHeight) / KIWI_FOOTPRINT_PX,
+  );
+  const cap =
+    window.innerWidth < 768 ? MAX_BODIES_CAP_MOBILE : MAX_BODIES_CAP_DESKTOP;
+
+  return Math.min(target, cap);
+}
+
+function getSpawnPerTick(maxBodies: number) {
+  // Spawn enough kiwis per tick that the pile reaches the top in roughly
+  // PILE_FILL_TARGET_MS regardless of screen size.
+  const ticks = PILE_FILL_TARGET_MS / SPAWN_INTERVAL_MS;
+
+  return Math.max(1, Math.ceil(maxBodies / ticks));
 }
 
 function prefersReducedMotion(): boolean {
@@ -169,6 +187,7 @@ export default function KiwiPitCanvas({
     }
 
     const maxBodies = getMaxBodies();
+    const spawnPerTick = getSpawnPerTick(maxBodies);
 
     spawnTimerRef.current = window.setInterval(() => {
       const currentWorld = worldRef.current;
@@ -176,7 +195,9 @@ export default function KiwiPitCanvas({
         return;
       }
 
-      spawnKiwi(currentWorld, maxBodies);
+      for (let i = 0; i < spawnPerTick; i += 1) {
+        spawnKiwi(currentWorld, maxBodies);
+      }
     }, SPAWN_INTERVAL_MS);
 
     if (durationMs !== undefined) {
