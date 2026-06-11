@@ -18,12 +18,28 @@ OUTPUT: sites/${slug}/
 1. Visit the source URL once. Read the homepage only — do not crawl other pages yet.
 2. Build a single static homepage using plain index.html, styles.css, and optional script.js. Avoid build tools unless absolutely necessary.
 3. Use the source for facts, offer details, testimonials, phone numbers, service areas, and brand clues. Do not paste every paragraph.
-4. Save usable source images to sites/${slug}/assets/ only when they clearly improve the design. Prefer CSS gradients, shapes, cards, icons, and layout if images are weak or slow.
-5. Write sites/${slug}/site.json:
+4. Write sites/${slug}/site.json:
    - brandName, slug ("${slug}"), sourceUrl
    - pages: [{ "path": "/", "title": "Home", "gated": false }]
    - discoveredPages: [] unless obvious nav paths are already visible without extra browsing
-6. Stop as soon as index.html, styles.css, and site.json are written under sites/${slug}/ and available as run artifacts. Do not wait to commit before finishing.
+5. Stop as soon as index.html, styles.css, and site.json are written under sites/${slug}/ and available as run artifacts. Do not wait to commit before finishing.
+
+## Images — hotlink the source site's real images, do not download
+
+- Reuse the source website's actual images by referencing their absolute URLs directly in <img> tags (or CSS backgrounds where it suits the design). Do not download or save image files — hotlinking is fast and the platform localises images later.
+- Always put the business logo in the header if the source site has one. Look for header/nav logo images first; apple-touch-icon or favicon are fallbacks only if they are high enough quality.
+- Use the strongest photos for the hero and supporting sections. Skip tiny icons, badges, stock-photo watermarks, and tracking pixels.
+- If the homepage has a gallery, portfolio, case studies, or team photos, you may rebuild those sections with as many source images as the design deserves — do not artificially limit image count.
+- Only use https image URLs; http-only images will be blocked in the preview.
+- Never invent local image paths — only reference image URLs you actually saw on the source site.
+- Fall back to CSS gradients, shapes, and illustration-like CSS treatments only if the source genuinely has no usable images.
+
+## Brand colours — same brand, modern execution
+
+- Identify the brand colours from the original site before designing: the logo first, then header/nav background, buttons, and accent colours.
+- If the site has clear branding, keep it. Build a refined, modern palette around those brand colours — the business should still feel like itself, just executed beautifully. Ensure WCAG AA contrast.
+- If there is no clear branding, or the colours are genuinely poor, choose your own tasteful modern palette instead.
+- Either way, make the wow factor come from layout, typography, spacing, and motion — not from swapping the brand's identity.
 
 ## Design bar
 
@@ -32,13 +48,14 @@ Create a proper landing page redesign:
 - Strong responsive layout with spacing, contrast, hierarchy, and sections that feel intentionally designed.
 - Convert long source copy into short marketing copy, cards, stats, badges, testimonial blocks, and CTAs.
 - Include only the strongest content: services, trust proof, coverage/location, offer, testimonials, contact CTA.
-- Add micro-interactions or tasteful visual details if useful, but keep it static and fast.
+- Add micro-interactions, hover states, or subtle scroll animations if useful, but keep it static and fast.
+- Do not use emoji as UI icons; use inline SVG if icons are needed.
 
 Avoid:
 - A wall of text.
 - A generic Tailwind/AI landing page look.
 - Recreating the old site structure section-for-section.
-- Broken relative asset paths. Reference local assets as ./assets/file.ext from index.html.
+- Broken image references — every image URL must come from the source site.
 
 Do not build secondary pages in this phase. Do not spend time on a multi-page plan. The first preview is artifact-first, so the generated files are the deliverable even if no git commit is created.`;
 }
@@ -59,8 +76,8 @@ The homepage already exists. Your job is to crawl the source website for importa
 2. Read the existing files first, especially index.html, styles.css, script.js if present, and site.json.
 3. Crawl the source site's main navigation and obvious internal links. Prioritize useful pages like About, Services, Products, Case Studies, Contact, Pricing, FAQs, and location/service pages.
 4. Build up to 6 additional pages. If the source site has fewer meaningful pages, build only those. Do not invent filler pages.
-5. Pull useful source images into sites/${slug}/assets/ when they improve the result. Keep all asset references relative and local.
-6. Match the homepage design system, spacing, typography, visual style, header/nav/footer, and responsive behavior.
+5. Images: hotlink the source site's real images by their absolute https URLs, exactly like the homepage does. Do not download image files. Never invent image paths — only use URLs you actually saw on the source site. Galleries and image-heavy pages may use as many source images as the design deserves.
+6. Match the homepage design system: same brand colours and palette, spacing, typography, visual style, header/nav/footer, and responsive behavior. Read styles.css first and reuse its tokens rather than introducing new colours.
 7. Update the homepage navigation to link to the generated pages.
 8. Update site.json with:
    - pages: include "/" plus each generated page with path, title, and gated false
@@ -73,7 +90,7 @@ The homepage already exists. Your job is to crawl the source website for importa
 - Convert old copy into polished, concise marketing sections.
 - Preserve factual details, services, contact details, proof points, and useful imagery.
 - Avoid broken links and broken asset paths.
-- Every generated page must load the shared CSS and assets correctly from preview subpaths. Prefer root-relative preview paths like /preview/${slug}/styles.css, /preview/${slug}/script.js, /preview/${slug}/assets/file.png, and /preview/${slug}/page-path for navigation links.
+- Every generated page must load the shared CSS and any local assets correctly from preview subpaths. Prefer root-relative preview paths like /preview/${slug}/styles.css, /preview/${slug}/script.js, /preview/${slug}/assets/file.png, and /preview/${slug}/page-path for navigation links. Hotlinked source images are absolute https URLs and need no path handling.
 - Do not use href="styles.css" or src="assets/..." on additional pages, because nested preview paths will resolve those relative to the page path and break styling.
 - Avoid rebuilding the homepage from scratch unless a small nav/footer update is needed.
 
@@ -95,9 +112,12 @@ USER REQUEST: ${editPrompt}
 
 1. Work only inside sites/${slug}/.
 2. Read the existing files first, especially index.html, styles.css, script.js if present, and site.json.
-3. Apply the requested change while preserving the current design language, layout quality, responsive behavior, and asset paths.
+3. Apply the requested change while preserving the current design language, brand colours, layout quality, responsive behavior, and asset paths.
 4. Do not rebuild the whole site from scratch unless the request explicitly requires a major redesign.
-5. Keep paths relative and local. Existing local assets should stay referenced as ./assets/file.ext from HTML.
+5. Images may be referenced two ways — preserve whichever is in use:
+   - Hotlinked absolute https URLs pointing at the original business website. Keep them as-is.
+   - Local files under assets/ (referenced as ./assets/file.ext or /preview/${slug}/assets/file.ext). Keep those paths intact.
+   If the edit asks for new imagery, prefer real https image URLs from the original source website (${sourceUrl}); never invent image paths.
 6. Update site.json only if the edit changes metadata, page titles, or page structure.
 7. Commit the finished edit to the repo.
 
