@@ -272,6 +272,20 @@ export default function RefreshPage() {
         setUser(null);
       });
 
+    // "/?new=1" means the user explicitly wants to start a fresh refresh
+    // (e.g. "Add website" from the dashboard) — don't resume the last job.
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("new")) {
+      clearStoredJob();
+      window.history.replaceState(null, "", "/");
+      return () => {
+        stopPolling();
+        stopEditPolling();
+        stopTimer();
+        stopStatusRotation();
+      };
+    }
+
     // Resume an in-flight or finished refresh after a page reload, so users
     // (and accidental tab refreshes) never lose their result.
     const stored = readStoredJob();
@@ -523,6 +537,19 @@ export default function RefreshPage() {
     }
   };
 
+  const startFresh = () => {
+    stopPolling();
+    stopEditPolling();
+    stopTimer();
+    stopStatusRotation();
+    clearStoredJob();
+    setJob(null);
+    setUrl("");
+    setErrorMessage(null);
+    setEditStatus("idle");
+    setIsRefreshing(false);
+  };
+
   const handleRefresh = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -638,12 +665,22 @@ export default function RefreshPage() {
                 Log in
               </button>
             )}
-            <a
-              href="#refresh-input"
-              className="rounded-full bg-[#141811] px-4 py-2 text-sm font-semibold text-white transition hover:bg-black sm:px-5"
-            >
-              Try it free
-            </a>
+            {showReveal ? (
+              <button
+                type="button"
+                onClick={startFresh}
+                className="rounded-full bg-[#141811] px-4 py-2 text-sm font-semibold text-white transition hover:bg-black sm:px-5"
+              >
+                Refresh another
+              </button>
+            ) : (
+              <a
+                href="#refresh-input"
+                className="rounded-full bg-[#141811] px-4 py-2 text-sm font-semibold text-white transition hover:bg-black sm:px-5"
+              >
+                Try it free
+              </a>
+            )}
           </div>
         </div>
       </header>
@@ -747,7 +784,7 @@ export default function RefreshPage() {
                 </p>
               </div>
 
-              <div className="mx-auto mt-9 max-w-4xl rounded-3xl border border-black/10 bg-white p-3 shadow-2xl shadow-[#8bbf4d]/20">
+              <div className="mx-auto mt-9 max-w-4xl rounded-3xl border border-black/10 bg-white p-3 shadow-2xl shadow-[#8bbf4d]/20 lg:max-w-6xl">
                 <div className="overflow-hidden rounded-2xl border border-black/10">
                   <div className="flex items-center gap-1.5 border-b border-black/10 bg-[#faf8f1] px-4 py-3">
                     <span className="h-2.5 w-2.5 rounded-full bg-red-300" />
@@ -762,7 +799,7 @@ export default function RefreshPage() {
                     key={editStatus === "done" ? "after-edit" : "initial"}
                     src={previewHref}
                     title="Preview of your new website"
-                    className="h-[460px] w-full sm:h-[540px]"
+                    className="h-[460px] w-full sm:h-[540px] lg:h-[640px]"
                   />
                 </div>
               </div>

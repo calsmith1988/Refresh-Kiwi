@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 
+import { localizeWebsiteImages } from "@/lib/assets/localize";
 import { isCursorStartupError, runEditPhase } from "@/lib/cursor/agent";
 import { getDb, schema } from "@/lib/db";
 import { syncPreviewFromAgent } from "@/lib/preview/sync";
@@ -52,6 +53,10 @@ export async function processEditRequest(editRequestId: string): Promise<void> {
     );
 
     await syncPreviewFromAgent(editRun.agentId, editRequest.website.slug);
+
+    // Edits can introduce new hotlinked images; localise them too. This is a
+    // fast no-op when everything is already local.
+    await localizeWebsiteImages(editRequest.website.slug);
 
     await updateEditRequest(editRequest.id, { status: "complete" });
 

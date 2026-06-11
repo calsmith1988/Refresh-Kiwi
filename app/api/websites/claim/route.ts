@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { after } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth/session";
 import { claimWebsite, toWebsiteResponse } from "@/lib/websites/service";
@@ -20,6 +21,13 @@ export async function POST(request: Request) {
     }
 
     const website = await claimWebsite({ jobId: body.jobId, userId: user.id });
+
+    // Once a website is claimed, bring its hotlinked images in-house in the
+    // background: download, rewrite references, and write the image manifest.
+    after(async () => {
+      const { localizeWebsiteImages } = await import("@/lib/assets/localize");
+      await localizeWebsiteImages(website.slug);
+    });
 
     return NextResponse.json({ website: toWebsiteResponse(website) });
   } catch (error) {

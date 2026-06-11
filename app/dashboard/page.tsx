@@ -615,7 +615,7 @@ export default function DashboardPage() {
             ) : null}
             {canAddWebsite ? (
               <Link
-                href="/"
+                href="/?new=1"
                 className="rounded-full bg-kiwi-green px-5 py-2.5 text-sm font-semibold text-black shadow-sm transition hover:bg-kiwi-green-hover"
               >
                 Add website
@@ -733,7 +733,7 @@ export default function DashboardPage() {
             ) : null}
             {canAddWebsite ? (
               <Link
-                href="/"
+                href="/?new=1"
                 className="rounded-full border border-black/10 bg-white px-6 py-3 text-center text-sm font-semibold text-black transition hover:border-black/25"
               >
                 Add another website
@@ -791,7 +791,7 @@ export default function DashboardPage() {
                 Generate a homepage preview, then save it to your account.
               </p>
               <Link
-                href="/"
+                href="/?new=1"
                 className="mt-5 inline-flex rounded-full bg-kiwi-green px-6 py-3 text-sm font-semibold text-black"
               >
                 Refresh my first website

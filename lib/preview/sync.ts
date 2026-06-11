@@ -91,7 +91,7 @@ async function syncFromAgentArtifacts(
   return false;
 }
 
-async function syncFromGithubMain(slug: string, outputDir: string): Promise<boolean> {
+export async function syncFromGithubMain(slug: string, outputDir: string): Promise<boolean> {
   const parsed = parseGithubRepo(getSitesRepoUrl());
 
   if (!parsed) {

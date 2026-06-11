@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { eq } from "drizzle-orm";
 
+import { localizeWebsiteImages } from "@/lib/assets/localize";
 import { isCursorStartupError, runAdditionalPagesPhase } from "@/lib/cursor/agent";
 import { getDb, schema } from "@/lib/db";
 import { previewDirectory } from "@/lib/preview/paths";
@@ -86,6 +87,9 @@ export async function processAdditionalPages(websiteId: string): Promise<void> {
     );
 
     await syncPreviewFromAgent(pagesRun.agentId, website.slug);
+
+    // New pages hotlink images from the source site; bring them in-house.
+    await localizeWebsiteImages(website.slug);
 
     const generatedPages = await readGeneratedPages(website.slug);
     await upsertPagesForJob(website.jobId, generatedPages);
