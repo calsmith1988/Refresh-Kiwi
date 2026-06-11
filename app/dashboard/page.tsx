@@ -302,6 +302,7 @@ export default function DashboardPage() {
   const [revertingImageId, setRevertingImageId] = useState<string | null>(null);
   const [copiedWebsiteId, setCopiedWebsiteId] = useState<string | null>(null);
   const [progressTick, setProgressTick] = useState(() => Date.now());
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [confirmRegenerateId, setConfirmRegenerateId] = useState<string | null>(
     null,
   );
@@ -431,6 +432,25 @@ export default function DashboardPage() {
       window.clearInterval(timer);
     };
   }, [hasActiveEdit, hasActivePageGeneration]);
+
+  // Close the image preview with the Escape key.
+  useEffect(() => {
+    if (!lightboxUrl) {
+      return;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setLightboxUrl(null);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [lightboxUrl]);
 
   // Advances the in-progress edit messages between polls.
   useEffect(() => {
@@ -928,7 +948,7 @@ export default function DashboardPage() {
         <header className="flex items-center justify-between gap-4">
           <Link href="/" className="flex items-center gap-2.5">
             <Image
-              src="/refresh-kiwi-favicon.png"
+              src="/refresh-kiwi-favicon-v2.png"
               alt=""
               width={34}
               height={34}
@@ -1143,6 +1163,10 @@ export default function DashboardPage() {
                 );
                 const isGeneratingPages = website.jobStatus === "building_pages";
                 const imagesState = websiteImages[website.id];
+                const hasActiveEditForWebsite = Boolean(
+                  website.latestEditRequest &&
+                    ACTIVE_EDIT_STATUSES.has(website.latestEditRequest.status),
+                );
 
                 return (
                   <article
@@ -1210,7 +1234,7 @@ export default function DashboardPage() {
                           website.latestEditRequest.status === "running" ? (
                             <div className="mt-3 flex items-center gap-2">
                               <Image
-                                src="/refresh-kiwi-favicon.png"
+                                src="/refresh-kiwi-favicon-v2.png"
                                 alt=""
                                 width={18}
                                 height={18}
@@ -1232,7 +1256,7 @@ export default function DashboardPage() {
                           ) : website.latestEditRequest.status === "complete" ? (
                             <div className="mt-3 flex items-center gap-2">
                               <Image
-                                src="/refresh-kiwi-favicon.png"
+                                src="/refresh-kiwi-favicon-v2.png"
                                 alt=""
                                 width={18}
                                 height={18}
@@ -1261,7 +1285,7 @@ export default function DashboardPage() {
                         {isGeneratingPages ? (
                           <div className="mt-3 flex items-center gap-2">
                             <Image
-                              src="/refresh-kiwi-favicon.png"
+                              src="/refresh-kiwi-favicon-v2.png"
                               alt=""
                               width={18}
                               height={18}
@@ -1511,13 +1535,20 @@ export default function DashboardPage() {
                                     key={image.id}
                                     className="overflow-hidden rounded-2xl border border-black/10 bg-white"
                                   >
-                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img
-                                      src={image.url}
-                                      alt=""
-                                      loading="lazy"
-                                      className="h-32 w-full bg-[#f0f4e7] object-cover"
-                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => setLightboxUrl(image.url)}
+                                      className="block w-full cursor-zoom-in"
+                                      title="Click to see full size"
+                                    >
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img
+                                        src={image.url}
+                                        alt=""
+                                        loading="lazy"
+                                        className="h-32 w-full bg-[#f0f4e7] object-cover transition hover:opacity-90"
+                                      />
+                                    </button>
                                     <div className="p-2.5">
                                       <div className="flex items-center justify-between gap-2">
                                         <span className="truncate text-[11px] font-medium text-black/40">
@@ -1641,10 +1672,13 @@ export default function DashboardPage() {
                                                 key={version.file}
                                                 className="overflow-hidden rounded-xl border border-black/10"
                                               >
-                                                <a
-                                                  href={version.url}
-                                                  target="_blank"
-                                                  title="Open full size"
+                                                <button
+                                                  type="button"
+                                                  onClick={() =>
+                                                    setLightboxUrl(version.url)
+                                                  }
+                                                  className="block w-full cursor-zoom-in"
+                                                  title="Click to see full size"
                                                 >
                                                   {/* eslint-disable-next-line @next/next/no-img-element */}
                                                   <img
@@ -1653,7 +1687,7 @@ export default function DashboardPage() {
                                                     loading="lazy"
                                                     className="h-12 w-full bg-[#f0f4e7] object-cover"
                                                   />
-                                                </a>
+                                                </button>
                                                 <button
                                                   type="button"
                                                   disabled={anyBusy}
@@ -1967,18 +2001,22 @@ export default function DashboardPage() {
                             type="submit"
                             disabled={
                               submittingEditId === website.id ||
+                              hasActiveEditForWebsite ||
                               !(editPrompts[website.id] ?? "").trim()
                             }
                             className="h-11 rounded-full bg-[#141811] px-5 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             {submittingEditId === website.id
                               ? "Sending…"
-                              : "Make the change"}
+                              : hasActiveEditForWebsite
+                                ? "Working on your last change…"
+                                : "Make the change"}
                           </button>
                         </div>
                         <p className="mt-2 text-xs leading-5 text-black/45">
-                          We&apos;ll make your change — it usually takes a few
-                          minutes. Check back here to see when it&apos;s done.
+                          {hasActiveEditForWebsite
+                            ? "One change at a time — you can type your next one now and send it as soon as the current change is finished."
+                            : "We'll make your change — it usually takes a few minutes. Check back here to see when it's done."}
                         </p>
                       </form>
                     ) : null}
@@ -2034,6 +2072,30 @@ export default function DashboardPage() {
               Not now
             </button>
           </div>
+        </div>
+      ) : null}
+
+      {lightboxUrl ? (
+        <div
+          role="dialog"
+          aria-label="Image preview"
+          onClick={() => setLightboxUrl(null)}
+          className="fixed inset-0 z-50 flex cursor-zoom-out items-center justify-center bg-black/85 p-4 sm:p-10"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={lightboxUrl}
+            alt=""
+            className="preview-pop max-h-full max-w-full rounded-2xl object-contain shadow-2xl"
+          />
+          <button
+            type="button"
+            onClick={() => setLightboxUrl(null)}
+            aria-label="Close image preview"
+            className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-xl font-semibold text-white transition hover:bg-white/30"
+          >
+            ×
+          </button>
         </div>
       ) : null}
     </main>

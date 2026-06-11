@@ -619,7 +619,7 @@ export default function RefreshPage() {
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-5 sm:px-8">
           <Link href="/" className="flex items-center gap-2.5">
             <Image
-              src="/refresh-kiwi-favicon.png"
+              src="/refresh-kiwi-favicon-v2.png"
               alt=""
               width={30}
               height={30}
@@ -1325,7 +1325,7 @@ export default function RefreshPage() {
             <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-4 sm:flex-row">
               <div className="flex items-center gap-2.5">
                 <Image
-                  src="/refresh-kiwi-favicon.png"
+                  src="/refresh-kiwi-favicon-v2.png"
                   alt=""
                   width={26}
                   height={26}

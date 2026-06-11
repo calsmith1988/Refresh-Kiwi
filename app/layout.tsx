@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   description:
     "Paste your web address and get a fresh, modern version of your website in about 2 minutes. Built for local businesses. Same website, fresher skin.",
   icons: {
-    icon: "/refresh-kiwi-favicon.png",
+    icon: "/refresh-kiwi-favicon-v2.png",
   },
 };
 

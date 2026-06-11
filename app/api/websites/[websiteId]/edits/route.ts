@@ -4,7 +4,7 @@ import { after } from "next/server";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getDb, schema } from "@/lib/db";
 import { getOwnedWebsite, toWebsiteResponse, userHasProPlan } from "@/lib/websites/service";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 
 export const runtime = "nodejs";
 
@@ -56,6 +56,26 @@ export async function POST(request: Request, context: RouteContext) {
     return NextResponse.json(
       { error: "This free preview has ended. Go Pro (£10/month) to bring it back and keep making changes." },
       { status: 402 },
+    );
+  }
+
+  // One change at a time per website — two agents editing the same site
+  // concurrently would race and overwrite each other's work.
+  const [activeEdit] = await getDb()
+    .select({ id: editRequests.id })
+    .from(editRequests)
+    .where(
+      and(
+        eq(editRequests.websiteId, website.id),
+        inArray(editRequests.status, ["queued", "running"]),
+      ),
+    )
+    .limit(1);
+
+  if (activeEdit) {
+    return NextResponse.json(
+      { error: "We're still making your last change — it'll be done in a minute or two, then you can add the next one." },
+      { status: 409 },
     );
   }
 
