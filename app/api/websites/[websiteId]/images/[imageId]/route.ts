@@ -62,6 +62,7 @@ export async function POST(request: Request, context: RouteContext) {
       imageId,
       buffer: Buffer.from(await file.arrayBuffer()),
       contentType: file.type,
+      source: "upload",
     });
 
     return NextResponse.json({ image });

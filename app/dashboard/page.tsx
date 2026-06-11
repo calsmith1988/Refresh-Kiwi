@@ -57,6 +57,15 @@ type Website = {
   }>;
 };
 
+type WebsiteImageVersion = {
+  file: string;
+  url: string;
+  contentType: string;
+  bytes: number;
+  source: "original" | "upload" | "remix";
+  createdAt: string;
+};
+
 type WebsiteImage = {
   id: string;
   file: string;
@@ -64,8 +73,28 @@ type WebsiteImage = {
   originalUrl: string;
   contentType: string;
   bytes: number;
+  source?: "original" | "upload" | "remix";
   replacedAt?: string;
+  history?: WebsiteImageVersion[];
 };
+
+const REMIXABLE_IMAGE_TYPES = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+]);
+
+function imageSourceLabel(source: WebsiteImage["source"]): string {
+  if (source === "upload") {
+    return "Your upload";
+  }
+
+  if (source === "remix") {
+    return "AI remix";
+  }
+
+  return "From your old site";
+}
 
 type WebsiteImagesState =
   | { status: "loading" }
@@ -204,6 +233,13 @@ export default function DashboardPage() {
     Record<string, WebsiteImagesState>
   >({});
   const [replacingImageId, setReplacingImageId] = useState<string | null>(null);
+  const [remixingImageId, setRemixingImageId] = useState<string | null>(null);
+  const [remixNoteImageId, setRemixNoteImageId] = useState<string | null>(null);
+  const [remixNotes, setRemixNotes] = useState<Record<string, string>>({});
+  const [historyOpenImageId, setHistoryOpenImageId] = useState<string | null>(
+    null,
+  );
+  const [revertingImageId, setRevertingImageId] = useState<string | null>(null);
   const [renamingWebsiteId, setRenamingWebsiteId] = useState<string | null>(null);
   const [deletingWebsiteId, setDeletingWebsiteId] = useState<string | null>(null);
   const [domainActionWebsiteId, setDomainActionWebsiteId] = useState<string | null>(null);
@@ -540,6 +576,106 @@ export default function DashboardPage() {
       );
     } finally {
       setReplacingImageId(null);
+    }
+  };
+
+  const updateImageInState = (websiteId: string, image: WebsiteImage) => {
+    setWebsiteImages((current) => {
+      const state = current[websiteId];
+
+      if (state?.status !== "ready") {
+        return current;
+      }
+
+      return {
+        ...current,
+        [websiteId]: {
+          status: "ready",
+          images: state.images.map((entry) =>
+            entry.id === image.id ? image : entry,
+          ),
+        },
+      };
+    });
+  };
+
+  const remixImage = async (websiteId: string, imageId: string) => {
+    setRemixingImageId(imageId);
+    setErrorMessage(null);
+
+    try {
+      const response = await fetch(
+        `/api/websites/${websiteId}/images/${imageId}/remix`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ note: remixNotes[imageId]?.trim() || undefined }),
+        },
+      );
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Failed to remix image");
+      }
+
+      updateImageInState(websiteId, payload.image as WebsiteImage);
+      setRemixNoteImageId(null);
+      setRemixNotes((current) => ({ ...current, [imageId]: "" }));
+
+      // Remixes count as a change for free accounts — keep the counter fresh.
+      if (payload.website) {
+        setWebsites((current) =>
+          current.map((entry) =>
+            entry.id === websiteId
+              ? {
+                  ...entry,
+                  freeEditsUsed: payload.website.freeEditsUsed,
+                  freeEditsLimit: payload.website.freeEditsLimit,
+                  freeEditsRemaining: payload.website.freeEditsRemaining,
+                }
+              : entry,
+          ),
+        );
+      }
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Failed to remix image",
+      );
+    } finally {
+      setRemixingImageId(null);
+    }
+  };
+
+  const revertImage = async (
+    websiteId: string,
+    imageId: string,
+    file: string,
+  ) => {
+    setRevertingImageId(imageId);
+    setErrorMessage(null);
+
+    try {
+      const response = await fetch(
+        `/api/websites/${websiteId}/images/${imageId}/revert`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ file }),
+        },
+      );
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Failed to restore image");
+      }
+
+      updateImageInState(websiteId, payload.image as WebsiteImage);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Failed to restore image",
+      );
+    } finally {
+      setRevertingImageId(null);
     }
   };
 
@@ -1109,8 +1245,9 @@ export default function DashboardPage() {
                               Your images
                             </p>
                             <p className="mt-1 text-xs text-black/45">
-                              Swap any photo for your own — changes go live on
-                              your website straight away.
+                              Swap any photo for your own, or let AI recreate
+                              it. Changes go live straight away — and we keep
+                              every old version so you can always go back.
                             </p>
                           </div>
                           {imagesState?.status === "ready" ? (
@@ -1149,59 +1286,190 @@ export default function DashboardPage() {
                           }
 
                           return (
-                            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                              {imagesState.images.map((image) => (
-                                <div
-                                  key={image.id}
-                                  className="overflow-hidden rounded-2xl border border-black/10 bg-white"
-                                >
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img
-                                    src={image.url}
-                                    alt=""
-                                    loading="lazy"
-                                    className="h-28 w-full bg-[#f0f4e7] object-cover"
-                                  />
-                                  <div className="flex items-center justify-between gap-2 p-2.5">
-                                    <span className="truncate text-[11px] font-medium text-black/40">
-                                      {image.replacedAt
-                                        ? "Your upload"
-                                        : "From your old site"}
-                                    </span>
-                                    <label
-                                      className={`shrink-0 cursor-pointer rounded-full border border-black/10 px-3 py-1 text-xs font-semibold transition hover:border-black/25 ${
-                                        replacingImageId === image.id
-                                          ? "cursor-wait opacity-50"
-                                          : ""
-                                      }`}
-                                    >
-                                      {replacingImageId === image.id
-                                        ? "Uploading…"
-                                        : "Replace"}
-                                      <input
-                                        type="file"
-                                        accept="image/png,image/jpeg,image/webp,image/gif,image/avif,image/svg+xml"
-                                        className="hidden"
-                                        disabled={replacingImageId !== null}
-                                        onChange={(event) => {
-                                          const file =
-                                            event.target.files?.[0];
+                            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                              {imagesState.images.map((image) => {
+                                const isBusy =
+                                  replacingImageId === image.id ||
+                                  remixingImageId === image.id ||
+                                  revertingImageId === image.id;
+                                const anyBusy =
+                                  replacingImageId !== null ||
+                                  remixingImageId !== null ||
+                                  revertingImageId !== null;
+                                const versions = image.history ?? [];
 
-                                          if (file) {
-                                            void replaceImage(
+                                return (
+                                  <div
+                                    key={image.id}
+                                    className="overflow-hidden rounded-2xl border border-black/10 bg-white"
+                                  >
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img
+                                      src={image.url}
+                                      alt=""
+                                      loading="lazy"
+                                      className="h-32 w-full bg-[#f0f4e7] object-cover"
+                                    />
+                                    <div className="p-2.5">
+                                      <div className="flex items-center justify-between gap-2">
+                                        <span className="truncate text-[11px] font-medium text-black/40">
+                                          {imageSourceLabel(image.source)}
+                                        </span>
+                                        {versions.length > 0 ? (
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              setHistoryOpenImageId((current) =>
+                                                current === image.id
+                                                  ? null
+                                                  : image.id,
+                                              )
+                                            }
+                                            className="shrink-0 text-[11px] font-semibold text-black/45 underline-offset-2 hover:underline"
+                                          >
+                                            {historyOpenImageId === image.id
+                                              ? "Hide previous"
+                                              : `Previous (${versions.length})`}
+                                          </button>
+                                        ) : null}
+                                      </div>
+
+                                      <div className="mt-2 flex flex-wrap gap-1.5">
+                                        <label
+                                          className={`cursor-pointer rounded-full border border-black/10 px-3 py-1 text-xs font-semibold transition hover:border-black/25 ${
+                                            isBusy ? "cursor-wait opacity-50" : ""
+                                          }`}
+                                        >
+                                          {replacingImageId === image.id
+                                            ? "Uploading…"
+                                            : "Replace"}
+                                          <input
+                                            type="file"
+                                            accept="image/png,image/jpeg,image/webp,image/gif,image/avif,image/svg+xml"
+                                            className="hidden"
+                                            disabled={anyBusy}
+                                            onChange={(event) => {
+                                              const file =
+                                                event.target.files?.[0];
+
+                                              if (file) {
+                                                void replaceImage(
+                                                  website.id,
+                                                  image.id,
+                                                  file,
+                                                );
+                                              }
+
+                                              event.target.value = "";
+                                            }}
+                                          />
+                                        </label>
+                                        {REMIXABLE_IMAGE_TYPES.has(
+                                          image.contentType,
+                                        ) ? (
+                                          <button
+                                            type="button"
+                                            disabled={anyBusy}
+                                            onClick={() =>
+                                              setRemixNoteImageId((current) =>
+                                                current === image.id
+                                                  ? null
+                                                  : image.id,
+                                              )
+                                            }
+                                            className="rounded-full border border-black/10 px-3 py-1 text-xs font-semibold transition hover:border-black/25 disabled:cursor-not-allowed disabled:opacity-50"
+                                          >
+                                            {remixingImageId === image.id
+                                              ? "Remixing…"
+                                              : "AI remix"}
+                                          </button>
+                                        ) : null}
+                                      </div>
+
+                                      {remixNoteImageId === image.id ? (
+                                        <form
+                                          className="mt-2 flex flex-col gap-1.5"
+                                          onSubmit={(event) => {
+                                            event.preventDefault();
+                                            void remixImage(
                                               website.id,
                                               image.id,
-                                              file,
                                             );
-                                          }
+                                          }}
+                                        >
+                                          <input
+                                            value={remixNotes[image.id] ?? ""}
+                                            onChange={(event) =>
+                                              setRemixNotes((current) => ({
+                                                ...current,
+                                                [image.id]: event.target.value,
+                                              }))
+                                            }
+                                            placeholder="Optional — e.g. remove the text"
+                                            maxLength={500}
+                                            className="h-9 rounded-full border border-black/10 bg-white px-3 text-xs outline-none placeholder:text-black/30 focus:border-black/30"
+                                          />
+                                          <button
+                                            type="submit"
+                                            disabled={anyBusy}
+                                            className="h-9 rounded-full bg-kiwi-green px-3 text-xs font-semibold text-black transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-50"
+                                          >
+                                            {remixingImageId === image.id
+                                              ? "Remixing — takes up to a minute…"
+                                              : isPro
+                                                ? "Remix this image"
+                                                : "Remix this image (uses 1 free change)"}
+                                          </button>
+                                        </form>
+                                      ) : null}
 
-                                          event.target.value = "";
-                                        }}
-                                      />
-                                    </label>
+                                      {historyOpenImageId === image.id &&
+                                      versions.length > 0 ? (
+                                        <div className="mt-2 grid grid-cols-3 gap-1.5">
+                                          {[...versions]
+                                            .reverse()
+                                            .map((version) => (
+                                              <div
+                                                key={version.file}
+                                                className="overflow-hidden rounded-xl border border-black/10"
+                                              >
+                                                <a
+                                                  href={version.url}
+                                                  target="_blank"
+                                                  title="Open full size"
+                                                >
+                                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                  <img
+                                                    src={version.url}
+                                                    alt=""
+                                                    loading="lazy"
+                                                    className="h-12 w-full bg-[#f0f4e7] object-cover"
+                                                  />
+                                                </a>
+                                                <button
+                                                  type="button"
+                                                  disabled={anyBusy}
+                                                  onClick={() =>
+                                                    void revertImage(
+                                                      website.id,
+                                                      image.id,
+                                                      version.file,
+                                                    )
+                                                  }
+                                                  className="w-full bg-white py-1 text-[10px] font-semibold text-black/60 transition hover:bg-[#f0f4e7] hover:text-black disabled:cursor-not-allowed disabled:opacity-50"
+                                                >
+                                                  {revertingImageId === image.id
+                                                    ? "Restoring…"
+                                                    : "Use this"}
+                                                </button>
+                                              </div>
+                                            ))}
+                                        </div>
+                                      ) : null}
+                                    </div>
                                   </div>
-                                </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           );
                         })()}
