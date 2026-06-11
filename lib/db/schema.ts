@@ -92,6 +92,7 @@ export const jobs = pgTable("jobs", {
   sourceUrl: text("source_url").notNull(),
   slug: text("slug").notNull().unique(),
   userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+  clientIp: text("client_ip"),
   brandName: text("brand_name"),
   status: jobStatusEnum("status").notNull().default("queued"),
   homepageAgentId: text("homepage_agent_id"),

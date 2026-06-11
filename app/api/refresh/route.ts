@@ -1,7 +1,12 @@
 import { after, NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth/session";
+import {
+  checkRefreshLimit,
+  clientIpFromRequest,
+} from "@/lib/jobs/rate-limit";
 import { createRefreshJob, failJob } from "@/lib/jobs/service";
+import { userHasProPlan } from "@/lib/websites/service";
 
 export const runtime = "nodejs";
 
@@ -37,7 +42,19 @@ export async function POST(request: Request) {
 
   try {
     const currentUser = await getCurrentUser();
-    const job = await createRefreshJob(sourceUrl, currentUser?.id ?? null);
+    const clientIp = clientIpFromRequest(request);
+
+    const limit = await checkRefreshLimit({
+      userId: currentUser?.id ?? null,
+      isPro: currentUser ? await userHasProPlan(currentUser.id) : false,
+      clientIp,
+    });
+
+    if (!limit.ok) {
+      return NextResponse.json({ error: limit.message }, { status: 429 });
+    }
+
+    const job = await createRefreshJob(sourceUrl, currentUser?.id ?? null, clientIp);
 
     after(async () => {
       try {

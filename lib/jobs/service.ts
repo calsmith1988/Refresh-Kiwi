@@ -50,6 +50,7 @@ function toJobResponse(
 export async function createRefreshJob(
   sourceUrl: string,
   userId?: string | null,
+  clientIp?: string | null,
 ): Promise<JobResponse> {
   const db = getDb();
   const baseSlug = slugFromUrl(sourceUrl);
@@ -70,6 +71,7 @@ export async function createRefreshJob(
       sourceUrl,
       slug,
       userId: userId ?? null,
+      clientIp: clientIp ?? null,
       status: "queued",
     })
     .returning();
