@@ -101,13 +101,30 @@ type WebsiteImagesState =
   | { status: "error" }
   | { status: "ready"; images: WebsiteImage[] };
 
-// Starter ideas for the edit box — tap to fill in, then tweak or send as-is.
-const EDIT_SUGGESTIONS = [
-  "Make the phone number bigger",
-  "Update the opening hours",
-  "Try different colours",
-  "Change the main photo",
-  "Make the writing simpler",
+// Starter ideas for the edit box. Chips ending in "…" prefill a sentence the
+// user finishes with their own details (the AI can't know their hours or
+// number); the others are complete instructions the AI has context for.
+const EDIT_SUGGESTIONS: Array<{ label: string; prompt: string }> = [
+  {
+    label: "Change the phone number to…",
+    prompt: "Change the phone number to ",
+  },
+  {
+    label: "Change the opening hours to…",
+    prompt: "Change the opening hours to ",
+  },
+  {
+    label: "Add a customer review…",
+    prompt: "Add this customer review: ",
+  },
+  {
+    label: "Make the phone number bigger",
+    prompt: "Make the phone number bigger and easier to spot",
+  },
+  {
+    label: "Try different colours",
+    prompt: "Try a different colour scheme that still suits the business",
+  },
 ];
 
 const EDIT_POLL_INTERVAL_MS = 5000;
@@ -1807,17 +1824,22 @@ export default function DashboardPage() {
                         <div className="mt-2.5 flex flex-wrap gap-1.5">
                           {EDIT_SUGGESTIONS.map((suggestion) => (
                             <button
-                              key={suggestion}
+                              key={suggestion.label}
                               type="button"
-                              onClick={() =>
+                              onClick={() => {
                                 setEditPrompts((current) => ({
                                   ...current,
-                                  [website.id]: suggestion,
-                                }))
-                              }
+                                  [website.id]: suggestion.prompt,
+                                }));
+                                // Put the cursor in the box so they can
+                                // finish the sentence straight away.
+                                document
+                                  .getElementById(`edit-${website.id}`)
+                                  ?.focus();
+                              }}
                               className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/60 transition hover:border-black/25 hover:text-black"
                             >
-                              {suggestion}
+                              {suggestion.label}
                             </button>
                           ))}
                         </div>
