@@ -759,8 +759,9 @@ export default function RefreshPage() {
                 </div>
 
                 <p className="mt-5 text-xs leading-5 text-black/45">
-                  You can leave this page — your refresh keeps going and will
-                  be waiting for you.
+                  {user
+                    ? "You can leave this page — your refresh keeps going and will be waiting in your dashboard."
+                    : "Keep this tab open — your new website will appear right here in a minute or two."}
                 </p>
               </div>
             </div>

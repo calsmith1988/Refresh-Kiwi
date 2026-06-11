@@ -101,6 +101,15 @@ type WebsiteImagesState =
   | { status: "error" }
   | { status: "ready"; images: WebsiteImage[] };
 
+// Starter ideas for the edit box — tap to fill in, then tweak or send as-is.
+const EDIT_SUGGESTIONS = [
+  "Make the phone number bigger",
+  "Update the opening hours",
+  "Try different colours",
+  "Change the main photo",
+  "Make the writing simpler",
+];
+
 const EDIT_POLL_INTERVAL_MS = 5000;
 const ACTIVE_EDIT_STATUSES = new Set(["queued", "running"]);
 const PRO_SUBSCRIPTION_STATUSES = new Set(["active", "trialing"]);
@@ -123,6 +132,17 @@ function pageHref(slug: string, pagePath: string): string {
   const normalizedPath = pathWithSlash === "/" ? "/index.html" : pathWithSlash;
 
   return `/preview/${slug}${normalizedPath}`;
+}
+
+function websiteAddress(website: Website): string {
+  if (website.customDomainStatus === "connected" && website.customDomain) {
+    return `https://${website.customDomain}`;
+  }
+
+  const origin =
+    typeof window !== "undefined" ? window.location.origin : "https://refresh.kiwi";
+
+  return `${origin}/preview/${website.slug}`;
 }
 
 function sourceHostname(sourceUrl: string): string {
@@ -240,6 +260,10 @@ export default function DashboardPage() {
     null,
   );
   const [revertingImageId, setRevertingImageId] = useState<string | null>(null);
+  const [copiedWebsiteId, setCopiedWebsiteId] = useState<string | null>(null);
+  const [confirmRegenerateId, setConfirmRegenerateId] = useState<string | null>(
+    null,
+  );
   const [renamingWebsiteId, setRenamingWebsiteId] = useState<string | null>(null);
   const [deletingWebsiteId, setDeletingWebsiteId] = useState<string | null>(null);
   const [domainActionWebsiteId, setDomainActionWebsiteId] = useState<string | null>(null);
@@ -576,6 +600,22 @@ export default function DashboardPage() {
       );
     } finally {
       setReplacingImageId(null);
+    }
+  };
+
+  const copyWebsiteAddress = async (website: Website) => {
+    const address = websiteAddress(website);
+
+    try {
+      await navigator.clipboard.writeText(address);
+      setCopiedWebsiteId(website.id);
+      window.setTimeout(() => {
+        setCopiedWebsiteId((current) =>
+          current === website.id ? null : current,
+        );
+      }, 2000);
+    } catch {
+      // Clipboard can be blocked — select-and-copy still works on the text.
     }
   };
 
@@ -1075,6 +1115,27 @@ export default function DashboardPage() {
                         <p className="mt-2 text-sm font-medium text-black/60">
                           {state.description}
                         </p>
+                        {state.canView ? (
+                          <div className="mt-3 flex max-w-full flex-wrap items-center gap-2 rounded-2xl bg-[#faf8f1] px-3 py-2">
+                            <span className="text-[11px] font-semibold uppercase tracking-wide text-black/35">
+                              Your website address
+                            </span>
+                            <a
+                              href={websiteAddress(website)}
+                              target="_blank"
+                              className="min-w-0 flex-1 truncate text-sm font-semibold text-black underline-offset-2 hover:underline"
+                            >
+                              {websiteAddress(website).replace(/^https?:\/\//, "")}
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => void copyWebsiteAddress(website)}
+                              className="shrink-0 rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-semibold transition hover:border-black/25"
+                            >
+                              {copiedWebsiteId === website.id ? "Copied!" : "Copy"}
+                            </button>
+                          </div>
+                        ) : null}
                         <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs font-medium text-black/45">
                           <span>
                             {isPro
@@ -1167,7 +1228,7 @@ export default function DashboardPage() {
                               : "Put it online — £10/mo"}
                           </button>
                         ) : null}
-                        {state.canView && isPro ? (
+                        {state.canView && isPro && generatedPages.length === 0 ? (
                           <button
                             type="button"
                             onClick={() => void generateAdditionalPages(website.id)}
@@ -1180,9 +1241,7 @@ export default function DashboardPage() {
                             {isGeneratingPages ||
                             generatingPagesWebsiteId === website.id
                               ? "Generating…"
-                              : generatedPages.length > 0
-                                ? "Regenerate pages"
-                                : "Generate pages"}
+                              : "Generate additional pages"}
                           </button>
                         ) : null}
                         <button
@@ -1234,6 +1293,51 @@ export default function DashboardPage() {
                             </Link>
                           ))}
                         </div>
+                        {isPro && state.canView ? (
+                          confirmRegenerateId === website.id ? (
+                            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-3">
+                              <p className="text-xs font-semibold leading-5 text-amber-800">
+                                This rebuilds every additional page from
+                                scratch — any changes you&apos;ve made to them
+                                will be lost. Your homepage stays as it is.
+                              </p>
+                              <div className="mt-2.5 flex flex-wrap gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setConfirmRegenerateId(null);
+                                    void generateAdditionalPages(website.id);
+                                  }}
+                                  className="rounded-full bg-[#141811] px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-black"
+                                >
+                                  Yes, start the pages again
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setConfirmRegenerateId(null)}
+                                  className="rounded-full border border-black/10 bg-white px-4 py-1.5 text-xs font-semibold text-black transition hover:border-black/25"
+                                >
+                                  Keep my pages
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setConfirmRegenerateId(website.id)}
+                              disabled={
+                                isGeneratingPages ||
+                                generatingPagesWebsiteId === website.id
+                              }
+                              className="mt-4 text-xs font-semibold text-black/45 underline-offset-2 hover:text-black hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              {isGeneratingPages ||
+                              generatingPagesWebsiteId === website.id
+                                ? "Rebuilding pages…"
+                                : "Start these pages again"}
+                            </button>
+                          )
+                        ) : null}
                       </div>
                     ) : null}
 
@@ -1700,6 +1804,23 @@ export default function DashboardPage() {
                         >
                           What would you like changed?
                         </label>
+                        <div className="mt-2.5 flex flex-wrap gap-1.5">
+                          {EDIT_SUGGESTIONS.map((suggestion) => (
+                            <button
+                              key={suggestion}
+                              type="button"
+                              onClick={() =>
+                                setEditPrompts((current) => ({
+                                  ...current,
+                                  [website.id]: suggestion,
+                                }))
+                              }
+                              className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/60 transition hover:border-black/25 hover:text-black"
+                            >
+                              {suggestion}
+                            </button>
+                          ))}
+                        </div>
                         <div className="mt-3 flex flex-col gap-3 sm:flex-row">
                           {website.pages.length > 0 ? (
                             <select
