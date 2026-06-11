@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 
+import { localizeWebsiteImages } from "@/lib/assets/localize";
 import {
   isCursorStartupError,
   runHomepagePhase,
@@ -76,11 +77,18 @@ export async function processRefreshJob(jobId: string): Promise<void> {
       status: "homepage_ready",
     });
 
-    await createWebsiteFromJob(jobId);
+    const website = await createWebsiteFromJob(jobId);
 
     console.info(
       `[refresh-kiwi] job ${jobId} homepage ready in ${elapsedSeconds(jobStartedAt)}s slug=${job.slug}`,
     );
+
+    // Signed-in users own their website immediately (no claim step), so
+    // bring hotlinked images in-house now. Anonymous previews are localised
+    // later, when the visitor signs up and claims the site.
+    if (website.userId) {
+      await localizeWebsiteImages(job.slug);
+    }
   } catch (error) {
     const technicalMessage = isCursorStartupError(error)
       ? `Cursor agent failed to start: ${error.message}`
