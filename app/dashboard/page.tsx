@@ -127,6 +127,29 @@ const EDIT_SUGGESTIONS: Array<{ label: string; prompt: string }> = [
   },
 ];
 
+// Shown while an edit is running, advancing with elapsed time so the page
+// always feels alive. The last message holds until the edit completes.
+const EDIT_PROGRESS_STAGES: Array<{ atMs: number; message: string }> = [
+  { atMs: 0, message: "Reading your change…" },
+  { atMs: 15_000, message: "Finding the right spot…" },
+  { atMs: 45_000, message: "Making it look right…" },
+  { atMs: 95_000, message: "Checking it over…" },
+  { atMs: 150_000, message: "Nearly there — finishing touches…" },
+];
+
+function editProgressMessage(createdAt: string, now: number): string {
+  const elapsed = now - new Date(createdAt).getTime();
+  let message = EDIT_PROGRESS_STAGES[0].message;
+
+  for (const stage of EDIT_PROGRESS_STAGES) {
+    if (elapsed >= stage.atMs) {
+      message = stage.message;
+    }
+  }
+
+  return message;
+}
+
 const EDIT_POLL_INTERVAL_MS = 5000;
 const ACTIVE_EDIT_STATUSES = new Set(["queued", "running"]);
 const PRO_SUBSCRIPTION_STATUSES = new Set(["active", "trialing"]);
@@ -278,6 +301,7 @@ export default function DashboardPage() {
   );
   const [revertingImageId, setRevertingImageId] = useState<string | null>(null);
   const [copiedWebsiteId, setCopiedWebsiteId] = useState<string | null>(null);
+  const [progressTick, setProgressTick] = useState(() => Date.now());
   const [confirmRegenerateId, setConfirmRegenerateId] = useState<string | null>(
     null,
   );
@@ -407,6 +431,21 @@ export default function DashboardPage() {
       window.clearInterval(timer);
     };
   }, [hasActiveEdit, hasActivePageGeneration]);
+
+  // Advances the in-progress edit messages between polls.
+  useEffect(() => {
+    if (!hasActiveEdit) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setProgressTick(Date.now());
+    }, 4000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [hasActiveEdit]);
 
   const openProSheet = () => {
     setErrorMessage(null);
@@ -1167,24 +1206,72 @@ export default function DashboardPage() {
                           ) : null}
                         </div>
                         {website.latestEditRequest ? (
-                          <p className="mt-3 text-xs font-medium text-black/45">
-                            Latest change:{" "}
-                            {website.latestEditRequest.status === "queued" ||
-                            website.latestEditRequest.status === "running"
-                              ? "working on it — usually takes a few minutes"
-                              : website.latestEditRequest.status === "complete"
-                                ? "done — open your website to see it"
-                                : "didn't work — please try again"}
-                            {website.latestEditRequest.status === "failed" &&
-                            website.latestEditRequest.errorMessage
-                              ? ` (${website.latestEditRequest.errorMessage})`
-                              : null}
-                          </p>
+                          website.latestEditRequest.status === "queued" ||
+                          website.latestEditRequest.status === "running" ? (
+                            <div className="mt-3 flex items-center gap-2">
+                              <Image
+                                src="/refresh-kiwi-favicon.png"
+                                alt=""
+                                width={18}
+                                height={18}
+                                className="kiwi-bob shrink-0"
+                              />
+                              <span
+                                key={editProgressMessage(
+                                  website.latestEditRequest.createdAt,
+                                  progressTick,
+                                )}
+                                className="edit-message-in text-xs font-medium text-black/55"
+                              >
+                                {editProgressMessage(
+                                  website.latestEditRequest.createdAt,
+                                  progressTick,
+                                )}
+                              </span>
+                            </div>
+                          ) : website.latestEditRequest.status === "complete" ? (
+                            <div className="mt-3 flex items-center gap-2">
+                              <Image
+                                src="/refresh-kiwi-favicon.png"
+                                alt=""
+                                width={18}
+                                height={18}
+                                className="kiwi-pop shrink-0"
+                              />
+                              <span className="text-xs font-semibold text-[#3d7a1f]">
+                                Change made —{" "}
+                                <Link
+                                  href={previewHref(website.slug)}
+                                  target="_blank"
+                                  className="underline underline-offset-2 hover:text-[#2d5c15]"
+                                >
+                                  take a look
+                                </Link>
+                              </span>
+                            </div>
+                          ) : (
+                            <p className="mt-3 text-xs font-medium text-amber-700">
+                              That change didn&apos;t work — please try again.
+                              {website.latestEditRequest.errorMessage
+                                ? ` (${website.latestEditRequest.errorMessage})`
+                                : null}
+                            </p>
+                          )
                         ) : null}
                         {isGeneratingPages ? (
-                          <p className="mt-3 text-xs font-medium text-black/45">
-                            Page generation is running in the background.
-                          </p>
+                          <div className="mt-3 flex items-center gap-2">
+                            <Image
+                              src="/refresh-kiwi-favicon.png"
+                              alt=""
+                              width={18}
+                              height={18}
+                              className="kiwi-bob shrink-0"
+                            />
+                            <span className="text-xs font-medium text-black/55">
+                              Building your extra pages — usually takes a few
+                              minutes…
+                            </span>
+                          </div>
                         ) : null}
                       </div>
 
