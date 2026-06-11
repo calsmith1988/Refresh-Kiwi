@@ -5,6 +5,7 @@ import {
   readWebsiteImageManifest,
   replaceLocalizedImage,
 } from "@/lib/assets/localize";
+import { optimizeImage } from "@/lib/assets/optimize";
 import { isRemixableImageType, remixImage } from "@/lib/assets/remix";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getDb, schema } from "@/lib/db";
@@ -117,11 +118,13 @@ export async function POST(request: Request, context: RouteContext) {
       note,
     });
 
+    const optimized = await optimizeImage(remixed.buffer, remixed.contentType);
+
     const updated = await replaceLocalizedImage({
       slug: website.slug,
       imageId,
-      buffer: remixed.buffer,
-      contentType: remixed.contentType,
+      buffer: optimized.buffer,
+      contentType: optimized.contentType,
       source: "remix",
     });
 

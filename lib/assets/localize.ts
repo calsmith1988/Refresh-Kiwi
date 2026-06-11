@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { optimizeImage } from "@/lib/assets/optimize";
 import { commitFilesToSitesRepo, type RepoFile } from "@/lib/github/commit";
 import { previewDirectory } from "@/lib/preview/paths";
 import { syncFromGithubMain } from "@/lib/preview/sync";
@@ -576,16 +577,20 @@ export async function localizeWebsiteImages(
             continue;
           }
 
-          const fileName = assetFileName(url, downloaded.contentType);
-          await saveAsset(baseDir, fileName, downloaded.buffer);
+          const optimized = await optimizeImage(
+            downloaded.buffer,
+            downloaded.contentType,
+          );
+          const fileName = assetFileName(url, optimized.contentType);
+          await saveAsset(baseDir, fileName, optimized.buffer);
 
           localized.push({
             id: fileName.replace(/\.[^.]+$/, ""),
             file: `assets/${fileName}`,
             url: localAssetUrl(slug, fileName),
             originalUrl: url,
-            contentType: downloaded.contentType,
-            bytes: downloaded.buffer.byteLength,
+            contentType: optimized.contentType,
+            bytes: optimized.buffer.byteLength,
           });
         }
       },

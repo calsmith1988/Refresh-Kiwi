@@ -5,6 +5,7 @@ import {
   MAX_UPLOAD_BYTES,
   replaceLocalizedImage,
 } from "@/lib/assets/localize";
+import { optimizeImage } from "@/lib/assets/optimize";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getOwnedWebsite } from "@/lib/websites/service";
 
@@ -57,11 +58,17 @@ export async function POST(request: Request, context: RouteContext) {
   }
 
   try {
+    // Phone photos can be huge — shrink and convert before storing.
+    const optimized = await optimizeImage(
+      Buffer.from(await file.arrayBuffer()),
+      file.type,
+    );
+
     const image = await replaceLocalizedImage({
       slug: website.slug,
       imageId,
-      buffer: Buffer.from(await file.arrayBuffer()),
-      contentType: file.type,
+      buffer: optimized.buffer,
+      contentType: optimized.contentType,
       source: "upload",
     });
 
