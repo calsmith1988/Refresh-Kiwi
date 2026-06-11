@@ -17,9 +17,14 @@ function toJobResponse(
   job: typeof jobs.$inferSelect,
   website: typeof websites.$inferSelect | null = null,
 ): JobResponse {
-  const previewUrl = PREVIEW_READY_STATUSES.has(job.status)
-    ? previewPublicPath(job.slug)
-    : null;
+  // A deleted (archived) or expired website no longer has a viewable preview,
+  // even though the underlying job finished successfully.
+  const websiteBlocked =
+    website?.status === "archived" || website?.status === "expired";
+  const previewUrl =
+    PREVIEW_READY_STATUSES.has(job.status) && !websiteBlocked
+      ? previewPublicPath(job.slug)
+      : null;
 
   return {
     id: job.id,
@@ -29,6 +34,7 @@ function toJobResponse(
     brandName: job.brandName,
     status: job.status,
     statusMessage: STATUS_MESSAGES[job.status],
+    websiteStatus: website?.status ?? null,
     previewUrl,
     expiresAt: website?.expiresAt.toISOString() ?? null,
     freeEditsRemaining: website

@@ -484,6 +484,20 @@ export default function DashboardPage() {
         throw new Error(payload.error ?? "Failed to delete website");
       }
 
+      // If the landing page still has this job stored for resume, drop it so
+      // the deleted website can't reappear there.
+      try {
+        const raw = window.localStorage.getItem("refresh-kiwi:active-job");
+        if (raw) {
+          const stored = JSON.parse(raw) as { jobId?: string };
+          if (stored.jobId === website.jobId) {
+            window.localStorage.removeItem("refresh-kiwi:active-job");
+          }
+        }
+      } catch {
+        // Storage unavailable — the landing page will clear it via the API.
+      }
+
       setManagingWebsiteId(null);
       await loadDashboard();
     } catch (error) {

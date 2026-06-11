@@ -32,6 +32,8 @@ export interface JobResponse {
   brandName: string | null;
   status: JobStatus;
   statusMessage: string;
+  /** Status of the saved website, when one exists for this job. */
+  websiteStatus: "preview" | "live" | "expired" | "archived" | null;
   previewUrl: string | null;
   expiresAt: string | null;
   freeEditsRemaining: number | null;

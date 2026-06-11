@@ -287,7 +287,14 @@ export default function RefreshPage() {
 
           const resumedJob = (await response.json()) as JobResponse;
 
-          if (resumedJob.status === "failed") {
+          // Stale jobs: the refresh failed, or the saved website has since
+          // been deleted or expired — don't resurrect those on the landing
+          // page.
+          if (
+            resumedJob.status === "failed" ||
+            resumedJob.websiteStatus === "archived" ||
+            resumedJob.websiteStatus === "expired"
+          ) {
             clearStoredJob();
             return;
           }

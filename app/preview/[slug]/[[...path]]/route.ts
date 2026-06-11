@@ -39,14 +39,31 @@ function rewriteLocalPreviewOrigins(
   return body.toString("utf8").replace(LOCAL_PREVIEW_ORIGIN_PATTERN, "");
 }
 
-function expiredPreviewResponse() {
+function blockedPreviewResponse(kind: "expired" | "removed") {
+  const content =
+    kind === "removed"
+      ? {
+          title: "Website removed | Refresh Kiwi",
+          heading: "This website has been removed.",
+          body: "It was deleted from its Refresh Kiwi account, so there's nothing to show here any more. Fancy a fresh one? It takes about 2 minutes.",
+          ctaHref: "/",
+          ctaLabel: "Refresh a new website",
+        }
+      : {
+          title: "Preview expired | Refresh Kiwi",
+          heading: "This preview has had its 7 days.",
+          body: "Good news: your refreshed website is saved and we can bring it back in one click. Go Pro (£10/month) and it goes live again — fresher than ever.",
+          ctaHref: "/dashboard",
+          ctaLabel: "Bring my website back",
+        };
+
   return new NextResponse(
     `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Preview expired | Refresh Kiwi</title>
+    <title>${content.title}</title>
     <style>
       body {
         align-items: center;
@@ -95,9 +112,9 @@ function expiredPreviewResponse() {
   </head>
   <body>
     <main>
-      <h1>This preview has had its 7 days.</h1>
-      <p>Good news: your refreshed website is saved and we can bring it back in one click. Go Pro (£10/month) and it goes live again — fresher than ever.</p>
-      <a href="/dashboard">Bring my website back</a>
+      <h1>${content.heading}</h1>
+      <p>${content.body}</p>
+      <a href="${content.ctaHref}">${content.ctaLabel}</a>
     </main>
   </body>
 </html>`,
@@ -121,7 +138,9 @@ export async function GET(_request: Request, context: RouteContext) {
   const websiteAccess = await getWebsiteAccessBySlug(slug);
 
   if (websiteAccess && !websiteAccess.isAllowed) {
-    return expiredPreviewResponse();
+    return blockedPreviewResponse(
+      websiteAccess.status === "archived" ? "removed" : "expired",
+    );
   }
 
   const file = await readPreviewFile(slug, pathSegments ?? []);
