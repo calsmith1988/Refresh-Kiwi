@@ -42,6 +42,8 @@ export type LocalizedImage = {
   originalUrl: string;
   contentType: string;
   bytes: number;
+  /** Set when the user has replaced this image via the dashboard */
+  replacedAt?: string;
 };
 
 export type ImageManifest = {
@@ -227,6 +229,131 @@ async function readExistingManifest(
   } catch {
     return null;
   }
+}
+
+/** Reads the image manifest for a site, pulling files from GitHub if the
+ * local preview copy is missing (e.g. after a redeploy). */
+export async function readWebsiteImageManifest(
+  slug: string,
+): Promise<ImageManifest | null> {
+  const baseDir = await ensureLocalSiteFiles(slug);
+
+  if (!baseDir) {
+    return null;
+  }
+
+  return readExistingManifest(baseDir);
+}
+
+export function isSupportedImageType(contentType: string): boolean {
+  return contentType in IMAGE_EXTENSIONS;
+}
+
+export const MAX_UPLOAD_BYTES = MAX_IMAGE_BYTES;
+
+/**
+ * Replaces a localised image with user-uploaded bytes. The replacement gets a
+ * fresh content-addressed filename (so stale caches can't show the old
+ * image), every HTML/CSS reference is rewritten, the manifest is updated, and
+ * the result is committed to the sites repo.
+ */
+export async function replaceLocalizedImage(params: {
+  slug: string;
+  imageId: string;
+  buffer: Buffer;
+  contentType: string;
+}): Promise<LocalizedImage> {
+  const { slug, imageId, buffer, contentType } = params;
+  const baseDir = await ensureLocalSiteFiles(slug);
+
+  if (!baseDir) {
+    throw new Error("Website files not found");
+  }
+
+  const manifest = await readExistingManifest(baseDir);
+  const image = manifest?.images.find((entry) => entry.id === imageId);
+
+  if (!manifest || !image) {
+    throw new Error("Image not found in this website");
+  }
+
+  const extension = IMAGE_EXTENSIONS[contentType];
+
+  if (!extension) {
+    throw new Error("Unsupported image type");
+  }
+
+  const hash = createHash("sha1").update(buffer).digest("hex").slice(0, 10);
+  const fileName = `img-${hash}${extension}`;
+  const oldUrl = image.url;
+  const newUrl = localAssetUrl(slug, fileName);
+
+  if (oldUrl === newUrl) {
+    // Identical bytes re-uploaded — nothing to do.
+    return image;
+  }
+
+  await saveAsset(baseDir, fileName, buffer);
+
+  // Rewrite every reference from the old asset URL to the new one.
+  const rewrittenFiles = new Map<string, string>();
+
+  for (const filePath of await listSiteTextFiles(baseDir)) {
+    const content = await readFile(filePath, "utf8");
+
+    if (!content.includes(oldUrl)) {
+      continue;
+    }
+
+    const rewritten = content.split(oldUrl).join(newUrl);
+    await writeFile(filePath, rewritten, "utf8");
+    rewrittenFiles.set(filePath, rewritten);
+  }
+
+  const updated: LocalizedImage = {
+    ...image,
+    file: `assets/${fileName}`,
+    url: newUrl,
+    contentType,
+    bytes: buffer.byteLength,
+    replacedAt: new Date().toISOString(),
+  };
+
+  manifest.images = manifest.images.map((entry) =>
+    entry.id === imageId ? updated : entry,
+  );
+
+  const manifestJson = JSON.stringify(manifest, null, 2);
+  await saveAsset(baseDir, "manifest.json", Buffer.from(manifestJson));
+
+  try {
+    const repoFiles: RepoFile[] = [
+      { path: `sites/${slug}/assets/${fileName}`, content: buffer },
+      {
+        path: `sites/${slug}/assets/manifest.json`,
+        content: Buffer.from(manifestJson),
+      },
+    ];
+
+    for (const [filePath, content] of rewrittenFiles) {
+      repoFiles.push({
+        path: `sites/${slug}/${path.relative(baseDir, filePath).split(path.sep).join("/")}`,
+        content: Buffer.from(content, "utf8"),
+      });
+    }
+
+    await commitFilesToSitesRepo(
+      repoFiles,
+      `Replace image ${imageId} for ${slug}`,
+    );
+  } catch (error) {
+    console.error(
+      `[refresh-kiwi] image replace: failed to commit ${slug} to sites repo:`,
+      error,
+    );
+  }
+
+  return updated;
 }
 
 export async function localizeWebsiteImages(

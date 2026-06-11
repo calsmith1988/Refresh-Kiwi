@@ -57,6 +57,21 @@ type Website = {
   }>;
 };
 
+type WebsiteImage = {
+  id: string;
+  file: string;
+  url: string;
+  originalUrl: string;
+  contentType: string;
+  bytes: number;
+  replacedAt?: string;
+};
+
+type WebsiteImagesState =
+  | { status: "loading" }
+  | { status: "error" }
+  | { status: "ready"; images: WebsiteImage[] };
+
 const EDIT_POLL_INTERVAL_MS = 5000;
 const ACTIVE_EDIT_STATUSES = new Set(["queued", "running"]);
 const PRO_SUBSCRIPTION_STATUSES = new Set(["active", "trialing"]);
@@ -182,6 +197,13 @@ export default function DashboardPage() {
   const [generatingPagesWebsiteId, setGeneratingPagesWebsiteId] = useState<string | null>(
     null,
   );
+  const [imagesPanelWebsiteId, setImagesPanelWebsiteId] = useState<string | null>(
+    null,
+  );
+  const [websiteImages, setWebsiteImages] = useState<
+    Record<string, WebsiteImagesState>
+  >({});
+  const [replacingImageId, setReplacingImageId] = useState<string | null>(null);
   const [renamingWebsiteId, setRenamingWebsiteId] = useState<string | null>(null);
   const [deletingWebsiteId, setDeletingWebsiteId] = useState<string | null>(null);
   const [domainActionWebsiteId, setDomainActionWebsiteId] = useState<string | null>(null);
@@ -435,6 +457,89 @@ export default function DashboardPage() {
       );
     } finally {
       setGeneratingPagesWebsiteId(null);
+    }
+  };
+
+  const loadWebsiteImages = async (websiteId: string) => {
+    setWebsiteImages((current) => ({
+      ...current,
+      [websiteId]: { status: "loading" },
+    }));
+
+    try {
+      const response = await fetch(`/api/websites/${websiteId}/images`);
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Failed to load images");
+      }
+
+      setWebsiteImages((current) => ({
+        ...current,
+        [websiteId]: { status: "ready", images: payload.images ?? [] },
+      }));
+    } catch {
+      setWebsiteImages((current) => ({
+        ...current,
+        [websiteId]: { status: "error" },
+      }));
+    }
+  };
+
+  const toggleImagesPanel = (websiteId: string) => {
+    const isOpening = imagesPanelWebsiteId !== websiteId;
+    setImagesPanelWebsiteId(isOpening ? websiteId : null);
+
+    if (isOpening && websiteImages[websiteId]?.status !== "ready") {
+      void loadWebsiteImages(websiteId);
+    }
+  };
+
+  const replaceImage = async (
+    websiteId: string,
+    imageId: string,
+    file: File,
+  ) => {
+    setReplacingImageId(imageId);
+    setErrorMessage(null);
+
+    try {
+      const body = new FormData();
+      body.append("file", file);
+
+      const response = await fetch(
+        `/api/websites/${websiteId}/images/${imageId}`,
+        { method: "POST", body },
+      );
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Failed to replace image");
+      }
+
+      setWebsiteImages((current) => {
+        const state = current[websiteId];
+
+        if (state?.status !== "ready") {
+          return current;
+        }
+
+        return {
+          ...current,
+          [websiteId]: {
+            status: "ready",
+            images: state.images.map((image) =>
+              image.id === imageId ? (payload.image as WebsiteImage) : image,
+            ),
+          },
+        };
+      });
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Failed to replace image",
+      );
+    } finally {
+      setReplacingImageId(null);
     }
   };
 
@@ -805,6 +910,7 @@ export default function DashboardPage() {
                   (page) => page.path !== "/",
                 );
                 const isGeneratingPages = website.jobStatus === "building_pages";
+                const imagesState = websiteImages[website.id];
 
                 return (
                   <article
@@ -889,6 +995,15 @@ export default function DashboardPage() {
                             className="rounded-full border border-black/10 bg-white px-5 py-2.5 text-sm font-semibold text-black transition hover:border-black/25"
                           >
                             Edit website
+                          </button>
+                        ) : null}
+                        {state.canEdit ? (
+                          <button
+                            type="button"
+                            onClick={() => toggleImagesPanel(website.id)}
+                            className="rounded-full border border-black/10 bg-white px-5 py-2.5 text-sm font-semibold text-black transition hover:border-black/25"
+                          >
+                            Images
                           </button>
                         ) : null}
                         {isPro && state.showKeepLive ? (
@@ -983,6 +1098,113 @@ export default function DashboardPage() {
                             </Link>
                           ))}
                         </div>
+                      </div>
+                    ) : null}
+
+                    {imagesPanelWebsiteId === website.id ? (
+                      <div className="mt-5 rounded-2xl bg-[#faf8f1] p-4">
+                        <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                          <div>
+                            <p className="text-sm font-semibold text-black">
+                              Your images
+                            </p>
+                            <p className="mt-1 text-xs text-black/45">
+                              Swap any photo for your own — changes go live on
+                              your website straight away.
+                            </p>
+                          </div>
+                          {imagesState?.status === "ready" ? (
+                            <span className="text-xs font-medium text-black/40">
+                              {imagesState.images.length}{" "}
+                              {pluralise(imagesState.images.length, "image")}
+                            </span>
+                          ) : null}
+                        </div>
+
+                        {(() => {
+                          if (!imagesState || imagesState.status === "loading") {
+                            return (
+                              <p className="mt-4 text-sm text-black/45">
+                                Loading your images…
+                              </p>
+                            );
+                          }
+
+                          if (imagesState.status === "error") {
+                            return (
+                              <p className="mt-4 text-sm text-black/45">
+                                We couldn&apos;t load your images just now —
+                                close this and try again.
+                              </p>
+                            );
+                          }
+
+                          if (imagesState.images.length === 0) {
+                            return (
+                              <p className="mt-4 text-sm text-black/45">
+                                No images found yet. They appear here shortly
+                                after your website is created or published.
+                              </p>
+                            );
+                          }
+
+                          return (
+                            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                              {imagesState.images.map((image) => (
+                                <div
+                                  key={image.id}
+                                  className="overflow-hidden rounded-2xl border border-black/10 bg-white"
+                                >
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={image.url}
+                                    alt=""
+                                    loading="lazy"
+                                    className="h-28 w-full bg-[#f0f4e7] object-cover"
+                                  />
+                                  <div className="flex items-center justify-between gap-2 p-2.5">
+                                    <span className="truncate text-[11px] font-medium text-black/40">
+                                      {image.replacedAt
+                                        ? "Your upload"
+                                        : "From your old site"}
+                                    </span>
+                                    <label
+                                      className={`shrink-0 cursor-pointer rounded-full border border-black/10 px-3 py-1 text-xs font-semibold transition hover:border-black/25 ${
+                                        replacingImageId === image.id
+                                          ? "cursor-wait opacity-50"
+                                          : ""
+                                      }`}
+                                    >
+                                      {replacingImageId === image.id
+                                        ? "Uploading…"
+                                        : "Replace"}
+                                      <input
+                                        type="file"
+                                        accept="image/png,image/jpeg,image/webp,image/gif,image/avif,image/svg+xml"
+                                        className="hidden"
+                                        disabled={replacingImageId !== null}
+                                        onChange={(event) => {
+                                          const file =
+                                            event.target.files?.[0];
+
+                                          if (file) {
+                                            void replaceImage(
+                                              website.id,
+                                              image.id,
+                                              file,
+                                            );
+                                          }
+
+                                          event.target.value = "";
+                                        }}
+                                      />
+                                    </label>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })()}
                       </div>
                     ) : null}
 
