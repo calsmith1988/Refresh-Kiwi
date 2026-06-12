@@ -931,7 +931,7 @@ export default function RefreshPage() {
           ) : (
             <div className="grid items-center gap-14 lg:grid-cols-[1.05fr_0.95fr]">
               <div>
-                <p className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-4 py-1.5 text-xs font-semibold text-black/55">
+                <p className="inline-flex items-center gap-2 rounded-full border border-black/5 bg-white/50 px-4 py-1.5 text-xs font-semibold text-black/45">
                   <span className="h-1.5 w-1.5 rounded-full bg-kiwi-green" />
                   For local businesses with tired old websites
                 </p>
@@ -954,7 +954,7 @@ export default function RefreshPage() {
 
                 <form
                   onSubmit={handleRefresh}
-                  className="mt-8 flex max-w-lg flex-col gap-2 rounded-[1.75rem] border border-black/10 bg-white p-2 shadow-xl shadow-black/5 sm:flex-row sm:items-center sm:rounded-full"
+                  className="mt-8 flex max-w-lg flex-col gap-2 rounded-[1.75rem] border-2 border-black/20 bg-white p-2 shadow-xl shadow-black/10 transition focus-within:border-black/40 sm:flex-row sm:items-center sm:rounded-full"
                 >
                   <label htmlFor="refresh-input" className="sr-only">
                     Your website address
