@@ -627,7 +627,7 @@ export default function RefreshPage() {
               aria-hidden
               className="rounded-full"
             />
-            <span className="font-montserrat text-lg font-bold">
+            <span className="hidden font-montserrat text-lg font-bold min-[400px]:inline">
               Refresh Kiwi
             </span>
           </Link>
@@ -660,7 +660,7 @@ export default function RefreshPage() {
               <button
                 type="button"
                 onClick={() => setAccountMode("login")}
-                className="hidden rounded-full px-3 py-2 text-sm font-medium text-black/60 transition hover:text-black sm:block"
+                className="rounded-full px-3 py-2 text-sm font-medium text-black/60 transition hover:text-black"
               >
                 Log in
               </button>
