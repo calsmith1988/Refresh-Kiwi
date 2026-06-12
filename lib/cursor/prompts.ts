@@ -34,6 +34,15 @@ OUTPUT: sites/${slug}/
 - Never invent local image paths — only reference image URLs you actually saw on the source site.
 - Fall back to CSS gradients, shapes, and illustration-like CSS treatments only if the source genuinely has no usable images.
 
+## Videos — embed or hotlink, never download
+
+- If the source site features videos, carry them into the refresh:
+  - YouTube/Vimeo embeds: re-embed the same video with a responsive iframe (same video ID; prefer https://www.youtube-nocookie.com/embed/<id> for YouTube). Add loading="lazy".
+  - Self-hosted video files (mp4/webm): reference the absolute https URL in a <video controls preload="metadata"> tag, with the original poster image URL if one exists.
+- Never download or copy video files — they are huge. Reference them in place only.
+- Give a featured video a proper home in the design (responsive 16:9 wrapper); never autoplay with sound.
+- Only use videos that actually exist on the source site — never invent video URLs or embed IDs. Skip purely decorative background videos unless they clearly add value.
+
 ## Brand colours — same brand, modern execution
 
 - Identify the brand colours from the original site before designing: the logo first, then header/nav background, buttons, and accent colours.
@@ -77,12 +86,13 @@ The homepage already exists. Your job is to crawl the source website for importa
 3. Crawl the source site's main navigation and obvious internal links. Prioritize useful pages like About, Services, Products, Case Studies, Contact, Pricing, FAQs, and location/service pages.
 4. Build up to 6 additional pages. If the source site has fewer meaningful pages, build only those. Do not invent filler pages.
 5. Images: hotlink the source site's real images by their absolute https URLs, exactly like the homepage does. Do not download image files. Never invent image paths — only use URLs you actually saw on the source site. Galleries and image-heavy pages may use as many source images as the design deserves.
-6. Match the homepage design system: same brand colours and palette, spacing, typography, visual style, header/nav/footer, and responsive behavior. Read styles.css first and reuse its tokens rather than introducing new colours.
-7. Update the homepage navigation to link to the generated pages.
-8. Update site.json with:
+6. Videos: same rule as the homepage — re-embed YouTube/Vimeo videos with responsive lazy-loaded iframes (youtube-nocookie for YouTube), and reference self-hosted video files by absolute https URL in <video controls preload="metadata"> tags. Never download video files or invent video URLs.
+7. Match the homepage design system: same brand colours and palette, spacing, typography, visual style, header/nav/footer, and responsive behavior. Read styles.css first and reuse its tokens rather than introducing new colours.
+8. Update the homepage navigation to link to the generated pages.
+9. Update site.json with:
    - pages: include "/" plus each generated page with path, title, and gated false
    - discoveredPages: include any meaningful internal pages you found but did not generate
-9. Commit the finished multi-page site to the repo.
+10. Commit the finished multi-page site to the repo.
 
 ## Quality bar
 
@@ -118,8 +128,9 @@ USER REQUEST: ${editPrompt}
    - Hotlinked absolute https URLs pointing at the original business website. Keep them as-is.
    - Local files under assets/ (referenced as ./assets/file.ext or /preview/${slug}/assets/file.ext). Keep those paths intact.
    If the edit asks for new imagery, prefer real https image URLs from the original source website (${sourceUrl}); never invent image paths.
-6. Update site.json only if the edit changes metadata, page titles, or page structure.
-7. Commit the finished edit to the repo.
+6. Videos may appear as YouTube/Vimeo iframes or hotlinked <video> tags pointing at the original site — preserve them as-is. If the edit asks for a new video, only use an embed or URL that exists on the source site or that the user provided; never download video files or invent video URLs.
+7. Update site.json only if the edit changes metadata, page titles, or page structure.
+8. Commit the finished edit to the repo.
 
 ## Quality bar
 
