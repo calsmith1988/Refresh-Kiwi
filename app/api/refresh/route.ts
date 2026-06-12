@@ -19,6 +19,14 @@ function normalizeUrl(raw: string): string | null {
 
   try {
     const parsed = new URL(trimmed.startsWith("http") ? trimmed : `https://${trimmed}`);
+
+    // "plumbing" parses as a valid URL but isn't a real website address —
+    // require at least domain.tld so typos fail instantly instead of after a
+    // two-minute generation attempt.
+    if (!parsed.hostname.includes(".")) {
+      return null;
+    }
+
     return parsed.toString();
   } catch {
     return null;
@@ -37,7 +45,10 @@ export async function POST(request: Request) {
   const sourceUrl = normalizeUrl(body.url ?? "");
 
   if (!sourceUrl) {
-    return NextResponse.json({ error: "A valid website URL is required" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Enter your website address — something like yourbusiness.co.uk" },
+      { status: 400 },
+    );
   }
 
   try {

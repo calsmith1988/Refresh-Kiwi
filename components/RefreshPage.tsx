@@ -961,8 +961,11 @@ export default function RefreshPage() {
                   </label>
                   <input
                     id="refresh-input"
-                    type="url"
+                    type="text"
                     inputMode="url"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
                     placeholder="yourwebsite.co.uk"
                     value={url}
                     onChange={(event) => setUrl(event.target.value)}
