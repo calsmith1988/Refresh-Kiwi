@@ -1339,9 +1339,24 @@ export default function RefreshPage() {
                   Refresh Kiwi
                 </span>
               </div>
-              <p className="text-xs text-black/45">
-                Same website, fresher skin.
-              </p>
+              <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-black/45 sm:justify-end">
+                <span>Same website, fresher skin.</span>
+                <a className="hover:text-black" href="/privacy-policy">
+                  Privacy
+                </a>
+                <a className="hover:text-black" href="/terms-of-service">
+                  Terms
+                </a>
+                <a className="hover:text-black" href="/cookie-policy">
+                  Cookies
+                </a>
+                <a className="hover:text-black" href="/refund-policy">
+                  Refunds
+                </a>
+                <a className="hover:text-black" href="/acceptable-use-policy">
+                  Acceptable use
+                </a>
+              </div>
             </div>
           </footer>
         </>
