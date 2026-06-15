@@ -1,32 +1,35 @@
 import { NextResponse } from "next/server";
 
 import { assertRateLimit, rateLimitKey } from "@/lib/auth/rateLimit";
-import { signUp, toAuthUserResponse } from "@/lib/auth/service";
+import { resetPassword } from "@/lib/auth/service";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
-    assertRateLimit(rateLimitKey(request, "signup"), {
-      limit: 5,
+    assertRateLimit(rateLimitKey(request, "reset-password"), {
+      limit: 8,
       windowMs: 15 * 60 * 1000,
     });
 
     const body = (await request.json()) as {
-      email?: string;
+      token?: string;
       password?: string;
-      name?: string;
     };
 
-    const user = await signUp({
-      email: body.email ?? "",
+    if (!body.token) {
+      return NextResponse.json({ error: "Reset token is required" }, { status: 400 });
+    }
+
+    await resetPassword({
+      token: body.token,
       password: body.password ?? "",
-      name: body.name ?? null,
     });
 
-    return NextResponse.json({ user: toAuthUserResponse(user) }, { status: 201 });
+    return NextResponse.json({ ok: true });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Signup failed";
+    const message =
+      error instanceof Error ? error.message : "Unable to reset password";
 
     return NextResponse.json({ error: message }, { status: 400 });
   }

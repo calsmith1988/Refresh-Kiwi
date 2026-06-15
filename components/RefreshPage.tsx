@@ -56,6 +56,7 @@ interface AuthUser {
   id: string;
   email: string;
   name: string | null;
+  emailVerified: boolean;
   plan: "free" | "pro";
   subscriptionStatus: string;
 }
@@ -1480,6 +1481,14 @@ export default function RefreshPage() {
                 ? "Need an account?"
                 : "Already have an account?"}
             </button>
+            {accountMode === "login" ? (
+              <a
+                href="/forgot-password"
+                className="ml-4 text-sm font-medium text-black/60 underline underline-offset-4"
+              >
+                Forgot password?
+              </a>
+            ) : null}
           </div>
         </div>
       ) : null}
