@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { after } from "next/server";
 
+import { assertRateLimit, rateLimitKey } from "@/lib/auth/rateLimit";
+import { rateLimitResponse } from "@/lib/auth/rateLimitResponse";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getDb, schema } from "@/lib/db";
 import { getOwnedWebsite, toWebsiteResponse, userHasProPlan } from "@/lib/websites/service";
@@ -22,6 +24,22 @@ export async function POST(request: Request, context: RouteContext) {
   }
 
   const { websiteId } = await context.params;
+
+  try {
+    await assertRateLimit(`${rateLimitKey(request, "edit-request")}:${user.id}`, {
+      limit: 10,
+      windowMs: 15 * 60 * 1000,
+      message: "Too many edit requests. Please wait a moment and try again.",
+    });
+  } catch (error) {
+    const limited = rateLimitResponse(error);
+    if (limited) {
+      return limited;
+    }
+
+    throw error;
+  }
+
   const website = await getOwnedWebsite({ websiteId, userId: user.id });
 
   if (!website) {

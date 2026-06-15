@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { assertRateLimit, rateLimitKey } from "@/lib/auth/rateLimit";
+import { rateLimitResponse } from "@/lib/auth/rateLimitResponse";
 import { getCurrentUser } from "@/lib/auth/session";
 import { resendVerificationEmail } from "@/lib/auth/service";
 
@@ -14,7 +15,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    assertRateLimit(rateLimitKey(request, "resend-verification"), {
+    await assertRateLimit(rateLimitKey(request, "resend-verification"), {
       limit: 3,
       windowMs: 15 * 60 * 1000,
     });
@@ -23,9 +24,14 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
+    const limited = rateLimitResponse(error);
+    if (limited) {
+      return limited;
+    }
+
     const message =
       error instanceof Error ? error.message : "Unable to resend verification email";
 
-    return NextResponse.json({ error: message }, { status: 429 });
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 }

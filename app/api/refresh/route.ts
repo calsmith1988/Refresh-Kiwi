@@ -1,5 +1,7 @@
 import { after, NextResponse } from "next/server";
 
+import { assertRateLimit, rateLimitKey } from "@/lib/auth/rateLimit";
+import { rateLimitResponse } from "@/lib/auth/rateLimitResponse";
 import { getCurrentUser } from "@/lib/auth/session";
 import {
   checkRefreshLimit,
@@ -54,6 +56,11 @@ export async function POST(request: Request) {
   try {
     const currentUser = await getCurrentUser();
     const clientIp = clientIpFromRequest(request);
+    await assertRateLimit(rateLimitKey(request, "refresh-create"), {
+      limit: currentUser ? 10 : 3,
+      windowMs: 10 * 60 * 1000,
+      message: "Too many refresh attempts. Please wait a moment and try again.",
+    });
 
     const limit = await checkRefreshLimit({
       userId: currentUser?.id ?? null,
@@ -83,6 +90,11 @@ export async function POST(request: Request) {
 
     return NextResponse.json(job, { status: 202 });
   } catch (error) {
+    const limited = rateLimitResponse(error);
+    if (limited) {
+      return limited;
+    }
+
     const message =
       error instanceof Error ? error.message : "Failed to create refresh job";
 

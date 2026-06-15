@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 
 import { assertRateLimit, rateLimitKey } from "@/lib/auth/rateLimit";
+import { rateLimitResponse } from "@/lib/auth/rateLimitResponse";
 import { resetPassword } from "@/lib/auth/service";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
-    assertRateLimit(rateLimitKey(request, "reset-password"), {
+    await assertRateLimit(rateLimitKey(request, "reset-password"), {
       limit: 8,
       windowMs: 15 * 60 * 1000,
     });
@@ -28,6 +29,11 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
+    const limited = rateLimitResponse(error);
+    if (limited) {
+      return limited;
+    }
+
     const message =
       error instanceof Error ? error.message : "Unable to reset password";
 
