@@ -39,6 +39,7 @@ export interface AuthUserResponse {
   name: string | null;
   emailVerified: boolean;
   twoFactorEnabled: boolean;
+  marketingEmailsEnabled: boolean;
   plan: "free" | "pro";
   subscriptionStatus: string;
 }
@@ -52,6 +53,7 @@ export function toAuthUserResponse(
     name: user.name,
     emailVerified: Boolean(user.emailVerifiedAt),
     twoFactorEnabled: user.twoFactorEnabled,
+    marketingEmailsEnabled: user.marketingEmailsEnabled,
     plan: user.plan,
     subscriptionStatus: user.subscriptionStatus,
   };

@@ -9,6 +9,7 @@ interface AuthUser {
   name: string | null;
   emailVerified: boolean;
   twoFactorEnabled: boolean;
+  marketingEmailsEnabled: boolean;
   plan: "free" | "pro";
   subscriptionStatus: string;
 }
@@ -241,6 +242,40 @@ export default function AccountPage() {
     }
   };
 
+  const updateEmailPreferences = async (enabled: boolean) => {
+    setMessage(null);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/email-preferences", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ marketingEmailsEnabled: enabled }),
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Unable to update email preferences");
+      }
+
+      setUser((current) =>
+        current
+          ? {
+              ...current,
+              marketingEmailsEnabled: payload.marketingEmailsEnabled,
+            }
+          : current,
+      );
+      setMessage("Email preferences updated.");
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Unable to update email preferences",
+      );
+    }
+  };
+
   if (isLoading) {
     return <main className="p-8">Loading...</main>;
   }
@@ -317,6 +352,25 @@ export default function AccountPage() {
             </button>
           </div>
         ) : null}
+
+        <div className="mt-6 rounded-[2rem] border border-black/10 bg-white p-6 shadow-lg">
+          <h2 className="text-xl font-bold">Email preferences</h2>
+          <p className="mt-1 text-sm leading-6 text-black/60">
+            Transactional emails like password resets and billing notices always
+            send. Follow-up emails are optional.
+          </p>
+          <label className="mt-4 flex items-center gap-3 text-sm font-medium">
+            <input
+              type="checkbox"
+              checked={user.marketingEmailsEnabled}
+              onChange={(event) =>
+                void updateEmailPreferences(event.target.checked)
+              }
+              className="h-4 w-4"
+            />
+            Receive follow-up emails about my previews and Kiwi Pro
+          </label>
+        </div>
 
         <div className="mt-6 rounded-[2rem] border border-black/10 bg-white p-6 shadow-lg">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

@@ -3,6 +3,12 @@ import Stripe from "stripe";
 
 import { getCurrentUser } from "@/lib/auth/session";
 import { getDb, schema } from "@/lib/db";
+import { sendOnce } from "@/lib/email/events";
+import {
+  sendPaymentFailedEmail,
+  sendSubscriptionCanceledEmail,
+  sendUpgradeSuccessEmail,
+} from "@/lib/email/service";
 import { getAppUrl, getStripeProPriceId, getStripeSecretKey } from "@/lib/stripe/config";
 
 const { users, websites } = schema;
@@ -79,8 +85,20 @@ async function updateUserSubscription(params: {
   }
 
   if (params.userId) {
-    await db.update(users).set(values).where(eq(users.id, params.userId));
+    const [user] = await db
+      .update(users)
+      .set(values)
+      .where(eq(users.id, params.userId))
+      .returning({ id: users.id, email: users.email });
     await syncWebsites(params.userId);
+
+    if (user) {
+      await sendSubscriptionEmail({
+        userId: user.id,
+        email: user.email,
+        status: params.status,
+      });
+    }
 
     return;
   }
@@ -90,10 +108,15 @@ async function updateUserSubscription(params: {
       .update(users)
       .set(values)
       .where(eq(users.stripeCustomerId, params.stripeCustomerId))
-      .returning({ id: users.id });
+      .returning({ id: users.id, email: users.email });
 
     if (user) {
       await syncWebsites(user.id);
+      await sendSubscriptionEmail({
+        userId: user.id,
+        email: user.email,
+        status: params.status,
+      });
     }
 
     return;
@@ -104,13 +127,36 @@ async function updateUserSubscription(params: {
       .update(users)
       .set(values)
       .where(eq(users.stripeSubscriptionId, params.stripeSubscriptionId))
-      .returning({ id: users.id });
+      .returning({ id: users.id, email: users.email });
 
     if (user) {
       await syncWebsites(user.id);
+      await sendSubscriptionEmail({
+        userId: user.id,
+        email: user.email,
+        status: params.status,
+      });
     }
 
     return;
+  }
+}
+
+async function sendSubscriptionEmail(params: {
+  userId: string;
+  email: string;
+  status: SubscriptionStatus;
+}) {
+  if (params.status === "active") {
+    await sendOnce({ type: "pro_started", userId: params.userId }, () =>
+      sendUpgradeSuccessEmail({ to: params.email }),
+    );
+  }
+
+  if (params.status === "canceled") {
+    await sendOnce({ type: "subscription_canceled", userId: params.userId }, () =>
+      sendSubscriptionCanceledEmail({ to: params.email }),
+    );
   }
 }
 
@@ -244,6 +290,21 @@ export async function handleSubscriptionDeleted(
 export async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
   const stripeCustomerId =
     typeof invoice.customer === "string" ? invoice.customer : null;
+
+  if (stripeCustomerId) {
+    const [user] = await getDb()
+      .select({ id: users.id, email: users.email })
+      .from(users)
+      .where(eq(users.stripeCustomerId, stripeCustomerId))
+      .limit(1);
+
+    if (user) {
+      await sendOnce(
+        { type: `payment_failed:${invoice.id}`, userId: user.id },
+        () => sendPaymentFailedEmail({ to: user.email }),
+      );
+    }
+  }
 
   await updateUserSubscription({
     stripeCustomerId,

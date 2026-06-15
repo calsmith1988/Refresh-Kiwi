@@ -6,11 +6,13 @@ import {
   runHomepagePhase,
 } from "@/lib/cursor/agent";
 import { getDb, schema } from "@/lib/db";
+import { sendOnce } from "@/lib/email/events";
+import { sendPreviewReadyEmail } from "@/lib/email/service";
 import { syncPreviewFromAgent } from "@/lib/preview/sync";
 import { createWebsiteFromJob } from "@/lib/websites/service";
 import type { JobStatus } from "@/lib/jobs/types";
 
-const { jobs } = schema;
+const { jobs, users } = schema;
 
 function elapsedSeconds(startedAt: number): string {
   return ((Date.now() - startedAt) / 1000).toFixed(1);
@@ -88,6 +90,27 @@ export async function processRefreshJob(jobId: string): Promise<void> {
     // later, when the visitor signs up and claims the site.
     if (website.userId) {
       await localizeWebsiteImages(job.slug);
+      const [user] = await db
+        .select({ email: users.email })
+        .from(users)
+        .where(eq(users.id, website.userId))
+        .limit(1);
+
+      if (user) {
+        await sendOnce(
+          {
+            type: "preview_ready",
+            userId: website.userId,
+            websiteId: website.id,
+          },
+          () =>
+            sendPreviewReadyEmail({
+              to: user.email,
+              brandName: website.brandName,
+              previewUrl: `/preview/${website.slug}/index.html`,
+            }),
+        );
+      }
     }
   } catch (error) {
     const technicalMessage = isCursorStartupError(error)

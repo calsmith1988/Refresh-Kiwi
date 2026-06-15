@@ -60,6 +60,9 @@ export const users = pgTable(
     emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
     twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
     twoFactorSecret: text("two_factor_secret"),
+    marketingEmailsEnabled: boolean("marketing_emails_enabled")
+      .notNull()
+      .default(true),
     plan: planEnum("plan").notNull().default("free"),
     stripeCustomerId: text("stripe_customer_id"),
     stripeSubscriptionId: text("stripe_subscription_id"),
@@ -214,6 +217,18 @@ export const websites = pgTable("websites", {
     .notNull()
     .defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const emailEvents = pgTable("email_events", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+  websiteId: uuid("website_id").references(() => websites.id, {
+    onDelete: "set null",
+  }),
+  type: text("type").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
 });
