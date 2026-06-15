@@ -1408,6 +1408,9 @@ export default function RefreshPage() {
               </div>
               <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-black/45 sm:justify-end">
                 <span>Same website, fresher skin.</span>
+                <a className="hover:text-black" href="/blog">
+                  Blog
+                </a>
                 <a className="hover:text-black" href="/privacy-policy">
                   Privacy
                 </a>
