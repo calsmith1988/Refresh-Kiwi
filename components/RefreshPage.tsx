@@ -57,6 +57,7 @@ interface AuthUser {
   email: string;
   name: string | null;
   emailVerified: boolean;
+  twoFactorEnabled: boolean;
   plan: "free" | "pro";
   subscriptionStatus: string;
 }
@@ -132,6 +133,10 @@ export default function RefreshPage() {
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authName, setAuthName] = useState("");
+  const [twoFactorChallengeToken, setTwoFactorChallengeToken] = useState<string | null>(
+    null,
+  );
+  const [twoFactorCode, setTwoFactorCode] = useState("");
   const [isSubmittingAuth, setIsSubmittingAuth] = useState(false);
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
   const [editPrompt, setEditPrompt] = useState("");
@@ -380,18 +385,79 @@ export default function RefreshPage() {
           }),
         },
       );
-      const payload = await response.json();
+      const payload = (await response.json()) as {
+        user?: AuthUser;
+        twoFactorRequired?: boolean;
+        challengeToken?: string;
+        error?: string;
+      };
 
       if (!response.ok) {
         throw new Error(payload.error ?? "Account request failed");
       }
 
+      if (payload.twoFactorRequired && payload.challengeToken) {
+        setTwoFactorChallengeToken(payload.challengeToken);
+        setAuthPassword("");
+        return;
+      }
+
+      if (!payload.user) {
+        throw new Error("Account request failed");
+      }
+
       setUser(payload.user);
       setAccountMode("closed");
+      setTwoFactorChallengeToken(null);
+      setTwoFactorCode("");
       await claimCurrentWebsite();
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : "Account request failed",
+      );
+    } finally {
+      setIsSubmittingAuth(false);
+    }
+  };
+
+  const handleTwoFactorSubmit = async (
+    event: React.FormEvent<HTMLFormElement>,
+  ) => {
+    event.preventDefault();
+
+    if (!twoFactorChallengeToken) {
+      return;
+    }
+
+    setIsSubmittingAuth(true);
+    setErrorMessage(null);
+
+    try {
+      const response = await fetch("/api/auth/2fa/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          challengeToken: twoFactorChallengeToken,
+          code: twoFactorCode,
+        }),
+      });
+      const payload = (await response.json()) as {
+        user?: AuthUser;
+        error?: string;
+      };
+
+      if (!response.ok || !payload.user) {
+        throw new Error(payload.error ?? "Invalid two-factor code");
+      }
+
+      setUser(payload.user);
+      setAccountMode("closed");
+      setTwoFactorChallengeToken(null);
+      setTwoFactorCode("");
+      await claimCurrentWebsite();
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Invalid two-factor code",
       );
     } finally {
       setIsSubmittingAuth(false);
@@ -1417,10 +1483,16 @@ export default function RefreshPage() {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 className="font-fraunces text-2xl font-semibold tracking-tight">
-                  {accountMode === "login" ? "Log in" : "Save your new website"}
+                  {twoFactorChallengeToken
+                    ? "Enter your 2FA code"
+                    : accountMode === "login"
+                      ? "Log in"
+                      : "Save your new website"}
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-black/60">
-                  {accountMode === "login"
+                  {twoFactorChallengeToken
+                    ? "Open your authenticator app, or use one of your recovery codes."
+                    : accountMode === "login"
                     ? "Welcome back — pick up where you left off."
                     : "Save it to a free account so it's still here tomorrow — and get 3 free changes included."}
                 </p>
@@ -1434,60 +1506,93 @@ export default function RefreshPage() {
               </button>
             </div>
 
-            <form onSubmit={handleAuthSubmit} className="mt-6 space-y-3">
-              {accountMode === "signup" ? (
+            {twoFactorChallengeToken ? (
+              <form onSubmit={handleTwoFactorSubmit} className="mt-6 space-y-3">
+                <input
+                  value={twoFactorCode}
+                  onChange={(event) => setTwoFactorCode(event.target.value)}
+                  placeholder="123456 or recovery code"
+                  autoComplete="one-time-code"
+                  className="h-12 w-full rounded-full border border-black/10 px-5 text-sm outline-none focus:border-black/30"
+                />
+                <button
+                  type="submit"
+                  disabled={isSubmittingAuth || !twoFactorCode.trim()}
+                  className="h-12 w-full rounded-full bg-kiwi-green px-5 text-sm font-bold transition hover:bg-kiwi-green-hover disabled:opacity-50"
+                >
+                  {isSubmittingAuth ? "Checking..." : "Verify and log in"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTwoFactorChallengeToken(null);
+                    setTwoFactorCode("");
+                  }}
+                  className="text-sm font-medium text-black/60 underline underline-offset-4"
+                >
+                  Back to login
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleAuthSubmit} className="mt-6 space-y-3">
+                {accountMode === "signup" ? (
                 <input
                   value={authName}
                   onChange={(event) => setAuthName(event.target.value)}
                   placeholder="Your name"
                   className="h-12 w-full rounded-full border border-black/10 px-5 text-sm outline-none focus:border-black/30"
                 />
-              ) : null}
-              <input
-                type="email"
-                value={authEmail}
-                onChange={(event) => setAuthEmail(event.target.value)}
-                placeholder="Email address"
-                className="h-12 w-full rounded-full border border-black/10 px-5 text-sm outline-none focus:border-black/30"
-              />
-              <input
-                type="password"
-                value={authPassword}
-                onChange={(event) => setAuthPassword(event.target.value)}
-                placeholder="Password"
-                className="h-12 w-full rounded-full border border-black/10 px-5 text-sm outline-none focus:border-black/30"
-              />
-              <button
-                type="submit"
-                disabled={isSubmittingAuth}
-                className="h-12 w-full rounded-full bg-kiwi-green px-5 text-sm font-bold transition hover:bg-kiwi-green-hover disabled:opacity-50"
-              >
-                {isSubmittingAuth
-                  ? "Please wait…"
-                  : accountMode === "login"
-                    ? "Log in"
-                    : "Create free account"}
-              </button>
-            </form>
+                ) : null}
+                <input
+                  type="email"
+                  value={authEmail}
+                  onChange={(event) => setAuthEmail(event.target.value)}
+                  placeholder="Email address"
+                  className="h-12 w-full rounded-full border border-black/10 px-5 text-sm outline-none focus:border-black/30"
+                />
+                <input
+                  type="password"
+                  value={authPassword}
+                  onChange={(event) => setAuthPassword(event.target.value)}
+                  placeholder="Password"
+                  className="h-12 w-full rounded-full border border-black/10 px-5 text-sm outline-none focus:border-black/30"
+                />
+                <button
+                  type="submit"
+                  disabled={isSubmittingAuth}
+                  className="h-12 w-full rounded-full bg-kiwi-green px-5 text-sm font-bold transition hover:bg-kiwi-green-hover disabled:opacity-50"
+                >
+                  {isSubmittingAuth
+                    ? "Please wait…"
+                    : accountMode === "login"
+                      ? "Log in"
+                      : "Create free account"}
+                </button>
+              </form>
+            )}
 
-            <button
-              type="button"
-              onClick={() =>
-                setAccountMode(accountMode === "login" ? "signup" : "login")
-              }
-              className="mt-4 text-sm font-medium text-black/60 underline underline-offset-4"
-            >
-              {accountMode === "login"
-                ? "Need an account?"
-                : "Already have an account?"}
-            </button>
-            {accountMode === "login" ? (
-              <a
-                href="/forgot-password"
-                className="ml-4 text-sm font-medium text-black/60 underline underline-offset-4"
-              >
-                Forgot password?
-              </a>
+            {!twoFactorChallengeToken ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setAccountMode(accountMode === "login" ? "signup" : "login")
+                  }
+                  className="mt-4 text-sm font-medium text-black/60 underline underline-offset-4"
+                >
+                  {accountMode === "login"
+                    ? "Need an account?"
+                    : "Already have an account?"}
+                </button>
+                {accountMode === "login" ? (
+                  <a
+                    href="/forgot-password"
+                    className="ml-4 text-sm font-medium text-black/60 underline underline-offset-4"
+                  >
+                    Forgot password?
+                  </a>
+                ) : null}
+              </>
             ) : null}
           </div>
         </div>

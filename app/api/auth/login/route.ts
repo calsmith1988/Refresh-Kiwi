@@ -18,12 +18,19 @@ export async function POST(request: Request) {
       password?: string;
     };
 
-    const user = await login({
+    const result = await login({
       email: body.email ?? "",
       password: body.password ?? "",
     });
 
-    return NextResponse.json({ user: toAuthUserResponse(user) });
+    if (result.twoFactorRequired) {
+      return NextResponse.json({
+        twoFactorRequired: true,
+        challengeToken: result.challengeToken,
+      });
+    }
+
+    return NextResponse.json({ user: toAuthUserResponse(result.user) });
   } catch (error) {
     const limited = rateLimitResponse(error);
     if (limited) {

@@ -11,7 +11,18 @@ import {
   consumePasswordResetToken,
   createEmailVerificationToken,
   createPasswordResetToken,
+  createTwoFactorChallenge,
+  getTwoFactorChallenge,
+  markTwoFactorChallengeUsed,
 } from "@/lib/auth/tokens";
+import {
+  buildTotpUri,
+  consumeRecoveryCode,
+  createRecoveryCodes,
+  createTwoFactorSecret,
+  replaceRecoveryCodes,
+  verifyTotpCode,
+} from "@/lib/auth/twoFactor";
 import { getDb, schema } from "@/lib/db";
 import {
   sendPasswordChangedEmail,
@@ -27,6 +38,7 @@ export interface AuthUserResponse {
   email: string;
   name: string | null;
   emailVerified: boolean;
+  twoFactorEnabled: boolean;
   plan: "free" | "pro";
   subscriptionStatus: string;
 }
@@ -39,6 +51,7 @@ export function toAuthUserResponse(
     email: user.email,
     name: user.name,
     emailVerified: Boolean(user.emailVerifiedAt),
+    twoFactorEnabled: user.twoFactorEnabled,
     plan: user.plan,
     subscriptionStatus: user.subscriptionStatus,
   };
@@ -111,6 +124,55 @@ export async function login(params: { email: string; password: string }) {
     throw new Error("Invalid email or password");
   }
 
+  if (user.twoFactorEnabled) {
+    return {
+      twoFactorRequired: true as const,
+      challengeToken: await createTwoFactorChallenge(user.id),
+    };
+  }
+
+  const token = await createSession(user.id);
+  await setSessionCookie(token);
+
+  return {
+    twoFactorRequired: false as const,
+    user,
+  };
+}
+
+export async function completeTwoFactorLogin(params: {
+  challengeToken: string;
+  code: string;
+}) {
+  const challenge = await getTwoFactorChallenge(params.challengeToken);
+
+  if (!challenge) {
+    throw new Error("Two-factor challenge is invalid or has expired");
+  }
+
+  const [user] = await getDb()
+    .select()
+    .from(users)
+    .where(eq(users.id, challenge.userId))
+    .limit(1);
+
+  if (!user || !user.twoFactorEnabled || !user.twoFactorSecret) {
+    throw new Error("Two-factor authentication is not enabled for this account");
+  }
+
+  const validTotp = verifyTotpCode({
+    secret: user.twoFactorSecret,
+    code: params.code,
+  });
+  const validRecoveryCode = validTotp
+    ? false
+    : await consumeRecoveryCode({ userId: user.id, code: params.code });
+
+  if (!validTotp && !validRecoveryCode) {
+    throw new Error("Invalid two-factor code");
+  }
+
+  await markTwoFactorChallengeUsed(challenge.id);
   const token = await createSession(user.id);
   await setSessionCookie(token);
 
@@ -126,6 +188,10 @@ export async function resendVerificationEmail(userId: string) {
 
   if (!user) {
     throw new Error("User not found");
+  }
+
+  if (user.twoFactorEnabled) {
+    throw new Error("Two-factor authentication is already enabled");
   }
 
   if (user.emailVerifiedAt) {
@@ -248,4 +314,124 @@ export async function changePassword(params: {
   await sendPasswordChangedEmail({ to: user.email });
 
   return updated;
+}
+
+export async function createTwoFactorSetup(userId: string) {
+  const [user] = await getDb()
+    .select()
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  const secret = createTwoFactorSecret();
+
+  await getDb()
+    .update(users)
+    .set({
+      twoFactorSecret: secret,
+      twoFactorEnabled: false,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, user.id));
+
+  return {
+    secret,
+    otpauthUrl: buildTotpUri({ email: user.email, secret }),
+  };
+}
+
+export async function enableTwoFactor(params: {
+  userId: string;
+  code: string;
+}) {
+  const [user] = await getDb()
+    .select()
+    .from(users)
+    .where(eq(users.id, params.userId))
+    .limit(1);
+
+  if (!user || !user.twoFactorSecret) {
+    throw new Error("Start two-factor setup first");
+  }
+
+  if (!verifyTotpCode({ secret: user.twoFactorSecret, code: params.code })) {
+    throw new Error("Invalid authenticator code");
+  }
+
+  const recoveryCodes = createRecoveryCodes();
+  await replaceRecoveryCodes({ userId: user.id, codes: recoveryCodes });
+
+  const [updated] = await getDb()
+    .update(users)
+    .set({
+      twoFactorEnabled: true,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, user.id))
+    .returning();
+
+  return { user: updated, recoveryCodes };
+}
+
+export async function disableTwoFactor(params: {
+  userId: string;
+  password: string;
+}) {
+  const [user] = await getDb()
+    .select()
+    .from(users)
+    .where(eq(users.id, params.userId))
+    .limit(1);
+
+  if (!user || !(await verifyPassword(params.password, user.passwordHash))) {
+    throw new Error("Password is incorrect");
+  }
+
+  await getDb()
+    .delete(schema.twoFactorRecoveryCodes)
+    .where(eq(schema.twoFactorRecoveryCodes.userId, user.id));
+
+  const [updated] = await getDb()
+    .update(users)
+    .set({
+      twoFactorEnabled: false,
+      twoFactorSecret: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, user.id))
+    .returning();
+
+  await clearUserSessions(user.id);
+  const token = await createSession(user.id);
+  await setSessionCookie(token);
+
+  return updated;
+}
+
+export async function regenerateRecoveryCodes(params: {
+  userId: string;
+  password: string;
+}) {
+  const [user] = await getDb()
+    .select()
+    .from(users)
+    .where(eq(users.id, params.userId))
+    .limit(1);
+
+  if (
+    !user ||
+    !user.twoFactorEnabled ||
+    !(await verifyPassword(params.password, user.passwordHash))
+  ) {
+    throw new Error("Password is incorrect");
+  }
+
+  const recoveryCodes = createRecoveryCodes();
+  await replaceRecoveryCodes({ userId: user.id, codes: recoveryCodes });
+
+  return recoveryCodes;
 }

@@ -58,6 +58,8 @@ export const users = pgTable(
     name: text("name"),
     passwordHash: text("password_hash").notNull(),
     emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
+    twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
+    twoFactorSecret: text("two_factor_secret"),
     plan: planEnum("plan").notNull().default("free"),
     stripeCustomerId: text("stripe_customer_id"),
     stripeSubscriptionId: text("stripe_subscription_id"),
@@ -129,6 +131,39 @@ export const passwordResetTokens = pgTable(
     ),
   }),
 );
+
+export const twoFactorChallenges = pgTable(
+  "two_factor_challenges",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    tokenHashIdx: uniqueIndex("two_factor_challenges_token_hash_idx").on(
+      table.tokenHash,
+    ),
+  }),
+);
+
+export const twoFactorRecoveryCodes = pgTable("two_factor_recovery_codes", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  codeHash: text("code_hash").notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
 
 export const jobs = pgTable("jobs", {
   id: uuid("id").defaultRandom().primaryKey(),

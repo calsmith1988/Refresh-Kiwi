@@ -15,6 +15,13 @@
       "when": 1781533470279,
       "tag": "0001_grey_iron_patriot",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1781536056996,
+      "tag": "0002_serious_dazzler",
+      "breakpoints": true
     }
   ]
 }

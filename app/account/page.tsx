@@ -8,6 +8,7 @@ interface AuthUser {
   email: string;
   name: string | null;
   emailVerified: boolean;
+  twoFactorEnabled: boolean;
   plan: "free" | "pro";
   subscriptionStatus: string;
 }
@@ -23,6 +24,13 @@ export default function AccountPage() {
   const [billingAction, setBillingAction] = useState<"checkout" | "portal" | null>(
     null,
   );
+  const [twoFactorSetup, setTwoFactorSetup] = useState<{
+    secret: string;
+    otpauthUrl: string;
+  } | null>(null);
+  const [twoFactorCode, setTwoFactorCode] = useState("");
+  const [twoFactorPassword, setTwoFactorPassword] = useState("");
+  const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
 
   useEffect(() => {
     void fetch("/api/auth/me")
@@ -135,6 +143,104 @@ export default function AccountPage() {
     }
   };
 
+  const startTwoFactorSetup = async () => {
+    setMessage(null);
+    setError(null);
+    setRecoveryCodes([]);
+
+    try {
+      const response = await fetch("/api/account/2fa/setup", { method: "POST" });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Unable to start 2FA setup");
+      }
+
+      setTwoFactorSetup(payload);
+      setMessage("Scan the setup link or enter the secret in your authenticator app.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to start 2FA setup");
+    }
+  };
+
+  const enableTwoFactor = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setMessage(null);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/account/2fa/enable", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: twoFactorCode }),
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Unable to enable 2FA");
+      }
+
+      setUser(payload.user);
+      setRecoveryCodes(payload.recoveryCodes ?? []);
+      setTwoFactorSetup(null);
+      setTwoFactorCode("");
+      setMessage("Two-factor authentication is now enabled.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to enable 2FA");
+    }
+  };
+
+  const disableTwoFactor = async () => {
+    setMessage(null);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/account/2fa/disable", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: twoFactorPassword }),
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Unable to disable 2FA");
+      }
+
+      setUser(payload.user);
+      setTwoFactorPassword("");
+      setRecoveryCodes([]);
+      setMessage("Two-factor authentication has been disabled.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to disable 2FA");
+    }
+  };
+
+  const regenerateRecoveryCodes = async () => {
+    setMessage(null);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/account/2fa/recovery-codes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: twoFactorPassword }),
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Unable to regenerate recovery codes");
+      }
+
+      setRecoveryCodes(payload.recoveryCodes ?? []);
+      setTwoFactorPassword("");
+      setMessage("New recovery codes generated. Save them now.");
+    } catch (caught) {
+      setError(
+        caught instanceof Error ? caught.message : "Unable to regenerate recovery codes",
+      );
+    }
+  };
+
   if (isLoading) {
     return <main className="p-8">Loading...</main>;
   }
@@ -211,6 +317,112 @@ export default function AccountPage() {
             </button>
           </div>
         ) : null}
+
+        <div className="mt-6 rounded-[2rem] border border-black/10 bg-white p-6 shadow-lg">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 className="text-xl font-bold">Two-factor authentication</h2>
+              <p className="mt-1 text-sm leading-6 text-black/60">
+                {user.twoFactorEnabled
+                  ? "2FA is enabled. You will need an authenticator code when logging in."
+                  : "Add an authenticator app code to protect your account."}
+              </p>
+            </div>
+            {!user.twoFactorEnabled ? (
+              <button
+                type="button"
+                onClick={() => void startTwoFactorSetup()}
+                className="rounded-full border border-black bg-kiwi-green px-5 py-3 text-sm font-semibold text-black"
+              >
+                Set up 2FA
+              </button>
+            ) : null}
+          </div>
+
+          {twoFactorSetup ? (
+            <form onSubmit={enableTwoFactor} className="mt-5 rounded-3xl bg-[#faf8f1] p-5">
+              <p className="text-sm font-semibold">Add this to your authenticator app</p>
+              <p className="mt-2 break-all rounded-2xl bg-white p-3 font-mono text-xs text-black/70">
+                {twoFactorSetup.secret}
+              </p>
+              <a
+                href={twoFactorSetup.otpauthUrl}
+                className="mt-3 inline-block text-sm font-medium underline"
+              >
+                Open authenticator setup link
+              </a>
+              <input
+                value={twoFactorCode}
+                onChange={(event) => setTwoFactorCode(event.target.value)}
+                placeholder="6-digit code"
+                autoComplete="one-time-code"
+                className="mt-4 h-11 w-full rounded-full border border-black/10 px-4 text-sm outline-none focus:border-black/30"
+              />
+              <button
+                disabled={!twoFactorCode.trim()}
+                className="mt-3 rounded-full border border-black bg-black px-5 py-3 text-sm font-semibold text-white disabled:opacity-50"
+              >
+                Verify and enable
+              </button>
+            </form>
+          ) : null}
+
+          {user.twoFactorEnabled ? (
+            <div className="mt-5 rounded-3xl bg-[#faf8f1] p-5">
+              <label
+                className="block text-sm font-medium"
+                htmlFor="two-factor-password"
+              >
+                Password
+              </label>
+              <input
+                id="two-factor-password"
+                type="password"
+                value={twoFactorPassword}
+                onChange={(event) => setTwoFactorPassword(event.target.value)}
+                placeholder="Confirm your password"
+                className="mt-2 h-11 w-full rounded-full border border-black/10 bg-white px-4 text-sm outline-none focus:border-black/30"
+              />
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={() => void regenerateRecoveryCodes()}
+                  disabled={!twoFactorPassword}
+                  className="rounded-full border border-black/10 bg-white px-5 py-3 text-sm font-semibold disabled:opacity-50"
+                >
+                  Regenerate recovery codes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void disableTwoFactor()}
+                  disabled={!twoFactorPassword}
+                  className="rounded-full border border-red-200 bg-white px-5 py-3 text-sm font-semibold text-red-700 disabled:opacity-50"
+                >
+                  Disable 2FA
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          {recoveryCodes.length > 0 ? (
+            <div className="mt-5 rounded-3xl border border-yellow-200 bg-yellow-50 p-5">
+              <p className="text-sm font-semibold">Save these recovery codes now</p>
+              <p className="mt-1 text-sm text-black/60">
+                Each code can be used once if you lose your authenticator app.
+              </p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                {recoveryCodes.map((code) => (
+                  <code
+                    key={code}
+                    className="rounded-xl bg-white px-3 py-2 text-sm font-semibold"
+                  >
+                    {code}
+                  </code>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
 
         <div className="mt-6 grid gap-6 md:grid-cols-2">
           <form

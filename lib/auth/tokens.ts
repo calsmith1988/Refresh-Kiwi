@@ -6,8 +6,9 @@ import { getDb, schema } from "@/lib/db";
 
 const VERIFICATION_TOKEN_HOURS = 24;
 const PASSWORD_RESET_TOKEN_MINUTES = 30;
+const TWO_FACTOR_CHALLENGE_MINUTES = 10;
 
-const { emailVerificationTokens, passwordResetTokens } = schema;
+const { emailVerificationTokens, passwordResetTokens, twoFactorChallenges } = schema;
 
 export function createRawToken(): string {
   return randomBytes(32).toString("base64url");
@@ -46,6 +47,18 @@ export async function createPasswordResetToken(userId: string): Promise<string> 
     userId,
     tokenHash: hashToken(token),
     expiresAt: minutesFromNow(PASSWORD_RESET_TOKEN_MINUTES),
+  });
+
+  return token;
+}
+
+export async function createTwoFactorChallenge(userId: string): Promise<string> {
+  const token = createRawToken();
+
+  await getDb().insert(twoFactorChallenges).values({
+    userId,
+    tokenHash: hashToken(token),
+    expiresAt: minutesFromNow(TWO_FACTOR_CHALLENGE_MINUTES),
   });
 
   return token;
@@ -101,4 +114,27 @@ export async function consumePasswordResetToken(token: string) {
     .where(eq(passwordResetTokens.id, storedToken.id));
 
   return storedToken;
+}
+
+export async function getTwoFactorChallenge(token: string) {
+  const [storedToken] = await getDb()
+    .select()
+    .from(twoFactorChallenges)
+    .where(
+      and(
+        eq(twoFactorChallenges.tokenHash, hashToken(token)),
+        gt(twoFactorChallenges.expiresAt, new Date()),
+        isNull(twoFactorChallenges.usedAt),
+      ),
+    )
+    .limit(1);
+
+  return storedToken ?? null;
+}
+
+export async function markTwoFactorChallengeUsed(challengeId: string) {
+  await getDb()
+    .update(twoFactorChallenges)
+    .set({ usedAt: new Date() })
+    .where(eq(twoFactorChallenges.id, challengeId));
 }
