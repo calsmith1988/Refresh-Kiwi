@@ -20,6 +20,9 @@ export default function AccountPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [billingAction, setBillingAction] = useState<"checkout" | "portal" | null>(
+    null,
+  );
 
   useEffect(() => {
     void fetch("/api/auth/me")
@@ -108,6 +111,30 @@ export default function AccountPage() {
     window.location.href = "/";
   };
 
+  const startBillingFlow = async () => {
+    const action = user?.plan === "pro" ? "portal" : "checkout";
+    setBillingAction(action);
+    setMessage(null);
+    setError(null);
+
+    try {
+      const response = await fetch(
+        action === "portal" ? "/api/stripe/portal" : "/api/stripe/checkout",
+        { method: "POST" },
+      );
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Unable to open billing");
+      }
+
+      window.location.href = payload.url;
+    } catch (caught) {
+      setBillingAction(null);
+      setError(caught instanceof Error ? caught.message : "Unable to open billing");
+    }
+  };
+
   if (isLoading) {
     return <main className="p-8">Loading...</main>;
   }
@@ -140,6 +167,34 @@ export default function AccountPage() {
         </button>
         <h1 className="mt-6 text-4xl font-bold tracking-tight">Account settings</h1>
         <p className="mt-2 text-sm text-black/60">{user.email}</p>
+
+        <div className="mt-6 rounded-[2rem] border border-black/10 bg-white p-6 shadow-lg">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-xl font-bold">Billing</h2>
+              <p className="mt-1 text-sm text-black/60">
+                Plan: <span className="font-semibold capitalize">{user.plan}</span>
+                {" · "}
+                Status:{" "}
+                <span className="font-semibold capitalize">
+                  {user.subscriptionStatus.replaceAll("_", " ")}
+                </span>
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void startBillingFlow()}
+              disabled={billingAction !== null}
+              className="rounded-full border border-black bg-kiwi-green px-5 py-3 text-sm font-semibold text-black disabled:opacity-50"
+            >
+              {billingAction
+                ? "Opening..."
+                : user.plan === "pro"
+                  ? "Manage billing"
+                  : "Go Pro"}
+            </button>
+          </div>
+        </div>
 
         {!user.emailVerified ? (
           <div className="mt-6 rounded-3xl border border-yellow-200 bg-yellow-50 p-5">

@@ -15,6 +15,10 @@ const PRO_SUBSCRIPTION_STATUSES = new Set<SubscriptionStatus>([
   "trialing",
 ]);
 
+function isProStatus(status: SubscriptionStatus): boolean {
+  return PRO_SUBSCRIPTION_STATUSES.has(status);
+}
+
 function normalizeSubscriptionStatus(
   status: Stripe.Subscription.Status,
 ): SubscriptionStatus {
@@ -37,20 +41,22 @@ async function updateUserSubscription(params: {
   status: SubscriptionStatus;
 }) {
   const db = getDb();
-  const plan: Plan = PRO_SUBSCRIPTION_STATUSES.has(params.status)
-    ? "pro"
-    : "free";
-  const values = {
+  const plan: Plan = isProStatus(params.status) ? "pro" : "free";
+  const values: Partial<typeof users.$inferInsert> = {
     plan,
     subscriptionStatus: params.status,
-    stripeCustomerId: params.stripeCustomerId ?? undefined,
-    stripeSubscriptionId: params.stripeSubscriptionId ?? undefined,
     updatedAt: new Date(),
   };
 
-  if (params.userId) {
-    await db.update(users).set(values).where(eq(users.id, params.userId));
+  if (params.stripeCustomerId) {
+    values.stripeCustomerId = params.stripeCustomerId;
+  }
 
+  if (params.stripeSubscriptionId) {
+    values.stripeSubscriptionId = params.stripeSubscriptionId;
+  }
+
+  async function syncWebsites(userId: string) {
     if (plan === "pro") {
       await db
         .update(websites)
@@ -59,16 +65,22 @@ async function updateUserSubscription(params: {
           publishedAt: new Date(),
           updatedAt: new Date(),
         })
-        .where(eq(websites.userId, params.userId));
-    } else {
-      await db
-        .update(websites)
-        .set({
-          status: "preview",
-          updatedAt: new Date(),
-        })
-        .where(eq(websites.userId, params.userId));
+        .where(eq(websites.userId, userId));
+      return;
     }
+
+    await db
+      .update(websites)
+      .set({
+        status: "preview",
+        updatedAt: new Date(),
+      })
+      .where(eq(websites.userId, userId));
+  }
+
+  if (params.userId) {
+    await db.update(users).set(values).where(eq(users.id, params.userId));
+    await syncWebsites(params.userId);
 
     return;
   }
@@ -80,23 +92,8 @@ async function updateUserSubscription(params: {
       .where(eq(users.stripeCustomerId, params.stripeCustomerId))
       .returning({ id: users.id });
 
-    if (user && plan === "pro") {
-      await db
-        .update(websites)
-        .set({
-          status: "live",
-          publishedAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .where(eq(websites.userId, user.id));
-    } else if (user) {
-      await db
-        .update(websites)
-        .set({
-          status: "preview",
-          updatedAt: new Date(),
-        })
-        .where(eq(websites.userId, user.id));
+    if (user) {
+      await syncWebsites(user.id);
     }
 
     return;
@@ -109,23 +106,8 @@ async function updateUserSubscription(params: {
       .where(eq(users.stripeSubscriptionId, params.stripeSubscriptionId))
       .returning({ id: users.id });
 
-    if (user && plan === "pro") {
-      await db
-        .update(websites)
-        .set({
-          status: "live",
-          publishedAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .where(eq(websites.userId, user.id));
-    } else if (user) {
-      await db
-        .update(websites)
-        .set({
-          status: "preview",
-          updatedAt: new Date(),
-        })
-        .where(eq(websites.userId, user.id));
+    if (user) {
+      await syncWebsites(user.id);
     }
 
     return;
@@ -192,7 +174,7 @@ export async function createBillingPortalSession(): Promise<string> {
   }
 
   if (!user.stripeCustomerId) {
-    throw new Error("No Stripe customer found for this account");
+    return createProCheckoutSession();
   }
 
   const session = await getStripeClient().billingPortal.sessions.create({
@@ -266,5 +248,27 @@ export async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
   await updateUserSubscription({
     stripeCustomerId,
     status: "past_due",
+  });
+}
+
+export async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
+  const stripeCustomerId =
+    typeof invoice.customer === "string" ? invoice.customer : null;
+  const stripeSubscriptionId =
+    typeof invoice.parent?.subscription_details?.subscription === "string"
+      ? invoice.parent.subscription_details.subscription
+      : null;
+
+  if (stripeSubscriptionId) {
+    const subscription = await getStripeClient().subscriptions.retrieve(
+      stripeSubscriptionId,
+    );
+    await handleSubscriptionUpdated(subscription);
+    return;
+  }
+
+  await updateUserSubscription({
+    stripeCustomerId,
+    status: "active",
   });
 }

@@ -6,6 +6,7 @@ import {
   getStripeClient,
   handleCheckoutSessionCompleted,
   handleInvoicePaymentFailed,
+  handleInvoicePaymentSucceeded,
   handleSubscriptionDeleted,
   handleSubscriptionUpdated,
 } from "@/lib/stripe/service";
@@ -51,6 +52,9 @@ export async function POST(request: Request) {
         break;
       case "invoice.payment_failed":
         await handleInvoicePaymentFailed(event.data.object);
+        break;
+      case "invoice.payment_succeeded":
+        await handleInvoicePaymentSucceeded(event.data.object);
         break;
       default:
         break;
