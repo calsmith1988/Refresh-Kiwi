@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 
 const CONSENT_STORAGE_KEY = "refresh_kiwi_cookie_consent";
 const CONSENT_EVENT = "refresh-kiwi-cookie-consent";
+const PIXEL_READY_EVENT = "refresh-kiwi-meta-pixel-ready";
 
 type CookieConsent = {
   analytics: boolean;
@@ -51,6 +52,31 @@ export default function MetaPixel({ pixelId }: { pixelId?: string | null }) {
   }, [applyConsent, isReady, pixelId]);
 
   useEffect(() => {
+    function handlePixelReady() {
+      setIsReady(true);
+      applyConsent();
+    }
+
+    if (window.fbq) {
+      handlePixelReady();
+    }
+
+    const timer = window.setInterval(() => {
+      if (window.fbq) {
+        handlePixelReady();
+        window.clearInterval(timer);
+      }
+    }, 250);
+
+    window.addEventListener(PIXEL_READY_EVENT, handlePixelReady);
+
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener(PIXEL_READY_EVENT, handlePixelReady);
+    };
+  }, [applyConsent]);
+
+  useEffect(() => {
     const fbq = window.fbq;
 
     if (!pixelId || !isReady || !fbq || !hasMarketingConsent()) {
@@ -91,6 +117,7 @@ export default function MetaPixel({ pixelId }: { pixelId?: string | null }) {
         'https://connect.facebook.net/en_US/fbevents.js');
         fbq('consent', '${initialPixelConsent}');
         fbq('init', '${pixelId}');
+        window.dispatchEvent(new Event('${PIXEL_READY_EVENT}'));
       `}
     </Script>
   );
