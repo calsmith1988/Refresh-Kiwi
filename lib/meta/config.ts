@@ -1,5 +1,5 @@
 export function getMetaPixelId(): string | null {
-  return process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim() || null;
+  return process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim() || "1474982430622665";
 }
 
 export function getMetaConversionsApiAccessToken(): string | null {

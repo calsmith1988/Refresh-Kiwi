@@ -7,7 +7,8 @@ import "./globals.css";
 
 const gaMeasurementId =
   process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim() || "G-0J6KNZCKDF";
-const metaPixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim() || null;
+const metaPixelId =
+  process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim() || "1474982430622665";
 
 export const metadata: Metadata = {
   metadataBase: new URL(
