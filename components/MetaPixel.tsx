@@ -116,6 +116,7 @@ export default function MetaPixel({ pixelId }: { pixelId?: string | null }) {
         s.parentNode.insertBefore(t,s)}(window, document,'script',
         'https://connect.facebook.net/en_US/fbevents.js');
         fbq('consent', '${initialPixelConsent}');
+        fbq('set', 'autoConfig', false, '${pixelId}');
         fbq('init', '${pixelId}');
         window.dispatchEvent(new Event('${PIXEL_READY_EVENT}'));
       `}
