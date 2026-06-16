@@ -274,73 +274,83 @@ export default function RefreshPage() {
   );
 
   useEffect(() => {
+    let cancelled = false;
+
     void fetch("/api/auth/me")
       .then((response) => response.json())
       .then((payload: { user: AuthUser | null }) => {
+        if (cancelled) {
+          return;
+        }
+
         setUser(payload.user);
+
+        // "/?new=1" means the user explicitly wants to start a fresh refresh
+        // (e.g. "Add website" from the dashboard) — don't resume the last job.
+        const params = new URLSearchParams(window.location.search);
+        if (params.has("new")) {
+          clearStoredJob();
+          window.history.replaceState(null, "", "/");
+          return;
+        }
+
+        // Logging out should put the landing page back into anonymous mode,
+        // not resurrect a previously claimed/generated website from storage.
+        if (!payload.user) {
+          clearStoredJob();
+          return;
+        }
+
+        // Resume an in-flight or finished refresh after a page reload, so users
+        // (and accidental tab refreshes) never lose their result.
+        const stored = readStoredJob();
+        if (stored) {
+          setUrl((current) => current || stored.url);
+
+          void fetch(`/api/refresh/${stored.jobId}`)
+            .then(async (response) => {
+              if (!response.ok) {
+                clearStoredJob();
+                return;
+              }
+
+              const resumedJob = (await response.json()) as JobResponse;
+
+              // Stale jobs: the refresh failed, or the saved website has since
+              // been deleted or expired — don't resurrect those on the landing
+              // page.
+              if (
+                resumedJob.status === "failed" ||
+                resumedJob.websiteStatus === "archived" ||
+                resumedJob.websiteStatus === "expired"
+              ) {
+                clearStoredJob();
+                return;
+              }
+
+              setJob(resumedJob);
+
+              if (!HOMEPAGE_READY_STATUSES.has(resumedJob.status)) {
+                setIsRefreshing(true);
+                setStatusMessageIndex(0);
+                startProgressTimers();
+                beginPolling(resumedJob.id);
+              } else if (!TERMINAL_STATUSES.has(resumedJob.status)) {
+                beginPolling(resumedJob.id);
+              }
+            })
+            .catch(() => {
+              // Leave the stored job in place; a later signed-in visit may reach the API.
+            });
+        }
       })
       .catch(() => {
         setUser(null);
+        clearStoredJob();
       });
 
-    // "/?new=1" means the user explicitly wants to start a fresh refresh
-    // (e.g. "Add website" from the dashboard) — don't resume the last job.
-    const params = new URLSearchParams(window.location.search);
-    if (params.has("new")) {
-      clearStoredJob();
-      window.history.replaceState(null, "", "/");
-      return () => {
-        stopPolling();
-        stopEditPolling();
-        stopTimer();
-        stopStatusRotation();
-      };
-    }
-
-    // Resume an in-flight or finished refresh after a page reload, so users
-    // (and accidental tab refreshes) never lose their result.
-    const stored = readStoredJob();
-    if (stored) {
-      setUrl((current) => current || stored.url);
-
-      void fetch(`/api/refresh/${stored.jobId}`)
-        .then(async (response) => {
-          if (!response.ok) {
-            clearStoredJob();
-            return;
-          }
-
-          const resumedJob = (await response.json()) as JobResponse;
-
-          // Stale jobs: the refresh failed, or the saved website has since
-          // been deleted or expired — don't resurrect those on the landing
-          // page.
-          if (
-            resumedJob.status === "failed" ||
-            resumedJob.websiteStatus === "archived" ||
-            resumedJob.websiteStatus === "expired"
-          ) {
-            clearStoredJob();
-            return;
-          }
-
-          setJob(resumedJob);
-
-          if (!HOMEPAGE_READY_STATUSES.has(resumedJob.status)) {
-            setIsRefreshing(true);
-            setStatusMessageIndex(0);
-            startProgressTimers();
-            beginPolling(resumedJob.id);
-          } else if (!TERMINAL_STATUSES.has(resumedJob.status)) {
-            beginPolling(resumedJob.id);
-          }
-        })
-        .catch(() => {
-          // Leave the stored job in place; a later visit may reach the API.
-        });
-    }
-
     return () => {
+      cancelled = true;
       stopPolling();
       stopEditPolling();
       stopTimer();

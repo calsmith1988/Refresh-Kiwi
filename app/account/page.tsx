@@ -117,6 +117,7 @@ export default function AccountPage() {
 
   const logout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
+    window.localStorage.removeItem("refresh-kiwi:active-job");
     window.location.href = "/";
   };
 
