@@ -1,7 +1,6 @@
 "use client";
 
 import Script from "next/script";
-import { useEffect, useState } from "react";
 
 const CONSENT_STORAGE_KEY = "refresh_kiwi_cookie_consent";
 
@@ -9,23 +8,23 @@ type CookieConsent = {
   analytics: boolean;
 };
 
-function hasAnalyticsConsent(): boolean {
+function initialConsentState(): "granted" | "denied" {
   if (typeof window === "undefined") {
-    return false;
+    return "denied";
   }
 
   try {
     const stored = window.localStorage.getItem(CONSENT_STORAGE_KEY);
 
     if (!stored) {
-      return false;
+      return "denied";
     }
 
     const parsed = JSON.parse(stored) as Partial<CookieConsent>;
 
-    return parsed.analytics === true;
+    return parsed.analytics === true ? "granted" : "denied";
   } catch {
-    return false;
+    return "denied";
   }
 }
 
@@ -34,26 +33,7 @@ export default function GoogleAnalytics({
 }: {
   measurementId?: string;
 }) {
-  const [canLoadAnalytics, setCanLoadAnalytics] = useState(false);
-
-  useEffect(() => {
-    setCanLoadAnalytics(hasAnalyticsConsent());
-
-    function handleConsentChange() {
-      setCanLoadAnalytics(hasAnalyticsConsent());
-    }
-
-    window.addEventListener("refresh-kiwi-cookie-consent", handleConsentChange);
-
-    return () => {
-      window.removeEventListener(
-        "refresh-kiwi-cookie-consent",
-        handleConsentChange,
-      );
-    };
-  }, []);
-
-  if (!measurementId || !canLoadAnalytics) {
+  if (!measurementId) {
     return null;
   }
 
@@ -67,8 +47,16 @@ export default function GoogleAnalytics({
         {`
           window.dataLayer = window.dataLayer || [];
           function gtag(){dataLayer.push(arguments);}
+          gtag('consent', 'default', {
+            analytics_storage: '${initialConsentState()}',
+            ad_storage: 'denied',
+            ad_user_data: 'denied',
+            ad_personalization: 'denied'
+          });
           gtag('js', new Date());
-          gtag('config', '${measurementId}');
+          gtag('config', '${measurementId}', {
+            anonymize_ip: true
+          });
         `}
       </Script>
     </>

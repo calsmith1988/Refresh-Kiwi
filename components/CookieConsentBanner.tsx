@@ -33,7 +33,20 @@ function saveConsent(analytics: boolean) {
   };
 
   window.localStorage.setItem(CONSENT_STORAGE_KEY, JSON.stringify(consent));
+  window.gtag?.("consent", "update", {
+    analytics_storage: analytics ? "granted" : "denied",
+  });
   window.dispatchEvent(new Event(CONSENT_EVENT));
+}
+
+declare global {
+  interface Window {
+    gtag?: (
+      command: "consent",
+      action: "update",
+      params: { analytics_storage: "granted" | "denied" },
+    ) => void;
+  }
 }
 
 export default function CookieConsentBanner() {
