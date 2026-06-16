@@ -31,6 +31,23 @@ function shouldTrackViewContent(pathname: string): boolean {
   return pathname === "/" || pathname.startsWith("/blog");
 }
 
+function trackPageEvents(pathname: string) {
+  const fbq = window.fbq;
+
+  if (!fbq || !hasMarketingConsent()) {
+    return;
+  }
+
+  fbq("track", "PageView");
+
+  if (shouldTrackViewContent(pathname)) {
+    fbq("track", "ViewContent", {
+      content_name: pathname === "/" ? "Homepage" : "Blog content",
+      content_category: pathname.startsWith("/blog") ? "Blog" : "Landing page",
+    });
+  }
+}
+
 export default function MetaPixel({ pixelId }: { pixelId?: string | null }) {
   const pathname = usePathname();
   const [isReady, setIsReady] = useState(false);
@@ -46,10 +63,18 @@ export default function MetaPixel({ pixelId }: { pixelId?: string | null }) {
     }
 
     applyConsent();
-    window.addEventListener(CONSENT_EVENT, applyConsent);
 
-    return () => window.removeEventListener(CONSENT_EVENT, applyConsent);
-  }, [applyConsent, isReady, pixelId]);
+    function handleConsentChange() {
+      applyConsent();
+      trackPageEvents(pathname);
+    }
+
+    window.addEventListener(CONSENT_EVENT, handleConsentChange);
+
+    return () => {
+      window.removeEventListener(CONSENT_EVENT, handleConsentChange);
+    };
+  }, [applyConsent, isReady, pathname, pixelId]);
 
   useEffect(() => {
     function handlePixelReady() {
@@ -77,20 +102,11 @@ export default function MetaPixel({ pixelId }: { pixelId?: string | null }) {
   }, [applyConsent]);
 
   useEffect(() => {
-    const fbq = window.fbq;
-
-    if (!pixelId || !isReady || !fbq || !hasMarketingConsent()) {
+    if (!pixelId || !isReady) {
       return;
     }
 
-    fbq("track", "PageView");
-
-    if (shouldTrackViewContent(pathname)) {
-      fbq("track", "ViewContent", {
-        content_name: pathname === "/" ? "Homepage" : "Blog content",
-        content_category: pathname.startsWith("/blog") ? "Blog" : "Landing page",
-      });
-    }
+    trackPageEvents(pathname);
   }, [isReady, pathname, pixelId]);
 
   if (!pixelId) {
