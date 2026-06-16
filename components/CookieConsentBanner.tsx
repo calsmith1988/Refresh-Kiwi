@@ -97,8 +97,8 @@ export default function CookieConsentBanner() {
           </h2>
           <p className="mt-2 text-sm leading-6 text-black/60">
             We use essential cookies to run the site. With your permission, we
-            also use Google Analytics to understand what people read and improve
-            the service.
+            also use Google Analytics and Meta Pixel to understand what people
+            read, improve the service, and measure ads or campaigns.
           </p>
           <label className="mt-4 flex items-start gap-3 text-sm text-black/70">
             <input

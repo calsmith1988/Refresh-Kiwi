@@ -7,6 +7,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import CookieSettingsButton from "@/components/CookieSettingsButton";
 import type { JobResponse } from "@/lib/jobs/types";
+import {
+  createMetaEventId,
+  trackMetaBrowserEvent,
+} from "@/lib/meta/browser";
 
 const KiwiPitCanvas = dynamic(() => import("@/components/KiwiPitCanvas"), {
   ssr: false,
@@ -496,15 +500,28 @@ export default function RefreshPage() {
 
   const startCheckout = async () => {
     setIsStartingCheckout(true);
+    const metaEventId = createMetaEventId("checkout");
 
     try {
-      const response = await fetch("/api/stripe/checkout", { method: "POST" });
+      const response = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ metaEventId }),
+      });
       const payload = await response.json();
 
       if (!response.ok) {
         throw new Error(payload.error ?? "Failed to start checkout");
       }
 
+      trackMetaBrowserEvent({
+        eventName: "InitiateCheckout",
+        eventId: metaEventId,
+        customData: {
+          content_name: "Kiwi Pro",
+          currency: "GBP",
+        },
+      });
       window.location.href = payload.url;
     } catch (error) {
       setIsStartingCheckout(false);
@@ -635,10 +652,11 @@ export default function RefreshPage() {
     startProgressTimers();
 
     try {
+      const metaEventId = createMetaEventId("lead");
       const response = await fetch("/api/refresh", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify({ url, metaEventId }),
       });
 
       const payload = await response.json();
@@ -648,6 +666,13 @@ export default function RefreshPage() {
       }
 
       const createdJob = payload as JobResponse;
+      trackMetaBrowserEvent({
+        eventName: "Lead",
+        eventId: metaEventId,
+        customData: {
+          content_name: "Website refresh request",
+        },
+      });
       setJob(createdJob);
       storeJob(createdJob.id, url);
       beginPolling(createdJob.id);

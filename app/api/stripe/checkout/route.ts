@@ -4,9 +4,20 @@ import { createProCheckoutSession } from "@/lib/stripe/service";
 
 export const runtime = "nodejs";
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
-    const url = await createProCheckoutSession();
+    let body: { metaEventId?: string } = {};
+
+    try {
+      body = await request.json();
+    } catch {
+      body = {};
+    }
+
+    const url = await createProCheckoutSession({
+      request,
+      metaEventId: body.metaEventId,
+    });
 
     return NextResponse.json({ url });
   } catch (error) {

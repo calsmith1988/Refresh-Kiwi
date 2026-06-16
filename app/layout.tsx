@@ -2,10 +2,12 @@ import type { Metadata } from "next";
 
 import CookieConsentBanner from "@/components/CookieConsentBanner";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
+import MetaPixel from "@/components/MetaPixel";
 import "./globals.css";
 
 const gaMeasurementId =
   process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim() || "G-0J6KNZCKDF";
+const metaPixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim() || null;
 
 export const metadata: Metadata = {
   metadataBase: new URL(
@@ -45,6 +47,7 @@ export default function RootLayout({
     <html lang="en">
       <body className="antialiased">
         <GoogleAnalytics measurementId={gaMeasurementId} />
+        <MetaPixel pixelId={metaPixelId} />
         {children}
         <CookieConsentBanner />
       </body>

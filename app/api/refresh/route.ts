@@ -8,9 +8,15 @@ import {
   clientIpFromRequest,
 } from "@/lib/jobs/rate-limit";
 import { createRefreshJob, failJob } from "@/lib/jobs/service";
+import { metaUserDataFromRequest, sendMetaEvent } from "@/lib/meta/events";
 import { userHasProPlan } from "@/lib/websites/service";
 
 export const runtime = "nodejs";
+
+type RefreshRequestBody = {
+  url?: string;
+  metaEventId?: string;
+};
 
 function normalizeUrl(raw: string): string | null {
   const trimmed = raw.trim();
@@ -36,7 +42,7 @@ function normalizeUrl(raw: string): string | null {
 }
 
 export async function POST(request: Request) {
-  let body: { url?: string };
+  let body: RefreshRequestBody;
 
   try {
     body = await request.json();
@@ -73,6 +79,16 @@ export async function POST(request: Request) {
     }
 
     const job = await createRefreshJob(sourceUrl, currentUser?.id ?? null, clientIp);
+    await sendMetaEvent({
+      eventName: "Lead",
+      eventId: body.metaEventId || `lead.${job.id}`,
+      eventSourceUrl: request.headers.get("referer"),
+      userData: metaUserDataFromRequest(request, { email: currentUser?.email }),
+      customData: {
+        content_name: "Website refresh request",
+        source_url: sourceUrl,
+      },
+    });
 
     after(async () => {
       try {

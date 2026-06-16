@@ -4,6 +4,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
+import {
+  createMetaEventId,
+  trackMetaBrowserEvent,
+} from "@/lib/meta/browser";
+
 type User = {
   id: string;
   email: string;
@@ -483,16 +488,33 @@ export default function DashboardPage() {
   const startBillingFlow = async (kind: "checkout" | "portal") => {
     setBillingAction(kind);
     setErrorMessage(null);
+    const metaEventId =
+      kind === "checkout" ? createMetaEventId("checkout") : null;
 
     try {
       const response = await fetch(
         kind === "checkout" ? "/api/stripe/checkout" : "/api/stripe/portal",
-        { method: "POST" },
+        {
+          method: "POST",
+          headers: metaEventId ? { "Content-Type": "application/json" } : undefined,
+          body: metaEventId ? JSON.stringify({ metaEventId }) : undefined,
+        },
       );
       const payload = await response.json();
 
       if (!response.ok) {
         throw new Error(payload.error ?? "Billing action failed");
+      }
+
+      if (metaEventId) {
+        trackMetaBrowserEvent({
+          eventName: "InitiateCheckout",
+          eventId: metaEventId,
+          customData: {
+            content_name: "Kiwi Pro",
+            currency: "GBP",
+          },
+        });
       }
 
       window.location.href = payload.url;

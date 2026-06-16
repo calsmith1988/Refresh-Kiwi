@@ -9,6 +9,7 @@ import {
   sendSubscriptionCanceledEmail,
   sendUpgradeSuccessEmail,
 } from "@/lib/email/service";
+import { metaUserDataFromRequest, sendMetaEvent } from "@/lib/meta/events";
 import { getAppUrl, getStripeProPriceId, getStripeSecretKey } from "@/lib/stripe/config";
 
 const { users, websites } = schema;
@@ -166,7 +167,10 @@ export function getStripeClient(): Stripe {
   });
 }
 
-export async function createProCheckoutSession(): Promise<string> {
+export async function createProCheckoutSession(params?: {
+  request?: Request;
+  metaEventId?: string | null;
+}): Promise<string> {
   const user = await getCurrentUser();
 
   if (!user) {
@@ -192,15 +196,16 @@ export async function createProCheckoutSession(): Promise<string> {
   }
 
   const appUrl = getAppUrl();
+  const metaEventId = params?.metaEventId || `checkout.${user.id}.${Date.now()}`;
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     customer: customerId,
     line_items: [{ price: getStripeProPriceId(), quantity: 1 }],
     success_url: `${appUrl}/dashboard?upgraded=1`,
     cancel_url: `${appUrl}/dashboard?upgrade_cancelled=1`,
-    metadata: { userId: user.id },
+    metadata: { userId: user.id, metaEventId },
     subscription_data: {
-      metadata: { userId: user.id },
+      metadata: { userId: user.id, metaEventId },
     },
     allow_promotion_codes: true,
   });
@@ -208,6 +213,19 @@ export async function createProCheckoutSession(): Promise<string> {
   if (!session.url) {
     throw new Error("Stripe did not return a checkout URL");
   }
+
+  await sendMetaEvent({
+    eventName: "InitiateCheckout",
+    eventId: metaEventId,
+    eventSourceUrl: params?.request?.headers.get("referer"),
+    userData: params?.request
+      ? metaUserDataFromRequest(params.request, { email: user.email })
+      : { email: user.email },
+    customData: {
+      content_name: "Kiwi Pro",
+      currency: "GBP",
+    },
+  });
 
   return session.url;
 }
@@ -235,6 +253,8 @@ export async function handleCheckoutSessionCompleted(
   session: Stripe.Checkout.Session,
 ) {
   const userId = session.metadata?.userId ?? null;
+  const metaEventId =
+    session.metadata?.metaEventId ?? `subscribe.${session.id}`;
   const stripeCustomerId =
     typeof session.customer === "string" ? session.customer : null;
   const stripeSubscriptionId =
@@ -246,6 +266,19 @@ export async function handleCheckoutSessionCompleted(
       stripeCustomerId,
       status: "active",
     });
+    await sendMetaEvent({
+      eventName: "Subscribe",
+      eventId: metaEventId,
+      eventSourceUrl: getAppUrl(),
+      userData: {
+        email: session.customer_details?.email ?? session.customer_email,
+      },
+      customData: {
+        content_name: "Kiwi Pro",
+        currency: session.currency?.toUpperCase() ?? "GBP",
+        value: session.amount_total ? session.amount_total / 100 : undefined,
+      },
+    });
     return;
   }
 
@@ -254,6 +287,19 @@ export async function handleCheckoutSessionCompleted(
   );
 
   await handleSubscriptionUpdated(subscription, userId);
+  await sendMetaEvent({
+    eventName: "Subscribe",
+    eventId: metaEventId,
+    eventSourceUrl: getAppUrl(),
+    userData: {
+      email: session.customer_details?.email ?? session.customer_email,
+    },
+    customData: {
+      content_name: "Kiwi Pro",
+      currency: session.currency?.toUpperCase() ?? "GBP",
+      value: session.amount_total ? session.amount_total / 100 : undefined,
+    },
+  });
 }
 
 export async function handleSubscriptionUpdated(
