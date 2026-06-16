@@ -1408,24 +1408,24 @@ export default function RefreshPage() {
               </div>
               <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-black/45 sm:justify-end">
                 <span>Same website, fresher skin.</span>
-                <a className="hover:text-black" href="/blog">
+                <Link className="hover:text-black" href="/blog">
                   Blog
-                </a>
-                <a className="hover:text-black" href="/privacy-policy">
+                </Link>
+                <Link className="hover:text-black" href="/privacy-policy">
                   Privacy
-                </a>
-                <a className="hover:text-black" href="/terms-of-service">
+                </Link>
+                <Link className="hover:text-black" href="/terms-of-service">
                   Terms
-                </a>
-                <a className="hover:text-black" href="/cookie-policy">
+                </Link>
+                <Link className="hover:text-black" href="/cookie-policy">
                   Cookies
-                </a>
-                <a className="hover:text-black" href="/refund-policy">
+                </Link>
+                <Link className="hover:text-black" href="/refund-policy">
                   Refunds
-                </a>
-                <a className="hover:text-black" href="/acceptable-use-policy">
+                </Link>
+                <Link className="hover:text-black" href="/acceptable-use-policy">
                   Acceptable use
-                </a>
+                </Link>
               </div>
             </div>
           </footer>
