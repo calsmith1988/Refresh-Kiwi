@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import CookieSettingsButton from "@/components/CookieSettingsButton";
 import type { JobResponse } from "@/lib/jobs/types";
 
 const KiwiPitCanvas = dynamic(() => import("@/components/KiwiPitCanvas"), {
@@ -1420,6 +1421,7 @@ export default function RefreshPage() {
                 <Link className="hover:text-black" href="/cookie-policy">
                   Cookies
                 </Link>
+                <CookieSettingsButton />
                 <Link className="hover:text-black" href="/refund-policy">
                   Refunds
                 </Link>

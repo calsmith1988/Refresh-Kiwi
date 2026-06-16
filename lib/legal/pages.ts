@@ -270,8 +270,8 @@ export const legalPages = {
       {
         heading: "Managing cookies",
         paragraphs: [
-          "You can control cookies through your browser settings. You may also be able to use browser extensions or device settings to limit analytics tracking. Blocking essential cookies may stop parts of Refresh Kiwi from working, including account login and checkout.",
-          "Where legally required, we will provide consent controls for optional cookies or analytics technologies.",
+          "You can accept, reject, or update analytics cookie preferences using the cookie banner or the Cookie settings link in the site footer. Analytics scripts are only loaded after you agree to analytics cookies.",
+          "You can also control cookies through your browser settings. You may be able to use browser extensions or device settings to limit analytics tracking. Blocking essential cookies may stop parts of Refresh Kiwi from working, including account login and checkout.",
         ],
       },
       {
