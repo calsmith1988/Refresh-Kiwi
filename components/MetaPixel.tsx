@@ -51,14 +51,16 @@ export default function MetaPixel({ pixelId }: { pixelId?: string | null }) {
   }, [applyConsent, isReady, pixelId]);
 
   useEffect(() => {
-    if (!pixelId || !isReady || !hasMarketingConsent()) {
+    const fbq = window.fbq;
+
+    if (!pixelId || !isReady || !fbq || !hasMarketingConsent()) {
       return;
     }
 
-    window.fbq("track", "PageView");
+    fbq("track", "PageView");
 
     if (shouldTrackViewContent(pathname)) {
-      window.fbq("track", "ViewContent", {
+      fbq("track", "ViewContent", {
         content_name: pathname === "/" ? "Homepage" : "Blog content",
         content_category: pathname.startsWith("/blog") ? "Blog" : "Landing page",
       });
