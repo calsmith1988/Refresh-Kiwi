@@ -1036,10 +1036,10 @@ export default function RefreshPage() {
               <div>
                 <p className="inline-flex items-center gap-2 rounded-full border border-black/5 bg-white/50 px-4 py-1.5 text-xs font-semibold text-black/45">
                   <span className="h-1.5 w-1.5 rounded-full bg-kiwi-green" />
-                  For local businesses with tired old websites
+                  Affordable website redesign for local businesses
                 </p>
                 <h1 className="mt-6 font-fraunces text-5xl font-semibold leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl">
-                  Same website.
+                  Website redesign.
                   <br />
                   <span className="relative inline-block">
                     Fresher skin.
@@ -1050,9 +1050,9 @@ export default function RefreshPage() {
                   </span>
                 </h1>
                 <p className="mt-6 max-w-md text-lg leading-8 text-black/55">
-                  Paste your web address. In about 2 minutes, we rebuild your
-                  website with a fresh, modern design — your words, your
-                  photos, your business.
+                  Paste your web address. In about 2 minutes, our AI website
+                  redesign service rebuilds your site with a fresh, modern
+                  design — your words, your photos, your business.
                 </p>
 
                 <form
@@ -1189,7 +1189,8 @@ export default function RefreshPage() {
                 Three steps. No tech skills.
               </h2>
               <p className="mt-3 max-w-md text-base leading-7 text-black/55">
-                If you can copy and paste, you can refresh your website.
+                If you can copy and paste, you can start a small business
+                website redesign.
               </p>
 
               <div className="mt-10 grid gap-4 md:grid-cols-3">
@@ -1201,7 +1202,7 @@ export default function RefreshPage() {
                   },
                   {
                     n: "02",
-                    title: "Watch it get refreshed",
+                    title: "Watch the site redesign happen",
                     body: "In about 2 minutes we rebuild it with a clean, modern design. Your words and photos stay.",
                   },
                   {
@@ -1234,11 +1235,11 @@ export default function RefreshPage() {
           >
             <div className="mx-auto w-full max-w-6xl">
               <h2 className="font-fraunces text-3xl font-semibold tracking-tight sm:text-4xl">
-                Old website in, fresh website out.
+                Old website in, fresh website redesign out.
               </h2>
               <p className="mt-3 max-w-md text-base leading-7 text-white/55">
-                Real refreshes for the kinds of websites that haven&apos;t
-                changed since 2012.
+                Real site redesign examples for the kinds of websites that
+                haven&apos;t changed since 2012.
               </p>
 
               <div className="mt-10 grid gap-4 md:grid-cols-3">
@@ -1284,7 +1285,8 @@ export default function RefreshPage() {
               </div>
 
               <p className="mt-9 text-sm text-white/55">
-                The best example is your own website —{" "}
+                The best small business website redesign example is your own
+                website —{" "}
                 <a
                   href="#refresh-input"
                   className="font-semibold text-kiwi-green underline underline-offset-4"
@@ -1300,11 +1302,12 @@ export default function RefreshPage() {
           <section id="pricing" className="scroll-mt-20 px-5 py-20 sm:px-8">
             <div className="mx-auto w-full max-w-4xl">
               <h2 className="text-center font-fraunces text-3xl font-semibold tracking-tight sm:text-4xl">
-                One simple price.
+                One simple website redesign cost.
               </h2>
               <p className="mx-auto mt-3 max-w-md text-center text-base leading-7 text-black/55">
-                No credits, no tokens, no surprises. Pay only when you want
-                your new website online.
+                No credits, no tokens, no surprises. An affordable website
+                redesign starts free, and you only pay when you want your new
+                website online.
               </p>
 
               <div className="mt-10 grid gap-4 md:grid-cols-2">
@@ -1314,7 +1317,7 @@ export default function RefreshPage() {
                     £0
                   </p>
                   <ul className="mt-6 space-y-3 text-sm leading-6 text-black/60">
-                    <li>✓ See your refreshed website — no signup</li>
+                    <li>✓ See your AI website redesign — no signup</li>
                     <li>✓ Keep it for 7 days with a free account</li>
                     <li>✓ 3 free changes included</li>
                   </ul>
@@ -1338,7 +1341,7 @@ export default function RefreshPage() {
                     </span>
                   </p>
                   <ul className="mt-6 space-y-3 text-sm leading-6 text-white/70">
-                    <li>✓ Your website live on the internet — we host it</li>
+                    <li>✓ Your redesigned website live online — we host it</li>
                     <li>✓ Unlimited changes, asked for in plain English</li>
                     <li>✓ Your own web address (www.yourbusiness.com)</li>
                     <li>✓ Extra pages built for you</li>
@@ -1369,11 +1372,19 @@ export default function RefreshPage() {
                 {[
                   {
                     q: "Will this change my real website?",
-                    a: "No. We make a separate copy with a fresh design. Your current website stays exactly as it is until you decide to switch.",
+                    a: "No. We make a separate website redesign preview. Your current website stays exactly as it is until you decide to switch.",
                   },
                   {
                     q: "Do I lose my words and photos?",
                     a: "No — that's the whole point. We keep your business details, services, photos and phone number, and give them a cleaner, more modern home.",
+                  },
+                  {
+                    q: "Is this a web redesign service or a full new build?",
+                    a: "Refresh Kiwi is a web redesign service. We use your existing site as the starting point, then create a fresher version you can preview, edit and publish.",
+                  },
+                  {
+                    q: "What is the website redesign cost?",
+                    a: "The preview is free. If you want the redesigned website hosted online, Kiwi Pro is £10/month with unlimited plain-English changes and no long contract.",
                   },
                   {
                     q: "I'm not good with computers. Is this for me?",
@@ -1411,11 +1422,11 @@ export default function RefreshPage() {
           <section className="px-5 py-20 sm:px-8">
             <div className="mx-auto w-full max-w-6xl rounded-[2.5rem] bg-kiwi-green px-6 py-16 text-center sm:px-12">
               <h2 className="mx-auto max-w-2xl font-fraunces text-4xl font-semibold tracking-tight sm:text-5xl">
-                Your website called. It wants a refresh.
+                Your website called. It wants a redesign.
               </h2>
               <p className="mx-auto mt-4 max-w-md text-base leading-7 text-black/60">
-                Free to try, takes about 2 minutes, and nothing changes until
-                you say so.
+                Revamping website design? Try it for free. It takes about 2
+                minutes, and nothing changes until you say so.
               </p>
               <a
                 href="#refresh-input"
