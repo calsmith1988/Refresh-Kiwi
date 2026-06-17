@@ -155,6 +155,19 @@ function editProgressMessage(createdAt: string, now: number): string {
   return message;
 }
 
+function editProgressStageIndex(createdAt: string, now: number): number {
+  const elapsed = now - new Date(createdAt).getTime();
+  let index = 0;
+
+  for (let current = 0; current < EDIT_PROGRESS_STAGES.length; current += 1) {
+    if (elapsed >= EDIT_PROGRESS_STAGES[current].atMs) {
+      index = current;
+    }
+  }
+
+  return index;
+}
+
 const EDIT_POLL_INTERVAL_MS = 5000;
 const ACTIVE_EDIT_STATUSES = new Set(["queued", "running"]);
 const PRO_SUBSCRIPTION_STATUSES = new Set(["active", "trialing"]);
@@ -318,6 +331,12 @@ export default function DashboardPage() {
     null,
   );
   const [showProSheet, setShowProSheet] = useState(false);
+  const [activeEditModalRequestId, setActiveEditModalRequestId] = useState<
+    string | null
+  >(null);
+  const [dismissedEditRequestIds, setDismissedEditRequestIds] = useState<
+    Record<string, true>
+  >({});
   const [celebration, setCelebration] = useState<
     "upgraded" | "cancelled" | null
   >(null);
@@ -338,6 +357,34 @@ export default function DashboardPage() {
   const hasActivePageGeneration = websites.some(
     (website) => website.jobStatus === "building_pages",
   );
+  const activeEditWebsites = useMemo(
+    () =>
+      websites.filter(
+        (website) =>
+          website.latestEditRequest &&
+          ACTIVE_EDIT_STATUSES.has(website.latestEditRequest.status),
+      ),
+    [websites],
+  );
+  const activeEditWebsite = useMemo(
+    () =>
+      activeEditWebsites.find(
+        (website) =>
+          website.latestEditRequest?.id === activeEditModalRequestId,
+      ) ??
+      activeEditWebsites.find(
+        (website) =>
+          website.latestEditRequest &&
+          !dismissedEditRequestIds[website.latestEditRequest.id],
+      ) ??
+      null,
+    [activeEditModalRequestId, activeEditWebsites, dismissedEditRequestIds],
+  );
+  const activeEditRequest = activeEditWebsite?.latestEditRequest ?? null;
+  const showActiveEditModal = Boolean(activeEditWebsite && activeEditRequest);
+  const activeEditStageIndex = activeEditRequest
+    ? editProgressStageIndex(activeEditRequest.createdAt, progressTick)
+    : 0;
 
   const loadDashboard = async (cancelled?: () => boolean) => {
     try {
@@ -1335,14 +1382,24 @@ export default function DashboardPage() {
                         {state.canEdit ? (
                           <button
                             type="button"
-                            onClick={() =>
+                            onClick={() => {
+                              if (
+                                hasActiveEditForWebsite &&
+                                website.latestEditRequest
+                              ) {
+                                setActiveEditModalRequestId(
+                                  website.latestEditRequest.id,
+                                );
+                                return;
+                              }
+
                               setEditingWebsiteId((current) =>
                                 current === website.id ? null : website.id,
-                              )
-                            }
+                              );
+                            }}
                             className="rounded-full border border-black/10 bg-white px-5 py-2.5 text-sm font-semibold text-black transition hover:border-black/25"
                           >
-                            Edit website
+                            {hasActiveEditForWebsite ? "Edit status" : "Edit website"}
                           </button>
                         ) : null}
                         {state.canEdit ? (
@@ -2050,6 +2107,110 @@ export default function DashboardPage() {
           )}
         </section>
       </div>
+
+      {showActiveEditModal && activeEditWebsite && activeEditRequest ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="active-edit-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-5 backdrop-blur-sm"
+        >
+          <div className="preview-pop w-full max-w-md rounded-3xl border border-black/10 bg-white p-6 text-center shadow-2xl sm:max-w-lg sm:p-8">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-kiwi-green/35">
+              <Image
+                src="/refresh-kiwi-favicon-v2.png"
+                alt=""
+                width={34}
+                height={34}
+                aria-hidden
+                className="kiwi-bob rounded-full"
+              />
+            </div>
+
+            <p className="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-black/40">
+              Making your edit
+            </p>
+            <h2
+              id="active-edit-title"
+              className="mx-auto mt-2 max-w-sm font-fraunces text-3xl font-semibold leading-tight tracking-tight"
+            >
+              Updating {activeEditWebsite.brandName || activeEditWebsite.slug}
+            </h2>
+            <p
+              key={editProgressMessage(activeEditRequest.createdAt, progressTick)}
+              className="edit-message-in mt-4 text-sm font-medium text-black/55"
+              aria-live="polite"
+            >
+              {editProgressMessage(activeEditRequest.createdAt, progressTick)}
+            </p>
+
+            <ol className="mx-auto mt-7 max-w-xs space-y-3 text-left">
+              {EDIT_PROGRESS_STAGES.map((stage, index) => {
+                const done = index < activeEditStageIndex;
+                const current = index === activeEditStageIndex;
+
+                return (
+                  <li key={stage.message} className="flex items-center gap-3">
+                    <span
+                      aria-hidden
+                      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                        done
+                          ? "bg-kiwi-green text-black"
+                          : current
+                            ? "border-2 border-kiwi-green bg-white"
+                            : "border border-black/15 bg-white"
+                      }`}
+                    >
+                      {done ? (
+                        "✓"
+                      ) : current ? (
+                        <span className="h-2 w-2 animate-pulse rounded-full bg-kiwi-green" />
+                      ) : null}
+                    </span>
+                    <span
+                      className={`text-sm ${
+                        done || current
+                          ? "font-semibold text-black"
+                          : "text-black/35"
+                      }`}
+                    >
+                      {stage.message.replace("…", "")}
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+
+            <div className="mt-7 rounded-2xl bg-[#faf8f1] p-4 text-left">
+              <p className="text-xs font-semibold uppercase tracking-wide text-black/35">
+                Requested change
+              </p>
+              <p className="mt-1 line-clamp-3 text-sm leading-6 text-black/60">
+                {activeEditRequest.prompt}
+              </p>
+            </div>
+
+            <p className="mt-5 text-xs leading-5 text-black/45">
+              You can close this popup or leave the dashboard — your edit keeps
+              running in the background and will appear here when it&apos;s done.
+            </p>
+
+            <button
+              type="button"
+              onClick={() => {
+                setDismissedEditRequestIds((current) => ({
+                  ...current,
+                  [activeEditRequest.id]: true,
+                }));
+                setActiveEditModalRequestId(null);
+              }}
+              className="mt-5 h-11 rounded-full border border-black/10 bg-white px-5 text-sm font-semibold text-black transition hover:border-black/25"
+            >
+              Keep working in background
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {showProSheet ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-5 backdrop-blur-sm">
