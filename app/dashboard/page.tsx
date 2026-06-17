@@ -62,6 +62,18 @@ type Website = {
   }>;
 };
 
+type ActiveRefreshJob = {
+  id: string;
+  sourceUrl: string;
+  slug: string;
+  brandName: string | null;
+  status: Exclude<Website["jobStatus"], null>;
+  statusMessage: string;
+  errorMessage: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 type WebsiteImageVersion = {
   file: string;
   url: string;
@@ -290,6 +302,7 @@ function websiteState(website: Website, isPro: boolean) {
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [websites, setWebsites] = useState<Website[]>([]);
+  const [activeRefreshJobs, setActiveRefreshJobs] = useState<ActiveRefreshJob[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [editingWebsiteId, setEditingWebsiteId] = useState<string | null>(null);
@@ -344,11 +357,13 @@ export default function DashboardPage() {
   const isPro =
     user?.plan === "pro" && PRO_SUBSCRIPTION_STATUSES.has(user.subscriptionStatus);
   const websiteLimit = isPro ? 3 : 1;
-  const canAddWebsite = websites.length < websiteLimit;
+  const activeWebsiteCount = websites.length + activeRefreshJobs.length;
+  const canAddWebsite = activeWebsiteCount < websiteLimit;
   const websiteCountLabel = useMemo(
-    () => `${websites.length}/${websiteLimit} websites`,
-    [websiteLimit, websites.length],
+    () => `${activeWebsiteCount}/${websiteLimit} websites`,
+    [activeWebsiteCount, websiteLimit],
   );
+  const hasActiveRefreshJobs = activeRefreshJobs.length > 0;
   const hasActiveEdit = websites.some(
     (website) =>
       website.latestEditRequest &&
@@ -409,6 +424,7 @@ export default function DashboardPage() {
       if (!cancelled?.()) {
         setUser(mePayload.user);
         setWebsites(websitesPayload.websites ?? []);
+        setActiveRefreshJobs(websitesPayload.activeRefreshJobs ?? []);
       }
     } catch (error) {
       if (!cancelled?.()) {
@@ -470,7 +486,7 @@ export default function DashboardPage() {
   }, [celebration, isPro]);
 
   useEffect(() => {
-    if (!hasActiveEdit && !hasActivePageGeneration) {
+    if (!hasActiveEdit && !hasActivePageGeneration && !hasActiveRefreshJobs) {
       return;
     }
 
@@ -483,7 +499,7 @@ export default function DashboardPage() {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [hasActiveEdit, hasActivePageGeneration]);
+  }, [hasActiveEdit, hasActivePageGeneration, hasActiveRefreshJobs]);
 
   // Close the image preview with the Escape key.
   useEffect(() => {
@@ -1202,6 +1218,17 @@ export default function DashboardPage() {
               Building your other pages — this can take a few minutes…
             </p>
           ) : null}
+          {hasActiveRefreshJobs ? (
+            <p className="mt-4 flex items-center gap-2 text-sm font-medium text-black/50">
+              <span
+                aria-hidden
+                className="h-1.5 w-1.5 animate-pulse rounded-full bg-kiwi-green"
+              />
+              Refreshing {activeRefreshJobs.length}{" "}
+              {pluralise(activeRefreshJobs.length, "website")} — you can leave
+              this page and it will keep going.
+            </p>
+          ) : null}
         </section>
 
         <section className="mt-6">
@@ -1209,7 +1236,7 @@ export default function DashboardPage() {
             <div className="rounded-3xl border border-black/10 bg-white p-8 text-center text-sm text-black/50">
               Loading your websites…
             </div>
-          ) : websites.length === 0 ? (
+          ) : websites.length === 0 && activeRefreshJobs.length === 0 ? (
             <div className="rounded-3xl border border-black/10 bg-white p-8 text-center">
               <h2 className="font-fraunces text-2xl font-semibold">
                 No websites saved yet
@@ -1226,6 +1253,52 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div className="grid gap-4">
+              {activeRefreshJobs.map((job) => (
+                <article
+                  key={job.id}
+                  className="rounded-3xl border-2 border-kiwi-green/70 bg-[#f8fde9] p-5 shadow-lg shadow-[#8bbf4d]/10 sm:p-6"
+                >
+                  <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h2 className="font-fraunces text-2xl font-semibold">
+                          {job.brandName || sourceHostname(job.sourceUrl)}
+                        </h2>
+                        <span className="rounded-full bg-kiwi-green px-3 py-1 text-xs font-semibold text-black">
+                          Processing
+                        </span>
+                      </div>
+                      <p className="mt-2 text-sm text-black/50">
+                        Refreshing {sourceHostname(job.sourceUrl)}
+                      </p>
+                      <div className="mt-4 flex items-center gap-3 rounded-2xl bg-white/70 px-4 py-3">
+                        <Image
+                          src="/refresh-kiwi-favicon-v2.png"
+                          alt=""
+                          width={22}
+                          height={22}
+                          className="kiwi-bob shrink-0 rounded-full"
+                        />
+                        <div>
+                          <p className="text-sm font-semibold text-black">
+                            {job.statusMessage}
+                          </p>
+                          <p className="mt-0.5 text-xs leading-5 text-black/50">
+                            Usually about 2 minutes. Your preview will appear
+                            here automatically when it is ready.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <Link
+                      href="/"
+                      className="rounded-full border border-black/10 bg-white px-5 py-2.5 text-center text-sm font-semibold text-black transition hover:border-black/25"
+                    >
+                      Back to homepage
+                    </Link>
+                  </div>
+                </article>
+              ))}
               {websites.map((website) => {
                 const state = websiteState(website, isPro);
                 const generatedPages = website.pages.filter(

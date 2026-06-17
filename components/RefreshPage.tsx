@@ -146,6 +146,7 @@ function BeforeAfterReveal({
   afterAlt,
   className = "",
   aspectClassName = "aspect-[2/1]",
+  imageClassName = "object-cover",
   priority = false,
   soft = false,
 }: {
@@ -155,6 +156,7 @@ function BeforeAfterReveal({
   afterAlt: string;
   className?: string;
   aspectClassName?: string;
+  imageClassName?: string;
   priority?: boolean;
   soft?: boolean;
 }) {
@@ -169,7 +171,7 @@ function BeforeAfterReveal({
       <div
         className={`relative overflow-hidden ${
           soft ? "rounded-[2rem]" : "rounded-2xl"
-        } bg-black ${aspectClassName}`}
+        } bg-white ${aspectClassName}`}
       >
         <Image
           src={after}
@@ -177,7 +179,7 @@ function BeforeAfterReveal({
           fill
           priority={priority}
           sizes="(min-width: 1024px) 560px, 90vw"
-          className="object-cover"
+          className={imageClassName}
         />
         <div className="before-after-reveal-clip absolute inset-0">
           <Image
@@ -186,7 +188,7 @@ function BeforeAfterReveal({
             fill
             priority={priority}
             sizes="(min-width: 1024px) 560px, 90vw"
-            className="object-cover"
+            className={imageClassName}
           />
         </div>
         <div
@@ -220,6 +222,7 @@ export default function RefreshPage({
   const [job, setJob] = useState<JobResponse | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [authErrorMessage, setAuthErrorMessage] = useState<string | null>(null);
   const [accountMode, setAccountMode] = useState<"closed" | "signup" | "login">(
     "closed",
   );
@@ -489,6 +492,7 @@ export default function RefreshPage({
 
     setIsSubmittingAuth(true);
     setErrorMessage(null);
+    setAuthErrorMessage(null);
 
     try {
       const response = await fetch(
@@ -538,7 +542,7 @@ export default function RefreshPage({
 
       await claimCurrentWebsite();
     } catch (error) {
-      setErrorMessage(
+      setAuthErrorMessage(
         error instanceof Error ? error.message : "Account request failed",
       );
     } finally {
@@ -557,6 +561,7 @@ export default function RefreshPage({
 
     setIsSubmittingAuth(true);
     setErrorMessage(null);
+    setAuthErrorMessage(null);
 
     try {
       const response = await fetch("/api/auth/2fa/verify", {
@@ -580,12 +585,13 @@ export default function RefreshPage({
       setAccountMode("closed");
       setTwoFactorChallengeToken(null);
       setTwoFactorCode("");
+      setAuthErrorMessage(null);
       await claimCurrentWebsite().catch((error) => {
         console.warn("[refresh-kiwi] 2FA login claim skipped", error);
       });
       window.location.href = "/dashboard";
     } catch (error) {
-      setErrorMessage(
+      setAuthErrorMessage(
         error instanceof Error ? error.message : "Invalid two-factor code",
       );
     } finally {
@@ -594,6 +600,8 @@ export default function RefreshPage({
   };
 
   const handleOpenAccount = () => {
+    setAuthErrorMessage(null);
+
     if (user) {
       void claimCurrentWebsite().catch((error) => {
         setErrorMessage(
@@ -1219,38 +1227,38 @@ export default function RefreshPage({
               </div>
 
               <div className="relative mx-auto min-h-[390px] w-full max-w-xl sm:min-h-[470px] lg:max-w-none">
-                <div className="absolute left-0 top-0 w-[82%] -rotate-2 rounded-[1.6rem] border border-black/10 bg-white p-2.5 opacity-90 shadow-xl shadow-black/10">
+                <div className="absolute left-0 top-0 w-[92%] -rotate-2 rounded-[1.6rem] border border-black/10 bg-white p-2.5 opacity-90 shadow-xl shadow-black/10">
                   <div className="flex items-center justify-between px-2 pb-2 pt-1">
                     <span className="rounded-full bg-black/70 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-white">
                       Before
                     </span>
                   </div>
-                  <div className="relative h-[270px] overflow-hidden rounded-2xl bg-black sm:h-[340px]">
+                  <div className="relative h-[270px] overflow-hidden rounded-2xl bg-white sm:h-[340px]">
                     <Image
                       src={engineerBeforePreview}
                       alt="Original engineering website before Refresh Kiwi"
                       fill
                       priority
-                      sizes="(min-width: 1024px) 420px, 78vw"
-                      className="object-cover object-left-top"
+                      sizes="(min-width: 1024px) 520px, 92vw"
+                      className="object-contain object-left-top"
                     />
                   </div>
                 </div>
 
-                <div className="before-after-reveal-clip absolute bottom-0 right-0 w-[82%] rotate-2 rounded-[1.8rem] border-2 border-kiwi-green bg-white p-2.5 shadow-2xl shadow-[#8bbf4d]/25">
+                <div className="before-after-reveal-clip absolute bottom-0 right-0 w-[92%] rotate-2 rounded-[1.8rem] border-2 border-kiwi-green bg-white p-2.5 shadow-2xl shadow-[#8bbf4d]/25">
                   <div className="flex items-center justify-between px-2 pb-2 pt-1">
                     <span className="rounded-full bg-kiwi-green px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-black">
                       After Refresh Kiwi
                     </span>
                   </div>
-                  <div className="relative h-[270px] overflow-hidden rounded-2xl bg-black sm:h-[340px]">
+                  <div className="relative h-[270px] overflow-hidden rounded-2xl bg-white sm:h-[340px]">
                     <Image
                       src={engineerAfterPreview}
                       alt="Refreshed engineering website generated by Refresh Kiwi"
                       fill
                       priority
-                      sizes="(min-width: 1024px) 460px, 82vw"
-                      className="object-cover object-left-top"
+                      sizes="(min-width: 1024px) 560px, 92vw"
+                      className="object-contain object-left-top"
                     />
                   </div>
                 </div>
@@ -1369,6 +1377,8 @@ export default function RefreshPage({
                       beforeAlt={example.beforeAlt}
                       afterAlt={example.afterAlt}
                       className="border-white/10 bg-white/10 shadow-black/20"
+                      aspectClassName="aspect-[4/3]"
+                      imageClassName="object-contain object-left-top"
                     />
                     <div className="mt-5 px-1">
                       <h3 className="text-lg font-bold">{example.name}</h3>
@@ -1691,7 +1701,10 @@ export default function RefreshPage({
               </div>
               <button
                 type="button"
-                onClick={() => setAccountMode("closed")}
+                onClick={() => {
+                  setAccountMode("closed");
+                  setAuthErrorMessage(null);
+                }}
                 className="rounded-full border border-black/10 px-3 py-1 text-sm text-black/60"
               >
                 Close
@@ -1707,6 +1720,14 @@ export default function RefreshPage({
                   autoComplete="one-time-code"
                   className="h-12 w-full rounded-full border border-black/10 px-5 text-sm outline-none focus:border-black/30"
                 />
+                {authErrorMessage ? (
+                  <p
+                    className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium leading-6 text-red-700"
+                    role="alert"
+                  >
+                    {authErrorMessage}
+                  </p>
+                ) : null}
                 <button
                   type="submit"
                   disabled={isSubmittingAuth || !twoFactorCode.trim()}
@@ -1749,6 +1770,14 @@ export default function RefreshPage({
                   placeholder="Password"
                   className="h-12 w-full rounded-full border border-black/10 px-5 text-sm outline-none focus:border-black/30"
                 />
+                {authErrorMessage ? (
+                  <p
+                    className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium leading-6 text-red-700"
+                    role="alert"
+                  >
+                    {authErrorMessage}
+                  </p>
+                ) : null}
                 <button
                   type="submit"
                   disabled={isSubmittingAuth}
@@ -1767,9 +1796,10 @@ export default function RefreshPage({
               <>
                 <button
                   type="button"
-                  onClick={() =>
-                    setAccountMode(accountMode === "login" ? "signup" : "login")
-                  }
+                  onClick={() => {
+                    setAccountMode(accountMode === "login" ? "signup" : "login");
+                    setAuthErrorMessage(null);
+                  }}
                   className="mt-4 text-sm font-medium text-black/60 underline underline-offset-4"
                 >
                   {accountMode === "login"

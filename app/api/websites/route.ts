@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth/session";
+import { getDb, schema } from "@/lib/db";
+import { STATUS_MESSAGES, type JobStatus } from "@/lib/jobs/types";
+import { getRenderDnsTarget } from "@/lib/render/domains";
 import {
   getLatestEditRequestsForUser,
   listPagesForJob,
@@ -8,13 +11,17 @@ import {
   toPageResponse,
   toWebsiteResponse,
 } from "@/lib/websites/service";
-import { getDb, schema } from "@/lib/db";
-import { getRenderDnsTarget } from "@/lib/render/domains";
 import { eq } from "drizzle-orm";
 
 export const runtime = "nodejs";
 
 const { jobs } = schema;
+const ACTIVE_REFRESH_STATUSES = new Set<JobStatus>([
+  "queued",
+  "analyzing",
+  "building_homepage",
+  "homepage_ready",
+]);
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -27,8 +34,9 @@ export async function GET() {
     listOwnedWebsites(user.id),
     getLatestEditRequestsForUser(user.id),
   ]);
+  const websiteJobIds = new Set(websites.map((website) => website.jobId));
 
-  const [pagesEntries, jobEntries] = await Promise.all([
+  const [pagesEntries, jobEntries, userJobs] = await Promise.all([
     Promise.all(
       websites.map(async (website) => {
         const pages = await listPagesForJob(website.jobId);
@@ -47,11 +55,38 @@ export async function GET() {
         return [website.jobId, job?.status ?? null] as const;
       }),
     ),
+    getDb()
+      .select({
+        id: jobs.id,
+        sourceUrl: jobs.sourceUrl,
+        slug: jobs.slug,
+        brandName: jobs.brandName,
+        status: jobs.status,
+        errorMessage: jobs.errorMessage,
+        createdAt: jobs.createdAt,
+        updatedAt: jobs.updatedAt,
+      })
+      .from(jobs)
+      .where(eq(jobs.userId, user.id)),
   ]);
   const pagesByJob = new Map(pagesEntries);
   const statusByJob = new Map(jobEntries);
+  const activeRefreshJobs = userJobs.filter(
+    (job) => !websiteJobIds.has(job.id) && ACTIVE_REFRESH_STATUSES.has(job.status),
+  );
 
   return NextResponse.json({
+    activeRefreshJobs: activeRefreshJobs.map((job) => ({
+      id: job.id,
+      sourceUrl: job.sourceUrl,
+      slug: job.slug,
+      brandName: job.brandName,
+      status: job.status,
+      statusMessage: STATUS_MESSAGES[job.status],
+      errorMessage: job.errorMessage,
+      createdAt: job.createdAt.toISOString(),
+      updatedAt: job.updatedAt.toISOString(),
+    })),
     websites: websites.map((website) => {
       const latestEditRequest = latestEditRequests.get(website.id);
       const pages = pagesByJob.get(website.jobId) ?? [];
