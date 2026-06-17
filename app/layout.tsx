@@ -35,7 +35,21 @@ export const metadata: Metadata = {
       "Paste your web address and get a fresh, modern version of your website in about 2 minutes.",
   },
   icons: {
-    icon: "/refresh-kiwi-favicon-v2.png",
+    icon: [
+      {
+        url: "/refresh-kiwi-favicon-v2.png",
+        sizes: "512x512",
+        type: "image/png",
+      },
+    ],
+    shortcut: "/refresh-kiwi-favicon-v2.png",
+    apple: [
+      {
+        url: "/refresh-kiwi-favicon-v2.png",
+        sizes: "512x512",
+        type: "image/png",
+      },
+    ],
   },
 };
 
