@@ -832,14 +832,14 @@ export default function RefreshPage({
           {isRefreshing ? (
             <div className="flex min-h-[60vh] items-center justify-center">
               <div
-                className="w-full max-w-md rounded-3xl border border-black/10 bg-white/95 p-8 text-center shadow-2xl shadow-black/10 backdrop-blur"
+                className="w-full max-w-md rounded-3xl border border-black/10 bg-white/95 p-8 text-center shadow-2xl shadow-black/10 backdrop-blur sm:max-w-lg"
                 role="status"
                 aria-live="polite"
               >
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-black/40">
                   Refreshing
                 </p>
-                <h1 className="mt-2 break-words font-fraunces text-3xl font-semibold">
+                <h1 className="mx-auto mt-2 max-w-[22ch] font-fraunces text-[clamp(1.6rem,4.5vw,2.15rem)] font-semibold leading-none tracking-tight [overflow-wrap:anywhere]">
                   {hostLabel(url)}
                 </h1>
 
