@@ -44,30 +44,30 @@ body {
 @keyframes before-after-reveal {
   0%,
   100% {
-    clip-path: inset(0 92% 0 0);
+    clip-path: inset(0 100% 0 0);
   }
   50% {
-    clip-path: inset(0 12% 0 0);
+    clip-path: inset(0 0 0 0);
   }
 }
 
 @keyframes before-after-handle {
   0%,
   100% {
-    left: 8%;
+    left: 0%;
   }
   50% {
-    left: 88%;
+    left: 100%;
   }
 }
 
 .before-after-reveal-clip {
-  clip-path: inset(0 92% 0 0);
+  clip-path: inset(0 100% 0 0);
   animation: before-after-reveal 6.5s ease-in-out infinite;
 }
 
 .before-after-reveal-handle {
-  left: 8%;
+  left: 0%;
   animation: before-after-handle 6.5s ease-in-out infinite;
 }
 

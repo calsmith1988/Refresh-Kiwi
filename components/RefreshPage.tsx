@@ -1254,15 +1254,6 @@ export default function RefreshPage({
                     />
                   </div>
                 </div>
-
-                <div
-                  className="before-after-reveal-handle absolute bottom-0 top-0 z-10 w-0.5 bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.12),0_0_24px_rgba(0,0,0,0.25)]"
-                  aria-hidden
-                >
-                  <span className="absolute left-1/2 top-1/2 flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-black/10 bg-white text-[10px] font-black text-black shadow-lg">
-                    ↔
-                  </span>
-                </div>
               </div>
             </div>
           )}
