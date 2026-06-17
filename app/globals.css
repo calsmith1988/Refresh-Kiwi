@@ -41,9 +41,49 @@ body {
   animation: preview-pop 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+@keyframes before-after-reveal {
+  0%,
+  100% {
+    clip-path: inset(0 68% 0 0);
+  }
+  50% {
+    clip-path: inset(0 18% 0 0);
+  }
+}
+
+@keyframes before-after-handle {
+  0%,
+  100% {
+    left: 32%;
+  }
+  50% {
+    left: 82%;
+  }
+}
+
+.before-after-reveal-clip {
+  clip-path: inset(0 68% 0 0);
+  animation: before-after-reveal 6.5s ease-in-out infinite;
+}
+
+.before-after-reveal-handle {
+  left: 32%;
+  animation: before-after-handle 6.5s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .preview-pop {
+  .preview-pop,
+  .before-after-reveal-clip,
+  .before-after-reveal-handle {
     animation: none;
+  }
+
+  .before-after-reveal-clip {
+    clip-path: inset(0 38% 0 0);
+  }
+
+  .before-after-reveal-handle {
+    left: 62%;
   }
 }
 

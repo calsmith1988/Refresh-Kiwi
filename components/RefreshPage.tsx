@@ -2,9 +2,14 @@
 
 import dynamic from "next/dynamic";
 import Image from "next/image";
+import type { StaticImageData } from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import accountantAfterPreview from "../after-preview.png";
+import engineerAfterPreview from "../after-preview2.png";
+import accountantBeforePreview from "../before-preview.png";
+import engineerBeforePreview from "../before-preview2.png";
 import CookieSettingsButton from "@/components/CookieSettingsButton";
 import type { JobResponse } from "@/lib/jobs/types";
 import {
@@ -132,6 +137,65 @@ function hostLabel(raw: string): string {
 function formatElapsed(ms: number): string {
   const total = Math.max(0, Math.floor(ms / 1000));
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+}
+
+function BeforeAfterReveal({
+  before,
+  after,
+  beforeAlt,
+  afterAlt,
+  className = "",
+  priority = false,
+}: {
+  before: StaticImageData;
+  after: StaticImageData;
+  beforeAlt: string;
+  afterAlt: string;
+  className?: string;
+  priority?: boolean;
+}) {
+  return (
+    <div
+      className={`relative overflow-hidden rounded-3xl border border-white/15 bg-white p-2 shadow-2xl ${className}`}
+    >
+      <div className="relative aspect-[2/1] overflow-hidden rounded-2xl bg-black">
+        <Image
+          src={before}
+          alt={beforeAlt}
+          fill
+          priority={priority}
+          sizes="(min-width: 1024px) 560px, 90vw"
+          className="object-cover"
+        />
+        <div className="before-after-reveal-clip absolute inset-0">
+          <Image
+            src={after}
+            alt={afterAlt}
+            fill
+            priority={priority}
+            sizes="(min-width: 1024px) 560px, 90vw"
+            className="object-cover"
+          />
+        </div>
+        <div
+          className="before-after-reveal-handle absolute bottom-0 top-0 z-10 w-0.5 bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.12),0_0_24px_rgba(0,0,0,0.25)]"
+          aria-hidden
+        >
+          <span className="absolute left-1/2 top-1/2 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-black/10 bg-white text-xs font-black text-black shadow-lg">
+            ↔
+          </span>
+        </div>
+        <div className="pointer-events-none absolute inset-x-3 top-3 z-20 flex items-center justify-between text-[10px] font-black uppercase tracking-[0.16em]">
+          <span className="rounded-full bg-black/70 px-3 py-1 text-white backdrop-blur">
+            Before
+          </span>
+          <span className="rounded-full bg-kiwi-green px-3 py-1 text-black shadow-sm">
+            After
+          </span>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function RefreshPage({
@@ -1142,60 +1206,15 @@ export default function RefreshPage({
                 </div>
               </div>
 
-              {/* Hero visual: stacked before/after cards */}
-              <div className="relative mx-auto w-full max-w-md lg:max-w-none">
-                <div className="relative">
-                  <div className="w-[82%] -rotate-2 rounded-2xl border border-black/10 bg-white p-2.5 opacity-80 shadow-lg">
-                    <p className="px-2 pb-2 pt-1 text-[10px] font-bold uppercase tracking-wider text-black/35">
-                      Before
-                    </p>
-                    <div className="rounded-xl bg-[#efeee8] p-4">
-                      <div className="h-4 w-2/3 rounded bg-black/15" />
-                      <div className="mt-3 space-y-1.5">
-                        <div className="h-2 rounded bg-black/10" />
-                        <div className="h-2 rounded bg-black/10" />
-                        <div className="h-2 w-4/5 rounded bg-black/10" />
-                        <div className="h-2 w-3/5 rounded bg-black/10" />
-                      </div>
-                      <div className="mt-4 grid grid-cols-3 gap-2">
-                        <div className="h-12 rounded bg-black/10" />
-                        <div className="h-12 rounded bg-black/10" />
-                        <div className="h-12 rounded bg-black/10" />
-                      </div>
-                      <div className="mt-3 space-y-1.5">
-                        <div className="h-2 rounded bg-black/10" />
-                        <div className="h-2 w-5/6 rounded bg-black/10" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="absolute -bottom-10 right-0 w-[82%] rotate-2 rounded-2xl border-2 border-kiwi-green bg-white p-2.5 shadow-2xl shadow-[#8bbf4d]/25">
-                    <p className="px-2 pb-2 pt-1 text-[10px] font-bold uppercase tracking-wider text-[#5d9433]">
-                      After ✨
-                    </p>
-                    <div className="overflow-hidden rounded-xl bg-[#fbfdf6]">
-                      <div className="bg-[radial-gradient(circle_at_85%_20%,rgba(192,234,112,0.55),transparent_40%),linear-gradient(135deg,#f7fbef,#e4efe2)] p-5">
-                        <p className="font-fraunces text-xl font-semibold leading-snug">
-                          Honest plumbing,
-                          <br />
-                          done properly.
-                        </p>
-                        <p className="mt-2 text-[11px] leading-4 text-black/50">
-                          Serving the valleys for 25 years.
-                        </p>
-                        <span className="mt-3 inline-flex rounded-full bg-[#141811] px-3.5 py-1.5 text-[10px] font-bold text-white">
-                          Call us today
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-3 divide-x divide-black/5 text-center text-[9px] font-semibold text-black/55">
-                        <div className="px-1 py-2.5">★ 5.0 rated</div>
-                        <div className="px-1 py-2.5">24/7 callouts</div>
-                        <div className="px-1 py-2.5">Free quotes</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="h-12" aria-hidden />
+              <div className="relative mx-auto w-full max-w-xl lg:max-w-none">
+                <BeforeAfterReveal
+                  before={accountantBeforePreview}
+                  after={accountantAfterPreview}
+                  beforeAlt="Original accountant website before Refresh Kiwi"
+                  afterAlt="Refreshed accountant website generated by Refresh Kiwi"
+                  priority
+                  className="border-black/10 shadow-[#8bbf4d]/20"
+                />
               </div>
             </div>
           )}
@@ -1280,45 +1299,45 @@ export default function RefreshPage({
                 haven&apos;t changed since 2012.
               </p>
 
-              <div className="mt-10 grid gap-4 md:grid-cols-3">
+              <div className="mt-10 grid gap-5 lg:grid-cols-2">
                 {[
                   {
-                    name: "Property maintenance",
-                    before: "Tiny text, walls of paragraphs, broken on phones",
-                    after:
-                      "Phone number front and centre, five-star reviews, tap to call",
+                    name: "Accountants",
+                    before: accountantBeforePreview,
+                    after: accountantAfterPreview,
+                    beforeAlt: "Original accountant website before Refresh Kiwi",
+                    afterAlt: "Refreshed accountant website generated by Refresh Kiwi",
+                    detail:
+                      "From a sidebar-heavy old layout to a calmer homepage with clear services, trust signals, and a stronger meeting CTA.",
                   },
                   {
-                    name: "Car body shop",
-                    before: "Dated photo galleries, menus going nowhere",
-                    after:
-                      "Clean photo showcase, clear services, easy quote button",
-                  },
-                  {
-                    name: "Osteopath clinic",
-                    before: "Cluttered pages with buried contact details",
-                    after:
-                      "Calm professional look, booking info impossible to miss",
+                    name: "Precision engineering",
+                    before: engineerBeforePreview,
+                    after: engineerAfterPreview,
+                    beforeAlt: "Original engineering website before Refresh Kiwi",
+                    afterAlt: "Refreshed engineering website generated by Refresh Kiwi",
+                    detail:
+                      "From dense copy and dated navigation to a focused industrial hero with contact actions and proof points up front.",
                   },
                 ].map((example) => (
-                  <div
+                  <article
                     key={example.name}
-                    className="rounded-3xl border border-white/10 bg-white/5 p-7"
+                    className="rounded-[2rem] border border-white/10 bg-white/[0.06] p-4 shadow-2xl shadow-black/20 sm:p-5"
                   >
-                    <h3 className="text-lg font-bold">{example.name}</h3>
-                    <p className="mt-4 text-sm leading-6 text-white/40">
-                      <span className="font-semibold text-white/55">
-                        Before:
-                      </span>{" "}
-                      {example.before}
-                    </p>
-                    <p className="mt-3 text-sm leading-6 text-white/75">
-                      <span className="font-semibold text-kiwi-green">
-                        After:
-                      </span>{" "}
-                      {example.after}
-                    </p>
-                  </div>
+                    <BeforeAfterReveal
+                      before={example.before}
+                      after={example.after}
+                      beforeAlt={example.beforeAlt}
+                      afterAlt={example.afterAlt}
+                      className="border-white/10 bg-white/10 shadow-black/20"
+                    />
+                    <div className="mt-5 px-1">
+                      <h3 className="text-lg font-bold">{example.name}</h3>
+                      <p className="mt-2 text-sm leading-6 text-white/60">
+                        {example.detail}
+                      </p>
+                    </div>
+                  </article>
                 ))}
               </div>
 
