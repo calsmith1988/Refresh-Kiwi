@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import RefreshPage from "@/components/RefreshPage";
+import { publishedArticles } from "@/lib/blog/articles";
 
 export const metadata: Metadata = {
   title: "Affordable AI Website Redesign Service | Refresh Kiwi",
@@ -20,5 +21,13 @@ export const metadata: Metadata = {
 };
 
 export default function Home() {
-  return <RefreshPage />;
+  const blogSnippets = publishedArticles.slice(0, 3).map((article) => ({
+    slug: article.slug,
+    title: article.title,
+    excerpt: article.excerpt,
+    category: article.category,
+    readingTime: article.readingTime,
+  }));
+
+  return <RefreshPage blogSnippets={blogSnippets} />;
 }

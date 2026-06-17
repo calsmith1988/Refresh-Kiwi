@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import BlogRefreshForm from "@/components/BlogRefreshForm";
 import {
   blogAuthor,
   getArticleBySlug,
@@ -227,12 +228,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
             separate preview. Your real website stays unchanged until you choose
             to publish.
           </p>
-          <Link
-            href="/#refresh-input"
-            className="mt-6 inline-flex rounded-full bg-[#141811] px-6 py-3 text-sm font-bold text-white transition hover:bg-black"
-          >
-            Refresh my website
-          </Link>
+          <BlogRefreshForm />
         </section>
 
         {related.length ? (

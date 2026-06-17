@@ -67,6 +67,14 @@ interface AuthUser {
   subscriptionStatus: string;
 }
 
+type BlogSnippet = {
+  slug: string;
+  title: string;
+  excerpt: string;
+  category: string;
+  readingTime: string;
+};
+
 function readStoredJob(): { jobId: string; url: string } | null {
   try {
     const raw = window.localStorage.getItem(ACTIVE_JOB_STORAGE_KEY);
@@ -126,7 +134,11 @@ function formatElapsed(ms: number): string {
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
 }
 
-export default function RefreshPage() {
+export default function RefreshPage({
+  blogSnippets = [],
+}: {
+  blogSnippets?: BlogSnippet[];
+}) {
   const [url, setUrl] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [job, setJob] = useState<JobResponse | null>(null);
@@ -273,6 +285,48 @@ export default function RefreshPage() {
     [pollJob, stopPolling],
   );
 
+  const resumeJob = useCallback(
+    (stored: { jobId: string; url: string }) => {
+      setUrl((current) => current || stored.url);
+
+      void fetch(`/api/refresh/${stored.jobId}`)
+        .then(async (response) => {
+          if (!response.ok) {
+            clearStoredJob();
+            return;
+          }
+
+          const resumedJob = (await response.json()) as JobResponse;
+
+          // Stale jobs: the refresh failed, or the saved website has since
+          // been deleted or expired — don't resurrect those on the landing page.
+          if (
+            resumedJob.status === "failed" ||
+            resumedJob.websiteStatus === "archived" ||
+            resumedJob.websiteStatus === "expired"
+          ) {
+            clearStoredJob();
+            return;
+          }
+
+          setJob(resumedJob);
+
+          if (!HOMEPAGE_READY_STATUSES.has(resumedJob.status)) {
+            setIsRefreshing(true);
+            setStatusMessageIndex(0);
+            startProgressTimers();
+            beginPolling(resumedJob.id);
+          } else if (!TERMINAL_STATUSES.has(resumedJob.status)) {
+            beginPolling(resumedJob.id);
+          }
+        })
+        .catch(() => {
+          // Leave the stored job in place; a later signed-in visit may reach the API.
+        });
+    },
+    [beginPolling, startProgressTimers],
+  );
+
   useEffect(() => {
     let cancelled = false;
 
@@ -294,6 +348,15 @@ export default function RefreshPage() {
           return;
         }
 
+        const linkedJobId = params.get("job");
+        if (linkedJobId) {
+          const linkedUrl = params.get("url") ?? "";
+          storeJob(linkedJobId, linkedUrl);
+          resumeJob({ jobId: linkedJobId, url: linkedUrl });
+          window.history.replaceState(null, "", "/");
+          return;
+        }
+
         // Logging out should put the landing page back into anonymous mode,
         // not resurrect a previously claimed/generated website from storage.
         if (!payload.user) {
@@ -305,43 +368,7 @@ export default function RefreshPage() {
         // (and accidental tab refreshes) never lose their result.
         const stored = readStoredJob();
         if (stored) {
-          setUrl((current) => current || stored.url);
-
-          void fetch(`/api/refresh/${stored.jobId}`)
-            .then(async (response) => {
-              if (!response.ok) {
-                clearStoredJob();
-                return;
-              }
-
-              const resumedJob = (await response.json()) as JobResponse;
-
-              // Stale jobs: the refresh failed, or the saved website has since
-              // been deleted or expired — don't resurrect those on the landing
-              // page.
-              if (
-                resumedJob.status === "failed" ||
-                resumedJob.websiteStatus === "archived" ||
-                resumedJob.websiteStatus === "expired"
-              ) {
-                clearStoredJob();
-                return;
-              }
-
-              setJob(resumedJob);
-
-              if (!HOMEPAGE_READY_STATUSES.has(resumedJob.status)) {
-                setIsRefreshing(true);
-                setStatusMessageIndex(0);
-                startProgressTimers();
-                beginPolling(resumedJob.id);
-              } else if (!TERMINAL_STATUSES.has(resumedJob.status)) {
-                beginPolling(resumedJob.id);
-              }
-            })
-            .catch(() => {
-              // Leave the stored job in place; a later signed-in visit may reach the API.
-            });
+          resumeJob(stored);
         }
       })
       .catch(() => {
@@ -357,7 +384,7 @@ export default function RefreshPage() {
       stopStatusRotation();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [resumeJob]);
 
   const claimCurrentWebsite = useCallback(async () => {
     if (!job) {
@@ -425,6 +452,14 @@ export default function RefreshPage() {
       setAccountMode("closed");
       setTwoFactorChallengeToken(null);
       setTwoFactorCode("");
+      if (accountMode === "login") {
+        await claimCurrentWebsite().catch((error) => {
+          console.warn("[refresh-kiwi] login claim skipped", error);
+        });
+        window.location.href = "/dashboard";
+        return;
+      }
+
       await claimCurrentWebsite();
     } catch (error) {
       setErrorMessage(
@@ -469,7 +504,10 @@ export default function RefreshPage() {
       setAccountMode("closed");
       setTwoFactorChallengeToken(null);
       setTwoFactorCode("");
-      await claimCurrentWebsite();
+      await claimCurrentWebsite().catch((error) => {
+        console.warn("[refresh-kiwi] 2FA login claim skipped", error);
+      });
+      window.location.href = "/dashboard";
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : "Invalid two-factor code",
@@ -1417,6 +1455,51 @@ export default function RefreshPage() {
               </div>
             </div>
           </section>
+
+          {blogSnippets.length ? (
+            <section className="border-t border-black/5 px-5 py-20 sm:px-8">
+              <div className="mx-auto w-full max-w-6xl">
+                <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+                  <div>
+                    <p className="text-sm font-semibold uppercase tracking-[0.18em] text-black/40">
+                      From the blog
+                    </p>
+                    <h2 className="mt-3 max-w-2xl font-fraunces text-3xl font-semibold tracking-tight sm:text-4xl">
+                      Quick reads before you refresh your website.
+                    </h2>
+                  </div>
+                  <Link
+                    href="/blog"
+                    className="inline-flex h-11 items-center rounded-full border border-black/10 bg-white px-5 text-sm font-semibold transition hover:border-black/25"
+                  >
+                    View all guides
+                  </Link>
+                </div>
+
+                <div className="mt-8 grid gap-4 md:grid-cols-3">
+                  {blogSnippets.map((article) => (
+                    <Link
+                      key={article.slug}
+                      href={`/blog/${article.slug}`}
+                      className="group rounded-[2rem] border border-black/10 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                    >
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-black/45">
+                        <span>{article.category}</span>
+                        <span aria-hidden>•</span>
+                        <span>{article.readingTime}</span>
+                      </div>
+                      <h3 className="mt-4 font-fraunces text-2xl font-semibold leading-tight tracking-tight group-hover:underline">
+                        {article.title}
+                      </h3>
+                      <p className="mt-3 text-sm leading-7 text-black/60">
+                        {article.excerpt}
+                      </p>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </section>
+          ) : null}
 
           {/* ───────────────────────── Final CTA ───────────────────────── */}
           <section className="px-5 py-20 sm:px-8">
