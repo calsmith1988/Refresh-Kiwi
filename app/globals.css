@@ -46,7 +46,8 @@ body {
   100% {
     clip-path: inset(0 100% 0 0);
   }
-  50% {
+  45%,
+  58% {
     clip-path: inset(0 0 0 0);
   }
 }
@@ -56,19 +57,20 @@ body {
   100% {
     left: 0%;
   }
-  50% {
+  45%,
+  58% {
     left: 100%;
   }
 }
 
 .before-after-reveal-clip {
   clip-path: inset(0 100% 0 0);
-  animation: before-after-reveal 6.5s ease-in-out infinite;
+  animation: before-after-reveal 8s ease-in-out infinite;
 }
 
 .before-after-reveal-handle {
   left: 0%;
-  animation: before-after-handle 6.5s ease-in-out infinite;
+  animation: before-after-handle 8s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
