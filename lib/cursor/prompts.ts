@@ -7,6 +7,11 @@ export interface EditPromptParams extends PromptParams {
   editPrompt: string;
 }
 
+export interface LegalPagesPromptParams extends PromptParams {
+  legalDraft: string;
+  existingLegalSummary: string;
+}
+
 export function buildHomepagePrompt({ sourceUrl, slug }: PromptParams): string {
   return `Rebuild the homepage for Refresh Kiwi. Work fast — target ~2 minutes, but the result must look like a premium designed website, not a text extraction.
 
@@ -83,7 +88,7 @@ The homepage already exists. Your job is to crawl the source website for importa
 
 1. Work only inside sites/${slug}/.
 2. Read the existing files first, especially index.html, styles.css, script.js if present, and site.json.
-3. Crawl the source site's main navigation and obvious internal links. Prioritize useful pages like About, Services, Products, Case Studies, Contact, Pricing, FAQs, and location/service pages.
+3. Crawl the source site's main navigation and obvious internal links. Prioritize useful pages like About, Services, Products, Case Studies, Contact, Pricing, FAQs, and location/service pages. Do not generate legal/policy pages in this flow unless the user explicitly asked for legal pages.
 4. Build up to 6 additional pages. If the source site has fewer meaningful pages, build only those. Do not invent filler pages.
 5. Images: hotlink the source site's real images by their absolute https URLs, exactly like the homepage does. Do not download image files. Never invent image paths — only use URLs you actually saw on the source site. Galleries and image-heavy pages may use as many source images as the design deserves.
 6. Videos: same rule as the homepage — re-embed YouTube/Vimeo videos with responsive lazy-loaded iframes (youtube-nocookie for YouTube), and reference self-hosted video files by absolute https URL in <video controls preload="metadata"> tags. Never download video files or invent video URLs.
@@ -105,6 +110,52 @@ The homepage already exists. Your job is to crawl the source website for importa
 - Avoid rebuilding the homepage from scratch unless a small nav/footer update is needed.
 
 Stop when the generated pages and updated site.json are complete.`;
+}
+
+export function buildLegalPagesPrompt({
+  sourceUrl,
+  slug,
+  legalDraft,
+  existingLegalSummary,
+}: LegalPagesPromptParams): string {
+  return `Generate starter legal pages for an existing Refresh Kiwi static website.
+
+SOURCE: ${sourceUrl}
+SITE: sites/${slug}/
+
+## Existing legal page check
+
+${existingLegalSummary}
+
+Before creating anything, crawl the source site's footer, privacy/cookie/terms links, and obvious legal links. If the source site already has legal pages, preserve and restyle that real content instead of replacing it with generic text. If the source does not have usable legal pages, use the starter draft below.
+
+## Starter legal draft
+
+${legalDraft}
+
+## Scope
+
+1. Work only inside sites/${slug}/.
+2. Read the existing files first, especially index.html, styles.css, script.js if present, and site.json.
+3. Build legal pages that match the existing site's header, footer, typography, colours, spacing, and responsive behavior.
+4. Create pages only for the legal content available or discovered, normally Privacy Policy, Cookie Policy, and Terms.
+5. Include a short disclaimer on each generated legal page: "Starter template only - review before publishing."
+6. Do not create or wire a cookie consent banner in this phase.
+7. Update the homepage footer/navigation to link to the legal pages in a subtle footer/legal-links area.
+8. Update site.json with:
+   - pages: include "/" plus all existing pages and each legal page with path, title, and gated false
+   - discoveredPages: include any meaningful pages discovered but not generated
+9. Commit the finished legal pages to the repo.
+
+## Quality bar
+
+- These pages should feel part of the refreshed website, not pasted legal boilerplate.
+- Keep the copy clear, structured, and readable with headings and short sections.
+- Do not claim legal compliance or that the pages are lawyer-approved.
+- Every generated page must load shared CSS and assets correctly from preview subpaths. Prefer root-relative preview paths like /preview/${slug}/styles.css and /preview/${slug}/page-path.
+- Avoid rebuilding the homepage from scratch unless a small footer/navigation update is needed.
+
+Stop when the legal pages and updated site.json are complete.`;
 }
 
 export function buildEditPrompt({

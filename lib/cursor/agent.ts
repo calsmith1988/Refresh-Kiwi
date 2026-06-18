@@ -5,6 +5,7 @@ import {
   buildAdditionalPagesPrompt,
   buildEditPrompt,
   buildHomepagePrompt,
+  buildLegalPagesPrompt,
 } from "@/lib/cursor/prompts";
 import { RUN_TIMEOUTS, waitForRun } from "@/lib/cursor/run";
 
@@ -116,6 +117,60 @@ export async function runAdditionalPagesPhase(
 
     if (result.status === "cancelled") {
       throw new Error(`Additional pages build was cancelled (run ${result.id})`);
+    }
+
+    return { agentId: started.agentId, runId: result.id };
+  } finally {
+    await disposeAgent(agent);
+  }
+}
+
+export async function runLegalPagesPhase(
+  params: {
+    sourceUrl: string;
+    slug: string;
+    agentId?: string | null;
+    legalDraft: string;
+    existingLegalSummary: string;
+  },
+  onStarted?: (info: PhaseRunResult) => Promise<void>,
+): Promise<PhaseRunResult> {
+  const apiKey = getCursorApiKey();
+  const agent = params.agentId
+    ? await Agent.resume(params.agentId, {
+        apiKey,
+        model: MODEL,
+        cloud: cloudOptions(),
+      })
+    : await Agent.create({
+        apiKey,
+        model: MODEL,
+        name: `Refresh Kiwi — ${params.slug} (legal pages)`,
+        cloud: cloudOptions(),
+      });
+
+  try {
+    const run = await agent.send(buildLegalPagesPrompt(params));
+    const started = { agentId: agent.agentId, runId: run.id };
+
+    console.info(
+      `[refresh-kiwi] legal pages agent started agentId=${started.agentId} runId=${started.runId} slug=${params.slug}`,
+    );
+
+    await onStarted?.(started);
+
+    const result = await waitForRun(run, RUN_TIMEOUTS.pages);
+
+    console.info(
+      `[refresh-kiwi] legal pages agent finished agentId=${started.agentId} runId=${result.id} status=${result.status}`,
+    );
+
+    if (result.status === "error") {
+      throw new Error(`Legal pages build failed (run ${result.id})`);
+    }
+
+    if (result.status === "cancelled") {
+      throw new Error(`Legal pages build was cancelled (run ${result.id})`);
     }
 
     return { agentId: started.agentId, runId: result.id };

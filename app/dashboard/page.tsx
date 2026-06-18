@@ -118,6 +118,70 @@ type WebsiteImagesState =
   | { status: "error" }
   | { status: "ready"; images: WebsiteImage[] };
 
+type PageGenerationType = "business" | "legal";
+
+type LegalAnswersState = {
+  businessLegalName: string;
+  tradingName: string;
+  country: string;
+  privacyEmail: string;
+  hasContactForms: boolean;
+  hasBookings: boolean;
+  hasNewsletter: boolean;
+  hasPayments: boolean;
+  usesAnalytics: boolean;
+  usesAds: boolean;
+  usesLiveChat: boolean;
+  embedsMapsOrVideos: boolean;
+  hasExistingLegalPages: boolean;
+  notes: string;
+};
+
+type LegalBooleanField = {
+  key: keyof Pick<
+    LegalAnswersState,
+    | "hasContactForms"
+    | "hasBookings"
+    | "hasNewsletter"
+    | "hasPayments"
+    | "usesAnalytics"
+    | "usesAds"
+    | "usesLiveChat"
+    | "embedsMapsOrVideos"
+    | "hasExistingLegalPages"
+  >;
+  label: string;
+};
+
+const DEFAULT_LEGAL_ANSWERS: LegalAnswersState = {
+  businessLegalName: "",
+  tradingName: "",
+  country: "United Kingdom",
+  privacyEmail: "",
+  hasContactForms: true,
+  hasBookings: false,
+  hasNewsletter: false,
+  hasPayments: false,
+  usesAnalytics: true,
+  usesAds: false,
+  usesLiveChat: false,
+  embedsMapsOrVideos: true,
+  hasExistingLegalPages: false,
+  notes: "",
+};
+
+const LEGAL_BOOLEAN_FIELDS: LegalBooleanField[] = [
+  { key: "hasContactForms", label: "Contact forms" },
+  { key: "hasBookings", label: "Bookings" },
+  { key: "hasNewsletter", label: "Newsletter signup" },
+  { key: "hasPayments", label: "Payments" },
+  { key: "usesAnalytics", label: "Analytics" },
+  { key: "usesAds", label: "Ads or tracking pixels" },
+  { key: "usesLiveChat", label: "Live chat" },
+  { key: "embedsMapsOrVideos", label: "Embedded maps or videos" },
+  { key: "hasExistingLegalPages", label: "They already have legal pages" },
+];
+
 // Starter ideas for the edit box. Chips ending in "…" prefill a sentence the
 // user finishes with their own details (the AI can't know their hours or
 // number); the others are complete instructions the AI has context for.
@@ -154,6 +218,14 @@ const EDIT_PROGRESS_STAGES: Array<{ atMs: number; message: string }> = [
   { atMs: 150_000, message: "Nearly there — finishing touches…" },
 ];
 
+const PAGE_PROGRESS_STAGES: Array<{ atMs: number; message: string }> = [
+  { atMs: 0, message: "Checking your current site…" },
+  { atMs: 20_000, message: "Writing page content…" },
+  { atMs: 60_000, message: "Building pages…" },
+  { atMs: 130_000, message: "Publishing preview…" },
+  { atMs: 210_000, message: "Nearly there — finishing touches…" },
+];
+
 function editProgressMessage(createdAt: string, now: number): string {
   const elapsed = now - new Date(createdAt).getTime();
   let message = EDIT_PROGRESS_STAGES[0].message;
@@ -165,6 +237,19 @@ function editProgressMessage(createdAt: string, now: number): string {
   }
 
   return message;
+}
+
+function pageProgressStageIndex(startedAt: string, now: number): number {
+  const elapsed = now - new Date(startedAt).getTime();
+  let index = 0;
+
+  for (let current = 0; current < PAGE_PROGRESS_STAGES.length; current += 1) {
+    if (elapsed >= PAGE_PROGRESS_STAGES[current].atMs) {
+      index = current;
+    }
+  }
+
+  return index;
 }
 
 function editProgressStageIndex(createdAt: string, now: number): number {
@@ -323,6 +408,19 @@ export default function DashboardPage() {
   const [generatingPagesWebsiteId, setGeneratingPagesWebsiteId] = useState<string | null>(
     null,
   );
+  const [pageGenerationType, setPageGenerationType] =
+    useState<PageGenerationType>("business");
+  const [pageChooserWebsiteId, setPageChooserWebsiteId] = useState<string | null>(
+    null,
+  );
+  const [legalAnswers, setLegalAnswers] =
+    useState<LegalAnswersState>(DEFAULT_LEGAL_ANSWERS);
+  const [activePagesModalWebsiteId, setActivePagesModalWebsiteId] = useState<
+    string | null
+  >(null);
+  const [dismissedPagesJobIds, setDismissedPagesJobIds] = useState<
+    Record<string, true>
+  >({});
   const [imagesPanelWebsiteId, setImagesPanelWebsiteId] = useState<string | null>(
     null,
   );
@@ -406,6 +504,32 @@ export default function DashboardPage() {
   const activeEditStageIndex = activeEditRequest
     ? editProgressStageIndex(activeEditRequest.createdAt, progressTick)
     : 0;
+  const activePagesWebsites = useMemo(
+    () => websites.filter((website) => website.jobStatus === "building_pages"),
+    [websites],
+  );
+  const activePagesWebsite = useMemo(
+    () =>
+      activePagesWebsites.find(
+        (website) => website.id === activePagesModalWebsiteId,
+      ) ??
+      activePagesWebsites.find(
+        (website) => !dismissedPagesJobIds[website.jobId],
+      ) ??
+      null,
+    [activePagesModalWebsiteId, activePagesWebsites, dismissedPagesJobIds],
+  );
+  const showActivePagesModal = Boolean(activePagesWebsite);
+  const activePagesStageIndex = activePagesWebsite
+    ? pageProgressStageIndex(activePagesWebsite.updatedAt, progressTick)
+    : 0;
+  const pageChooserWebsite = pageChooserWebsiteId
+    ? websites.find((website) => website.id === pageChooserWebsiteId) ?? null
+    : null;
+  const canSubmitPageGeneration =
+    pageGenerationType === "business" ||
+    (legalAnswers.businessLegalName.trim().length >= 2 &&
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(legalAnswers.privacyEmail.trim()));
 
   const loadDashboard = async (cancelled?: () => boolean) => {
     try {
@@ -488,7 +612,6 @@ export default function DashboardPage() {
       cancelled = true;
       window.clearInterval(timer);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [celebration, isPro]);
 
   useEffect(() => {
@@ -526,9 +649,9 @@ export default function DashboardPage() {
     };
   }, [lightboxUrl]);
 
-  // Advances the in-progress edit messages between polls.
+  // Advances in-progress edit/page messages between polls.
   useEffect(() => {
-    if (!hasActiveEdit) {
+    if (!hasActiveEdit && !hasActivePageGeneration) {
       return;
     }
 
@@ -539,11 +662,33 @@ export default function DashboardPage() {
     return () => {
       window.clearInterval(timer);
     };
-  }, [hasActiveEdit]);
+  }, [hasActiveEdit, hasActivePageGeneration]);
 
   const openProSheet = () => {
     setErrorMessage(null);
     setShowProSheet(true);
+  };
+
+  const openPageChooser = (website: Website) => {
+    setPageGenerationType("business");
+    setLegalAnswers({
+      ...DEFAULT_LEGAL_ANSWERS,
+      businessLegalName: website.brandName ?? "",
+      tradingName: website.brandName ?? "",
+      privacyEmail: user?.email ?? "",
+    });
+    setPageChooserWebsiteId(website.id);
+    setErrorMessage(null);
+  };
+
+  const updateLegalAnswer = <Key extends keyof LegalAnswersState>(
+    key: Key,
+    value: LegalAnswersState[Key],
+  ) => {
+    setLegalAnswers((current) => ({
+      ...current,
+      [key]: value,
+    }));
   };
 
   const logout = async () => {
@@ -714,13 +859,33 @@ export default function DashboardPage() {
     }
   };
 
-  const generateAdditionalPages = async (websiteId: string) => {
+  const generateAdditionalPages = async (
+    websiteId: string,
+    type: PageGenerationType = "business",
+  ) => {
+    const website = websites.find((item) => item.id === websiteId);
+
     setGeneratingPagesWebsiteId(websiteId);
+    setPageGenerationType(type);
+    setActivePagesModalWebsiteId(websiteId);
+    if (website) {
+      setDismissedPagesJobIds((current) => {
+        const next = { ...current };
+        delete next[website.jobId];
+        return next;
+      });
+    }
     setErrorMessage(null);
 
     try {
       const response = await fetch(`/api/websites/${websiteId}/pages`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          type === "legal"
+            ? { type, answers: legalAnswers }
+            : { type: "business" },
+        ),
       });
       const payload = await response.json();
 
@@ -729,6 +894,7 @@ export default function DashboardPage() {
       }
 
       await loadDashboard();
+      setPageChooserWebsiteId(null);
     } catch (error) {
       setErrorMessage(
         error instanceof Error
@@ -1538,7 +1704,7 @@ export default function DashboardPage() {
                           )
                         ) : null}
                         {isGeneratingPages ? (
-                          <div className="mt-3 flex items-center gap-2">
+                          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
                             <Image
                               src="/refresh-kiwi-favicon-v2.png"
                               alt=""
@@ -1550,6 +1716,20 @@ export default function DashboardPage() {
                               Building your extra pages — usually takes a few
                               minutes…
                             </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActivePagesModalWebsiteId(website.id);
+                                setDismissedPagesJobIds((current) => {
+                                  const next = { ...current };
+                                  delete next[website.jobId];
+                                  return next;
+                                });
+                              }}
+                              className="text-xs font-semibold text-black/45 underline underline-offset-2 transition hover:text-black"
+                            >
+                              View status
+                            </button>
                           </div>
                         ) : null}
                       </div>
@@ -1622,7 +1802,7 @@ export default function DashboardPage() {
                         {state.canView && isPro && generatedPages.length === 0 ? (
                           <button
                             type="button"
-                            onClick={() => void generateAdditionalPages(website.id)}
+                            onClick={() => openPageChooser(website)}
                             disabled={
                               isGeneratingPages ||
                               generatingPagesWebsiteId === website.id
@@ -1686,7 +1866,7 @@ export default function DashboardPage() {
                                   type="button"
                                   onClick={() => {
                                     setConfirmRegenerateId(null);
-                                    void generateAdditionalPages(website.id);
+                                    openPageChooser(website);
                                   }}
                                   className="rounded-full bg-[#141811] px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-black"
                                 >
@@ -2286,6 +2466,289 @@ export default function DashboardPage() {
           )}
         </section>
       </div>
+
+      {pageChooserWebsite ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="page-chooser-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-5 backdrop-blur-sm"
+        >
+          <div className="preview-pop max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-black/10 bg-white p-6 shadow-2xl sm:p-8">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-black/40">
+                  Generate pages
+                </p>
+                <h2
+                  id="page-chooser-title"
+                  className="mt-2 font-fraunces text-3xl font-semibold tracking-tight"
+                >
+                  What should we build?
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-black/55">
+                  Choose normal business pages, or create starter legal pages
+                  from a short questionnaire.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPageChooserWebsiteId(null)}
+                className="rounded-full border border-black/10 px-3 py-1 text-sm text-black/60 transition hover:border-black/25 hover:text-black"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              {[
+                {
+                  type: "business" as const,
+                  title: "My other pages",
+                  description:
+                    "About, services, gallery, blog, contact, FAQs and other useful pages from the current site.",
+                },
+                {
+                  type: "legal" as const,
+                  title: "Legal pages",
+                  description:
+                    "Starter privacy, cookie and terms pages. This is not legal advice.",
+                },
+              ].map((option) => (
+                <button
+                  key={option.type}
+                  type="button"
+                  onClick={() => setPageGenerationType(option.type)}
+                  className={`rounded-3xl border p-4 text-left transition ${
+                    pageGenerationType === option.type
+                      ? "border-kiwi-green bg-[#f8fde9]"
+                      : "border-black/10 bg-white hover:border-black/25"
+                  }`}
+                >
+                  <span className="text-sm font-semibold text-black">
+                    {option.title}
+                  </span>
+                  <span className="mt-1 block text-xs leading-5 text-black/50">
+                    {option.description}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {pageGenerationType === "legal" ? (
+              <div className="mt-6 rounded-3xl bg-[#faf8f1] p-4 sm:p-5">
+                <p className="text-sm font-semibold text-black">
+                  Starter legal page details
+                </p>
+                <p className="mt-1 text-xs leading-5 text-black/45">
+                  These answers help draft a better starter template. Review it
+                  before publishing.
+                </p>
+
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <label className="text-xs font-semibold text-black/55">
+                    Business legal name
+                    <input
+                      value={legalAnswers.businessLegalName}
+                      onChange={(event) =>
+                        updateLegalAnswer("businessLegalName", event.target.value)
+                      }
+                      className="mt-1 h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm font-medium text-black outline-none focus:border-black/30"
+                    />
+                  </label>
+                  <label className="text-xs font-semibold text-black/55">
+                    Trading name
+                    <input
+                      value={legalAnswers.tradingName}
+                      onChange={(event) =>
+                        updateLegalAnswer("tradingName", event.target.value)
+                      }
+                      className="mt-1 h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm font-medium text-black outline-none focus:border-black/30"
+                    />
+                  </label>
+                  <label className="text-xs font-semibold text-black/55">
+                    Country/region
+                    <input
+                      value={legalAnswers.country}
+                      onChange={(event) =>
+                        updateLegalAnswer("country", event.target.value)
+                      }
+                      className="mt-1 h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm font-medium text-black outline-none focus:border-black/30"
+                    />
+                  </label>
+                  <label className="text-xs font-semibold text-black/55">
+                    Privacy contact email
+                    <input
+                      value={legalAnswers.privacyEmail}
+                      onChange={(event) =>
+                        updateLegalAnswer("privacyEmail", event.target.value)
+                      }
+                      inputMode="email"
+                      className="mt-1 h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm font-medium text-black outline-none focus:border-black/30"
+                    />
+                  </label>
+                </div>
+
+                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                  {LEGAL_BOOLEAN_FIELDS.map((field) => (
+                    <label
+                      key={field.key}
+                      className="flex items-center gap-2 rounded-2xl bg-white px-3 py-2 text-sm font-medium text-black/60"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={legalAnswers[field.key]}
+                        onChange={(event) =>
+                          updateLegalAnswer(field.key, event.target.checked)
+                        }
+                        className="h-4 w-4 accent-[#BFE262]"
+                      />
+                      {field.label}
+                    </label>
+                  ))}
+                </div>
+
+                <label className="mt-4 block text-xs font-semibold text-black/55">
+                  Extra notes
+                  <textarea
+                    value={legalAnswers.notes}
+                    onChange={(event) =>
+                      updateLegalAnswer("notes", event.target.value)
+                    }
+                    placeholder="Any tools, policies, services, or details we should mention?"
+                    className="mt-1 min-h-24 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm font-medium text-black outline-none focus:border-black/30"
+                  />
+                </label>
+              </div>
+            ) : null}
+
+            <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setPageChooserWebsiteId(null)}
+                className="h-11 rounded-full border border-black/10 bg-white px-5 text-sm font-semibold text-black/60 transition hover:border-black/25 hover:text-black"
+              >
+                Not now
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  void generateAdditionalPages(
+                    pageChooserWebsite.id,
+                    pageGenerationType,
+                  )
+                }
+                disabled={
+                  generatingPagesWebsiteId === pageChooserWebsite.id ||
+                  !canSubmitPageGeneration
+                }
+                className="h-11 rounded-full bg-[#141811] px-5 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {generatingPagesWebsiteId === pageChooserWebsite.id
+                  ? "Starting..."
+                  : pageGenerationType === "legal"
+                    ? "Generate legal pages"
+                    : "Generate my other pages"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showActivePagesModal && activePagesWebsite ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="active-pages-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-5 backdrop-blur-sm"
+        >
+          <div className="preview-pop w-full max-w-md rounded-3xl border border-black/10 bg-white p-6 text-center shadow-2xl sm:max-w-lg sm:p-8">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-white">
+              <Image
+                src="/refresh-kiwi-favicon-v2.png"
+                alt=""
+                width={34}
+                height={34}
+                aria-hidden
+                className="kiwi-bob rounded-full"
+              />
+            </div>
+            <p className="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-black/40">
+              Building pages
+            </p>
+            <h2
+              id="active-pages-title"
+              className="mx-auto mt-2 max-w-sm font-fraunces text-3xl font-semibold leading-tight tracking-tight"
+            >
+              Updating {activePagesWebsite.brandName || activePagesWebsite.slug}
+            </h2>
+            <p
+              key={PAGE_PROGRESS_STAGES[activePagesStageIndex].message}
+              className="edit-message-in mt-4 text-sm font-medium text-black/55"
+              aria-live="polite"
+            >
+              {PAGE_PROGRESS_STAGES[activePagesStageIndex].message}
+            </p>
+
+            <ol className="mx-auto mt-7 max-w-xs space-y-3 text-left">
+              {PAGE_PROGRESS_STAGES.map((stage, index) => {
+                const done = index < activePagesStageIndex;
+                const current = index === activePagesStageIndex;
+
+                return (
+                  <li key={stage.message} className="flex items-center gap-3">
+                    <span
+                      aria-hidden
+                      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                        done
+                          ? "bg-kiwi-green text-black"
+                          : current
+                            ? "border-2 border-kiwi-green bg-white"
+                            : "border border-black/15 bg-white"
+                      }`}
+                    >
+                      {done ? (
+                        "✓"
+                      ) : current ? (
+                        <span className="h-2 w-2 animate-pulse rounded-full bg-kiwi-green" />
+                      ) : null}
+                    </span>
+                    <span
+                      className={`text-sm ${
+                        done || current
+                          ? "font-semibold text-black"
+                          : "text-black/35"
+                      }`}
+                    >
+                      {stage.message.replace("…", "")}
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+
+            <p className="mt-5 text-xs leading-5 text-black/45">
+              You can close this popup or leave the dashboard — your pages keep
+              building in the background and will appear here when they&apos;re
+              done.
+            </p>
+
+            <button
+              type="button"
+              onClick={() => {
+                setDismissedPagesJobIds((current) => ({
+                  ...current,
+                  [activePagesWebsite.jobId]: true,
+                }));
+                setActivePagesModalWebsiteId(null);
+              }}
+              className="mt-5 h-11 rounded-full border border-black/10 bg-white px-5 text-sm font-semibold text-black transition hover:border-black/25"
+            >
+              Keep working in background
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {showActiveEditModal && activeEditWebsite && activeEditRequest ? (
         <div

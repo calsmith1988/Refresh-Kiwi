@@ -2,6 +2,7 @@ import { after, NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth/session";
 import { getDb, schema } from "@/lib/db";
+import { type LegalAnswers, validateLegalAnswers } from "@/lib/legal/draft";
 import {
   getOwnedWebsite,
   listPagesForJob,
@@ -14,11 +15,16 @@ export const runtime = "nodejs";
 
 const { jobs } = schema;
 
+type PageGenerationBody = {
+  type?: "business" | "legal";
+  answers?: unknown;
+};
+
 interface RouteContext {
   params: Promise<{ websiteId: string }>;
 }
 
-export async function POST(_request: Request, context: RouteContext) {
+export async function POST(request: Request, context: RouteContext) {
   const user = await getCurrentUser();
 
   if (!user) {
@@ -39,6 +45,28 @@ export async function POST(_request: Request, context: RouteContext) {
 
   const { websiteId } = await context.params;
   const website = await getOwnedWebsite({ websiteId, userId: user.id });
+  const rawBody = await request.json().catch(() => ({}));
+  const body =
+    rawBody && typeof rawBody === "object"
+      ? (rawBody as PageGenerationBody)
+      : {};
+  const generationType = body.type === "legal" ? "legal" : "business";
+  let legalAnswers: LegalAnswers | null = null;
+
+  try {
+    legalAnswers =
+      generationType === "legal" ? validateLegalAnswers(body.answers) : null;
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Check the legal page answers and try again.",
+      },
+      { status: 400 },
+    );
+  }
 
   if (!website) {
     return NextResponse.json({ error: "Website not found" }, { status: 404 });
@@ -79,7 +107,12 @@ export async function POST(_request: Request, context: RouteContext) {
   after(async () => {
     try {
       const { processAdditionalPages } = await import("@/lib/pages/processor");
-      await processAdditionalPages(website.id);
+      await processAdditionalPages(
+        website.id,
+        legalAnswers
+          ? { type: "legal", answers: legalAnswers }
+          : { type: "business" },
+      );
     } catch (error) {
       console.error(
         `[refresh-kiwi] failed to start additional pages websiteId=${website.id}`,
@@ -92,7 +125,10 @@ export async function POST(_request: Request, context: RouteContext) {
 
   return NextResponse.json({
     queued: true,
-    message: "Additional page generation started.",
+    message:
+      generationType === "legal"
+        ? "Legal page generation started."
+        : "Additional page generation started.",
     pages: pages.map(toPageResponse),
   });
 }

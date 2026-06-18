@@ -48,7 +48,7 @@ export default function ActivityToast() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [isVisible, setIsVisible] = useState(false);
   const [index, setIndex] = useState(0);
-  const [impressions, setImpressions] = useState(0);
+  const [, setImpressions] = useState(0);
 
   useEffect(() => {
     try {

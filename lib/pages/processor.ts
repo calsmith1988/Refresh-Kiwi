@@ -4,11 +4,16 @@ import path from "node:path";
 import { eq } from "drizzle-orm";
 
 import { localizeWebsiteImages } from "@/lib/assets/localize";
-import { isCursorStartupError, runAdditionalPagesPhase } from "@/lib/cursor/agent";
+import {
+  isCursorStartupError,
+  runAdditionalPagesPhase,
+  runLegalPagesPhase,
+} from "@/lib/cursor/agent";
 import { getDb, schema } from "@/lib/db";
+import { draftLegalPages, type LegalAnswers } from "@/lib/legal/draft";
 import { previewDirectory } from "@/lib/preview/paths";
 import { syncPreviewFromAgent } from "@/lib/preview/sync";
-import { upsertPagesForJob } from "@/lib/websites/service";
+import { listPagesForJob, upsertPagesForJob } from "@/lib/websites/service";
 
 const { jobs, websites } = schema;
 
@@ -21,6 +26,12 @@ type SiteJsonPage = {
 type SiteJson = {
   pages?: SiteJsonPage[];
 };
+
+type PageGenerationOptions =
+  | { type?: "business" }
+  | { type: "legal"; answers: LegalAnswers };
+
+const LEGAL_PAGE_PATTERN = /(privacy|cookie|cookies|terms|legal|gdpr)/i;
 
 async function updateJob(
   jobId: string,
@@ -47,7 +58,25 @@ async function readGeneratedPages(slug: string) {
     }));
 }
 
-export async function processAdditionalPages(websiteId: string): Promise<void> {
+async function describeExistingLegalPages(jobId: string): Promise<string> {
+  const existingPages = await listPagesForJob(jobId);
+  const legalPages = existingPages.filter(
+    (page) => LEGAL_PAGE_PATTERN.test(page.path) || LEGAL_PAGE_PATTERN.test(page.title),
+  );
+
+  if (legalPages.length === 0) {
+    return "No legal pages are currently registered in this refreshed site. Still check the source website for legal links before creating starter pages.";
+  }
+
+  return `The refreshed site already has these likely legal pages registered: ${legalPages
+    .map((page) => `${page.title} (${page.path})`)
+    .join(", ")}. Preserve and restyle existing legal content where possible instead of recreating it blindly.`;
+}
+
+export async function processAdditionalPages(
+  websiteId: string,
+  options: PageGenerationOptions = { type: "business" },
+): Promise<void> {
   const db = getDb();
   const [website] = await db
     .select()
@@ -72,19 +101,36 @@ export async function processAdditionalPages(websiteId: string): Promise<void> {
   try {
     await updateJob(job.id, { status: "building_pages" });
 
-    const pagesRun = await runAdditionalPagesPhase(
-      {
-        sourceUrl: website.sourceUrl,
-        slug: website.slug,
-        agentId: job.homepageAgentId,
-      },
-      async (started) => {
-        await updateJob(job.id, {
-          pagesAgentId: started.agentId,
-          pagesRunId: started.runId,
-        });
-      },
-    );
+    const pagesRun =
+      options.type === "legal"
+        ? await runLegalPagesPhase(
+            {
+              sourceUrl: website.sourceUrl,
+              slug: website.slug,
+              agentId: job.homepageAgentId,
+              legalDraft: await draftLegalPages(options.answers),
+              existingLegalSummary: await describeExistingLegalPages(job.id),
+            },
+            async (started) => {
+              await updateJob(job.id, {
+                pagesAgentId: started.agentId,
+                pagesRunId: started.runId,
+              });
+            },
+          )
+        : await runAdditionalPagesPhase(
+            {
+              sourceUrl: website.sourceUrl,
+              slug: website.slug,
+              agentId: job.homepageAgentId,
+            },
+            async (started) => {
+              await updateJob(job.id, {
+                pagesAgentId: started.agentId,
+                pagesRunId: started.runId,
+              });
+            },
+          );
 
     await syncPreviewFromAgent(pagesRun.agentId, website.slug);
 
