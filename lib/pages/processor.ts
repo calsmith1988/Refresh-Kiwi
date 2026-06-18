@@ -11,6 +11,7 @@ import {
 } from "@/lib/cursor/agent";
 import { getDb, schema } from "@/lib/db";
 import { draftLegalPages, type LegalAnswers } from "@/lib/legal/draft";
+import { discoverLegalPagesFromSource } from "@/lib/legal/source";
 import { previewDirectory } from "@/lib/preview/paths";
 import { syncPreviewFromAgent } from "@/lib/preview/sync";
 import { listPagesForJob, upsertPagesForJob } from "@/lib/websites/service";
@@ -99,7 +100,41 @@ export async function processAdditionalPages(
   }
 
   try {
+    const generationType = options.type === "legal" ? "legal" : "business";
     await updateJob(job.id, { status: "building_pages" });
+    console.info(
+      `[refresh-kiwi] ${generationType} pages started websiteId=${websiteId} slug=${website.slug}`,
+    );
+
+    const legalDraft =
+      options.type === "legal"
+        ? await (async () => {
+            console.info(
+              `[refresh-kiwi] legal pages source discovery starting websiteId=${websiteId} slug=${website.slug}`,
+            );
+            const discoveredLegal = await discoverLegalPagesFromSource(
+              website.sourceUrl,
+            );
+            console.info(
+              `[refresh-kiwi] legal pages source discovery complete websiteId=${websiteId} slug=${website.slug} found=${discoveredLegal.pages.length}`,
+            );
+            console.info(
+              `[refresh-kiwi] legal pages draft starting websiteId=${websiteId} slug=${website.slug}`,
+            );
+            const registeredSummary = await describeExistingLegalPages(job.id);
+            const draft = await draftLegalPages(
+              options.answers,
+              discoveredLegal.content,
+            );
+            console.info(
+              `[refresh-kiwi] legal pages draft complete websiteId=${websiteId} slug=${website.slug}`,
+            );
+            return {
+              draft,
+              summary: `${registeredSummary}\n${discoveredLegal.summary}`,
+            };
+          })()
+        : null;
 
     const pagesRun =
       options.type === "legal"
@@ -108,8 +143,8 @@ export async function processAdditionalPages(
               sourceUrl: website.sourceUrl,
               slug: website.slug,
               agentId: job.homepageAgentId,
-              legalDraft: await draftLegalPages(options.answers),
-              existingLegalSummary: await describeExistingLegalPages(job.id),
+              legalDraft: legalDraft?.draft ?? "",
+              existingLegalSummary: legalDraft?.summary ?? "",
             },
             async (started) => {
               await updateJob(job.id, {
@@ -132,13 +167,28 @@ export async function processAdditionalPages(
             },
           );
 
+    console.info(
+      `[refresh-kiwi] ${generationType} pages sync starting websiteId=${websiteId} slug=${website.slug}`,
+    );
     await syncPreviewFromAgent(pagesRun.agentId, website.slug);
+    console.info(
+      `[refresh-kiwi] ${generationType} pages sync complete websiteId=${websiteId} slug=${website.slug}`,
+    );
 
     // New pages hotlink images from the source site; bring them in-house.
+    console.info(
+      `[refresh-kiwi] ${generationType} pages image localisation starting websiteId=${websiteId} slug=${website.slug}`,
+    );
     await localizeWebsiteImages(website.slug);
+    console.info(
+      `[refresh-kiwi] ${generationType} pages image localisation complete websiteId=${websiteId} slug=${website.slug}`,
+    );
 
     const generatedPages = await readGeneratedPages(website.slug);
     await upsertPagesForJob(website.jobId, generatedPages);
+    console.info(
+      `[refresh-kiwi] ${generationType} pages registered ${generatedPages.length} pages websiteId=${websiteId} slug=${website.slug}`,
+    );
 
     await updateJob(job.id, { status: "complete" });
     await db

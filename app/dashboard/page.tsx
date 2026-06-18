@@ -958,11 +958,6 @@ export default function DashboardPage() {
       }));
     }
 
-    window.setTimeout(() => {
-      document
-        .getElementById(`${panel}-panel-${website.id}`)
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 0);
   };
 
   const replaceImage = async (

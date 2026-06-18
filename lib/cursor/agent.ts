@@ -159,7 +159,7 @@ export async function runLegalPagesPhase(
 
     await onStarted?.(started);
 
-    const result = await waitForRun(run, RUN_TIMEOUTS.pages);
+    const result = await waitForRun(run, RUN_TIMEOUTS.legalPages);
 
     console.info(
       `[refresh-kiwi] legal pages agent finished agentId=${started.agentId} runId=${result.id} status=${result.status}`,

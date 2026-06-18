@@ -77,7 +77,10 @@ export function validateLegalAnswers(input: unknown): LegalAnswers {
   };
 }
 
-export async function draftLegalPages(answers: LegalAnswers): Promise<string> {
+export async function draftLegalPages(
+  answers: LegalAnswers,
+  existingLegalContent?: string,
+): Promise<string> {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
 
   if (!apiKey) {
@@ -95,6 +98,7 @@ Important:
 - Keep the copy clear, practical, and suitable for a UK small business unless the country says otherwise.
 - Produce markdown with sections for Privacy Policy, Cookie Policy, and Terms.
 - Include placeholders only where genuinely unavoidable.
+- If existing legal page content is provided, preserve its substance and rewrite/structure it clearly instead of replacing it with generic policy text.
 
 Business details:
 - Legal name: ${answers.businessLegalName}
@@ -110,7 +114,10 @@ Business details:
 - Live chat: ${yesNo(answers.usesLiveChat)}
 - Embedded maps/videos: ${yesNo(answers.embedsMapsOrVideos)}
 - Existing legal pages noted by user: ${yesNo(answers.hasExistingLegalPages)}
-- Extra notes: ${answers.notes ?? "none"}`;
+- Extra notes: ${answers.notes ?? "none"}
+
+Existing legal page content found on the current site:
+${existingLegalContent?.trim() || "None found during the quick source check."}`;
 
   const response = await fetch(OPENAI_RESPONSES_URL, {
     method: "POST",

@@ -34,5 +34,6 @@ export async function waitForRun(
 export const RUN_TIMEOUTS = {
   homepage: DEFAULT_HOMEPAGE_TIMEOUT_MS,
   pages: DEFAULT_PAGES_TIMEOUT_MS,
+  legalPages: DEFAULT_PAGES_TIMEOUT_MS,
   edit: DEFAULT_EDIT_TIMEOUT_MS,
 } as const;

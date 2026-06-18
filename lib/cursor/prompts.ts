@@ -123,11 +123,11 @@ export function buildLegalPagesPrompt({
 SOURCE: ${sourceUrl}
 SITE: sites/${slug}/
 
-## Existing legal page check
+## Source legal page check already completed
 
 ${existingLegalSummary}
 
-Before creating anything, crawl the source site's footer, privacy/cookie/terms links, and obvious legal links. If the source site already has legal pages, preserve and restyle that real content instead of replacing it with generic text. If the source does not have usable legal pages, use the starter draft below.
+Do not crawl the source website in this step. The app has already performed a quick legal-page discovery pass and the relevant text is included in the starter draft below when available.
 
 ## Starter legal draft
 
@@ -154,6 +154,7 @@ ${legalDraft}
 - Do not claim legal compliance or that the pages are lawyer-approved.
 - Every generated page must load shared CSS and assets correctly from preview subpaths. Prefer root-relative preview paths like /preview/${slug}/styles.css and /preview/${slug}/page-path.
 - Avoid rebuilding the homepage from scratch unless a small footer/navigation update is needed.
+- Prioritise finishing over exploration. Use the drafted legal copy as the content source.
 
 Stop when the legal pages and updated site.json are complete.`;
 }
