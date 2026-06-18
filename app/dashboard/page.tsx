@@ -179,7 +179,10 @@ const LEGAL_BOOLEAN_FIELDS: LegalBooleanField[] = [
   { key: "usesAds", label: "Ads or tracking pixels" },
   { key: "usesLiveChat", label: "Live chat" },
   { key: "embedsMapsOrVideos", label: "Embedded maps or videos" },
-  { key: "hasExistingLegalPages", label: "They already have legal pages" },
+  {
+    key: "hasExistingLegalPages",
+    label: "My current site already has legal pages",
+  },
 ];
 
 // Starter ideas for the edit box. Chips ending in "…" prefill a sentence the
@@ -2659,7 +2662,15 @@ export default function DashboardPage() {
                         }
                         className="h-4 w-4 accent-[#BFE262]"
                       />
-                      {field.label}
+                      <span>
+                        {field.label}
+                        {field.key === "hasExistingLegalPages" ? (
+                          <span className="mt-0.5 block text-xs font-normal leading-5 text-black/40">
+                            We&apos;ll try to find and restyle them instead of
+                            writing new starter copy.
+                          </span>
+                        ) : null}
+                      </span>
                     </label>
                   ))}
                 </div>
