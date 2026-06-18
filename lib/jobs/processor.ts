@@ -30,6 +30,21 @@ async function updateJob(
     .where(eq(jobs.id, jobId));
 }
 
+async function isJobStillActive(jobId: string): Promise<boolean> {
+  const [job] = await getDb()
+    .select({ status: jobs.status })
+    .from(jobs)
+    .where(eq(jobs.id, jobId))
+    .limit(1);
+
+  return Boolean(
+    job &&
+      job.status !== "failed" &&
+      job.status !== "complete" &&
+      job.status !== "homepage_ready",
+  );
+}
+
 export async function processRefreshJob(jobId: string): Promise<void> {
   const db = getDb();
 
@@ -68,12 +83,22 @@ export async function processRefreshJob(jobId: string): Promise<void> {
       `[refresh-kiwi] job ${jobId} homepage phase finished in ${elapsedSeconds(homepageStartedAt)}s slug=${job.slug}`,
     );
 
+    if (!(await isJobStillActive(jobId))) {
+      console.info(`[refresh-kiwi] job ${jobId} stopped before preview sync`);
+      return;
+    }
+
     const syncStartedAt = Date.now();
     await syncPreviewFromAgent(homepage.agentId, job.slug);
 
     console.info(
       `[refresh-kiwi] job ${jobId} preview sync finished in ${elapsedSeconds(syncStartedAt)}s slug=${job.slug}`,
     );
+
+    if (!(await isJobStillActive(jobId))) {
+      console.info(`[refresh-kiwi] job ${jobId} stopped after preview sync`);
+      return;
+    }
 
     await updateJob(jobId, {
       status: "homepage_ready",
@@ -123,6 +148,19 @@ export async function processRefreshJob(jobId: string): Promise<void> {
 
     // Users only ever see this friendly message; the technical detail above
     // stays in the server logs.
+    const [currentJob] = await db
+      .select({ errorMessage: jobs.errorMessage, status: jobs.status })
+      .from(jobs)
+      .where(eq(jobs.id, jobId))
+      .limit(1);
+
+    if (
+      currentJob?.status === "failed" &&
+      currentJob.errorMessage === "Refresh cancelled."
+    ) {
+      return;
+    }
+
     await updateJob(jobId, {
       status: "failed" as JobStatus,
       errorMessage:

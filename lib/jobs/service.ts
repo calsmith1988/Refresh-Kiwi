@@ -92,6 +92,30 @@ export async function failJob(jobId: string, errorMessage: string): Promise<void
     .where(eq(jobs.id, jobId));
 }
 
+export async function cancelJob(jobId: string): Promise<JobResponse | null> {
+  const db = getDb();
+  const [job] = await db.select().from(jobs).where(eq(jobs.id, jobId)).limit(1);
+
+  if (!job) {
+    return null;
+  }
+
+  if (job.status === "complete" || job.status === "failed") {
+    return getJob(jobId);
+  }
+
+  await db
+    .update(jobs)
+    .set({
+      status: "failed",
+      errorMessage: "Refresh cancelled.",
+      updatedAt: new Date(),
+    })
+    .where(eq(jobs.id, jobId));
+
+  return getJob(jobId);
+}
+
 export async function getJob(jobId: string): Promise<JobResponse | null> {
   const db = getDb();
 

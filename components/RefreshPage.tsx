@@ -172,7 +172,7 @@ function BusinessIcon({ name }: { name: BusinessIconName }) {
     <svg
       viewBox="0 0 24 24"
       aria-hidden
-      className="h-5 w-5 shrink-0 text-[#BFE262]"
+      className="h-5 w-5 shrink-0 text-[#141811]"
     >
       {name === "plumbers" ? (
         <>
@@ -336,8 +336,13 @@ export default function RefreshPage({
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
   const [editPrompt, setEditPrompt] = useState("");
   const [editStatus, setEditStatus] = useState<
-    "idle" | "working" | "done" | "failed"
+    "idle" | "working" | "done" | "failed" | "cancelled"
   >("idle");
+  const [activeEditRequestId, setActiveEditRequestId] = useState<string | null>(
+    null,
+  );
+  const [isCancellingRefresh, setIsCancellingRefresh] = useState(false);
+  const [isCancellingEdit, setIsCancellingEdit] = useState(false);
   const [showProSheet, setShowProSheet] = useState(false);
   const [isStartingCheckout, setIsStartingCheckout] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
@@ -778,7 +783,11 @@ export default function RefreshPage({
             const payload = (await response.json()) as {
               websites: Array<{
                 id: string;
-                latestEditRequest: { id: string; status: string } | null;
+                latestEditRequest: {
+                  id: string;
+                  status: string;
+                  errorMessage: string | null;
+                } | null;
               }>;
             };
             const website = payload.websites.find((w) => w.id === websiteId);
@@ -791,9 +800,13 @@ export default function RefreshPage({
             if (latest.status === "complete") {
               stopEditPolling();
               setEditStatus("done");
+              setActiveEditRequestId(null);
             } else if (latest.status === "failed") {
               stopEditPolling();
-              setEditStatus("failed");
+              setEditStatus(
+                latest.errorMessage === "Edit cancelled." ? "cancelled" : "failed",
+              );
+              setActiveEditRequestId(null);
             }
           })
           .catch(() => {
@@ -837,6 +850,7 @@ export default function RefreshPage({
 
       const created = payload as { editRequest?: { id: string } };
       if (created.editRequest?.id) {
+        setActiveEditRequestId(created.editRequest.id);
         pollEditStatus(job.websiteId, created.editRequest.id);
       }
 
@@ -853,6 +867,71 @@ export default function RefreshPage({
     }
   };
 
+  const cancelRefresh = async () => {
+    if (!job?.id || isCancellingRefresh) {
+      return;
+    }
+
+    setIsCancellingRefresh(true);
+    setErrorMessage(null);
+
+    try {
+      const response = await fetch(`/api/refresh/${job.id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error ?? "Failed to cancel refresh");
+      }
+
+      stopPolling();
+      stopTimer();
+      stopStatusRotation();
+      clearStoredJob();
+      setIsRefreshing(false);
+      setJob(null);
+      setErrorMessage(null);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Failed to cancel refresh",
+      );
+    } finally {
+      setIsCancellingRefresh(false);
+    }
+  };
+
+  const cancelActiveEdit = async () => {
+    if (!job?.websiteId || !activeEditRequestId || isCancellingEdit) {
+      return;
+    }
+
+    setIsCancellingEdit(true);
+    setErrorMessage(null);
+
+    try {
+      const response = await fetch(
+        `/api/websites/${job.websiteId}/edits/${activeEditRequestId}`,
+        { method: "DELETE" },
+      );
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error ?? "Failed to cancel edit");
+      }
+
+      stopEditPolling();
+      setEditStatus("cancelled");
+      setActiveEditRequestId(null);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Failed to cancel edit",
+      );
+    } finally {
+      setIsCancellingEdit(false);
+    }
+  };
+
   const startFresh = () => {
     stopPolling();
     stopEditPolling();
@@ -863,6 +942,7 @@ export default function RefreshPage({
     setUrl("");
     setErrorMessage(null);
     setEditStatus("idle");
+    setActiveEditRequestId(null);
     setIsRefreshing(false);
   };
 
@@ -877,6 +957,7 @@ export default function RefreshPage({
     setJob(null);
     setErrorMessage(null);
     setEditStatus("idle");
+    setActiveEditRequestId(null);
     setStatusMessageIndex(0);
     stopPolling();
     stopEditPolling();
@@ -1087,6 +1168,18 @@ export default function RefreshPage({
                     ? "You can leave this page — your refresh keeps going and will be waiting in your dashboard."
                     : "Keep this tab open — your new website will appear right here in a minute or two."}
                 </p>
+                {job?.id ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void cancelRefresh();
+                    }}
+                    disabled={isCancellingRefresh}
+                    className="mt-5 rounded-full border border-black/10 bg-white px-5 py-2 text-sm font-semibold text-black/60 transition hover:border-black/25 hover:text-black disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isCancellingRefresh ? "Cancelling..." : "Cancel refresh"}
+                  </button>
+                ) : null}
               </div>
             </div>
           ) : showReveal && previewHref ? (
@@ -1215,17 +1308,35 @@ export default function RefreshPage({
                         </button>
                       </div>
                       {editStatus === "working" ? (
-                        <p className="mt-3 flex items-center gap-2 text-xs font-medium text-black/55">
-                          <span
-                            aria-hidden
-                            className="h-1.5 w-1.5 animate-pulse rounded-full bg-kiwi-green"
-                          />
-                          Making your change — usually takes a few minutes. You
-                          can keep browsing.
-                        </p>
+                        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+                          <p className="flex items-center gap-2 text-xs font-medium text-black/55">
+                            <span
+                              aria-hidden
+                              className="h-1.5 w-1.5 animate-pulse rounded-full bg-kiwi-green"
+                            />
+                            Making your change — usually takes a few minutes. You
+                            can keep browsing.
+                          </p>
+                          {activeEditRequestId ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                void cancelActiveEdit();
+                              }}
+                              disabled={isCancellingEdit}
+                              className="text-xs font-semibold text-black/45 underline underline-offset-2 transition hover:text-black disabled:opacity-50"
+                            >
+                              {isCancellingEdit ? "Cancelling..." : "Cancel edit"}
+                            </button>
+                          ) : null}
+                        </div>
                       ) : editStatus === "done" ? (
                         <p className="mt-3 text-xs font-medium text-[#4d8a2a]">
                           ✓ Done! The preview above has been updated.
+                        </p>
+                      ) : editStatus === "cancelled" ? (
+                        <p className="mt-3 text-xs font-medium text-black/55">
+                          Edit cancelled. You can request another change.
                         </p>
                       ) : editStatus === "failed" ? (
                         <p className="mt-3 text-xs font-medium text-black/55">

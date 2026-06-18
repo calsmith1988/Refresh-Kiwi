@@ -17,6 +17,16 @@ async function updateEditRequest(
     .where(eq(editRequests.id, editRequestId));
 }
 
+async function isEditStillRunning(editRequestId: string): Promise<boolean> {
+  const [editRequest] = await getDb()
+    .select({ status: editRequests.status })
+    .from(editRequests)
+    .where(eq(editRequests.id, editRequestId))
+    .limit(1);
+
+  return editRequest?.status === "running";
+}
+
 export async function processEditRequest(editRequestId: string): Promise<void> {
   const db = getDb();
   const [editRequest] = await db
@@ -52,11 +62,28 @@ export async function processEditRequest(editRequestId: string): Promise<void> {
       },
     );
 
+    if (!(await isEditStillRunning(editRequest.id))) {
+      console.info(`[refresh-kiwi] edit request ${editRequest.id} stopped before sync`);
+      return;
+    }
+
     await syncPreviewFromAgent(editRun.agentId, editRequest.website.slug);
+
+    if (!(await isEditStillRunning(editRequest.id))) {
+      console.info(`[refresh-kiwi] edit request ${editRequest.id} stopped after sync`);
+      return;
+    }
 
     // Edits can introduce new hotlinked images; localise them too. This is a
     // fast no-op when everything is already local.
     await localizeWebsiteImages(editRequest.website.slug);
+
+    if (!(await isEditStillRunning(editRequest.id))) {
+      console.info(
+        `[refresh-kiwi] edit request ${editRequest.id} stopped after image localisation`,
+      );
+      return;
+    }
 
     await updateEditRequest(editRequest.id, { status: "complete" });
 
@@ -74,6 +101,19 @@ export async function processEditRequest(editRequestId: string): Promise<void> {
     console.error(
       `[refresh-kiwi] edit request ${editRequest.id} failed: ${message}`,
     );
+
+    const [currentEdit] = await db
+      .select({ errorMessage: editRequests.errorMessage, status: editRequests.status })
+      .from(editRequests)
+      .where(eq(editRequests.id, editRequest.id))
+      .limit(1);
+
+    if (
+      currentEdit?.status === "failed" &&
+      currentEdit.errorMessage === "Edit cancelled."
+    ) {
+      return;
+    }
 
     await updateEditRequest(editRequest.id, {
       status: "failed",

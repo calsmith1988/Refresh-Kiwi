@@ -313,6 +313,12 @@ export default function DashboardPage() {
   const [deleteConfirmations, setDeleteConfirmations] = useState<Record<string, string>>({});
   const [domainValues, setDomainValues] = useState<Record<string, string>>({});
   const [submittingEditId, setSubmittingEditId] = useState<string | null>(null);
+  const [cancellingRefreshJobId, setCancellingRefreshJobId] = useState<string | null>(
+    null,
+  );
+  const [cancellingEditRequestId, setCancellingEditRequestId] = useState<
+    string | null
+  >(null);
   const [publishingWebsiteId, setPublishingWebsiteId] = useState<string | null>(null);
   const [generatingPagesWebsiteId, setGeneratingPagesWebsiteId] = useState<string | null>(
     null,
@@ -653,6 +659,58 @@ export default function DashboardPage() {
       );
     } finally {
       setPublishingWebsiteId(null);
+    }
+  };
+
+  const cancelRefreshJob = async (jobId: string) => {
+    setCancellingRefreshJobId(jobId);
+    setErrorMessage(null);
+
+    try {
+      const response = await fetch(`/api/refresh/${jobId}`, { method: "DELETE" });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Failed to cancel refresh");
+      }
+
+      await loadDashboard();
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Failed to cancel refresh",
+      );
+    } finally {
+      setCancellingRefreshJobId(null);
+    }
+  };
+
+  const cancelEditRequest = async (websiteId: string, editRequestId: string) => {
+    setCancellingEditRequestId(editRequestId);
+    setErrorMessage(null);
+
+    try {
+      const response = await fetch(
+        `/api/websites/${websiteId}/edits/${editRequestId}`,
+        { method: "DELETE" },
+      );
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Failed to cancel edit");
+      }
+
+      setActiveEditModalRequestId(null);
+      setDismissedEditRequestIds((current) => ({
+        ...current,
+        [editRequestId]: true,
+      }));
+      await loadDashboard();
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Failed to cancel edit",
+      );
+    } finally {
+      setCancellingEditRequestId(null);
     }
   };
 
@@ -1308,12 +1366,26 @@ export default function DashboardPage() {
                         </div>
                       </div>
                     </div>
-                    <Link
-                      href="/"
-                      className="rounded-full border border-black/10 bg-white px-5 py-2.5 text-center text-sm font-semibold text-black transition hover:border-black/25"
-                    >
-                      Back to homepage
-                    </Link>
+                    <div className="flex flex-col gap-2 sm:flex-row lg:shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void cancelRefreshJob(job.id);
+                        }}
+                        disabled={cancellingRefreshJobId === job.id}
+                        className="rounded-full border border-black/10 bg-white px-5 py-2.5 text-center text-sm font-semibold text-black/60 transition hover:border-black/25 hover:text-black disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {cancellingRefreshJobId === job.id
+                          ? "Cancelling..."
+                          : "Cancel refresh"}
+                      </button>
+                      <Link
+                        href="/"
+                        className="rounded-full border border-black/10 bg-white px-5 py-2.5 text-center text-sm font-semibold text-black transition hover:border-black/25"
+                      >
+                        Back to homepage
+                      </Link>
+                    </div>
                   </div>
                 </article>
               ))}
@@ -1393,7 +1465,7 @@ export default function DashboardPage() {
                         {website.latestEditRequest ? (
                           website.latestEditRequest.status === "queued" ||
                           website.latestEditRequest.status === "running" ? (
-                            <div className="mt-3 flex items-center gap-2">
+                            <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
                               <Image
                                 src="/refresh-kiwi-favicon-v2.png"
                                 alt=""
@@ -1413,6 +1485,25 @@ export default function DashboardPage() {
                                   progressTick,
                                 )}
                               </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  void cancelEditRequest(
+                                    website.id,
+                                    website.latestEditRequest!.id,
+                                  );
+                                }}
+                                disabled={
+                                  cancellingEditRequestId ===
+                                  website.latestEditRequest.id
+                                }
+                                className="text-xs font-semibold text-black/45 underline underline-offset-2 transition hover:text-black disabled:opacity-50"
+                              >
+                                {cancellingEditRequestId ===
+                                website.latestEditRequest.id
+                                  ? "Cancelling..."
+                                  : "Cancel edit"}
+                              </button>
                             </div>
                           ) : website.latestEditRequest.status === "complete" ? (
                             <div className="mt-3 flex items-center gap-2">
@@ -1434,6 +1525,11 @@ export default function DashboardPage() {
                                 </Link>
                               </span>
                             </div>
+                          ) : website.latestEditRequest.errorMessage ===
+                            "Edit cancelled." ? (
+                            <p className="mt-3 text-xs font-medium text-black/45">
+                              Edit cancelled. You can request another change.
+                            </p>
                           ) : (
                             <p className="mt-3 text-xs font-medium text-amber-700">
                               That change didn&apos;t work — please try again.
@@ -2280,19 +2376,33 @@ export default function DashboardPage() {
               running in the background and will appear here when it&apos;s done.
             </p>
 
-            <button
-              type="button"
-              onClick={() => {
-                setDismissedEditRequestIds((current) => ({
-                  ...current,
-                  [activeEditRequest.id]: true,
-                }));
-                setActiveEditModalRequestId(null);
-              }}
-              className="mt-5 h-11 rounded-full border border-black/10 bg-white px-5 text-sm font-semibold text-black transition hover:border-black/25"
-            >
-              Keep working in background
-            </button>
+            <div className="mt-5 flex flex-col justify-center gap-2 sm:flex-row">
+              <button
+                type="button"
+                onClick={() => {
+                  void cancelEditRequest(activeEditWebsite.id, activeEditRequest.id);
+                }}
+                disabled={cancellingEditRequestId === activeEditRequest.id}
+                className="h-11 rounded-full border border-black/10 bg-white px-5 text-sm font-semibold text-black/55 transition hover:border-black/25 hover:text-black disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {cancellingEditRequestId === activeEditRequest.id
+                  ? "Cancelling..."
+                  : "Cancel edit"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setDismissedEditRequestIds((current) => ({
+                    ...current,
+                    [activeEditRequest.id]: true,
+                  }));
+                  setActiveEditModalRequestId(null);
+                }}
+                className="h-11 rounded-full border border-black/10 bg-white px-5 text-sm font-semibold text-black transition hover:border-black/25"
+              >
+                Keep working in background
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
