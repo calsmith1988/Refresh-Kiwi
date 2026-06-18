@@ -140,6 +140,104 @@ function formatElapsed(ms: number): string {
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
 }
 
+type BusinessIconName =
+  | "plumbers"
+  | "garages"
+  | "salons"
+  | "cafes"
+  | "clinics"
+  | "builders"
+  | "cleaners";
+
+const BUSINESS_TYPES: Array<{ label: string; icon: BusinessIconName }> = [
+  { label: "Plumbers", icon: "plumbers" },
+  { label: "Garages", icon: "garages" },
+  { label: "Salons", icon: "salons" },
+  { label: "Cafés", icon: "cafes" },
+  { label: "Clinics", icon: "clinics" },
+  { label: "Builders", icon: "builders" },
+  { label: "Cleaners", icon: "cleaners" },
+];
+
+function BusinessIcon({ name }: { name: BusinessIconName }) {
+  const common = {
+    fill: "none",
+    stroke: "currentColor",
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    strokeWidth: 2,
+  };
+
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden
+      className="h-5 w-5 shrink-0 text-[#BFE262]"
+    >
+      {name === "plumbers" ? (
+        <>
+          <path {...common} d="M7 6h6a4 4 0 0 1 4 4v1" />
+          <path {...common} d="M5 6h2v6H5z" />
+          <path {...common} d="M17 11h3v6a3 3 0 0 1-3 3h-2" />
+          <path {...common} d="M9 9h4" />
+        </>
+      ) : null}
+      {name === "garages" ? (
+        <>
+          <path {...common} d="M4 14l2-5h12l2 5" />
+          <path {...common} d="M5 14h14v5H5z" />
+          <path {...common} d="M7 19v1" />
+          <path {...common} d="M17 19v1" />
+          <circle {...common} cx="8" cy="16.5" r="1" />
+          <circle {...common} cx="16" cy="16.5" r="1" />
+        </>
+      ) : null}
+      {name === "salons" ? (
+        <>
+          <circle {...common} cx="7" cy="17" r="2" />
+          <circle {...common} cx="17" cy="17" r="2" />
+          <path {...common} d="M8.5 15.5 19 5" />
+          <path {...common} d="M15.5 15.5 5 5" />
+          <path {...common} d="M12 12l2 2" />
+        </>
+      ) : null}
+      {name === "cafes" ? (
+        <>
+          <path {...common} d="M5 8h11v7a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4z" />
+          <path {...common} d="M16 10h2a2 2 0 0 1 0 4h-2" />
+          <path {...common} d="M7 4v2" />
+          <path {...common} d="M11 4v2" />
+          <path {...common} d="M4 20h14" />
+        </>
+      ) : null}
+      {name === "clinics" ? (
+        <>
+          <circle {...common} cx="12" cy="12" r="8" />
+          <path {...common} d="M12 8v8" />
+          <path {...common} d="M8 12h8" />
+        </>
+      ) : null}
+      {name === "builders" ? (
+        <>
+          <path {...common} d="M4 15h16" />
+          <path {...common} d="M6 15a6 6 0 0 1 12 0" />
+          <path {...common} d="M9 9v3" />
+          <path {...common} d="M15 9v3" />
+          <path {...common} d="M7 18h10" />
+        </>
+      ) : null}
+      {name === "cleaners" ? (
+        <>
+          <path {...common} d="M13 4v8" />
+          <path {...common} d="M10 12h6l2 8H8z" />
+          <path {...common} d="M9 16h8" />
+          <path {...common} d="M7 20h12" />
+        </>
+      ) : null}
+    </svg>
+  );
+}
+
 function BeforeAfterReveal({
   before,
   after,
@@ -1220,14 +1318,25 @@ export default function RefreshPage({
                   </div>
                 ) : null}
 
-                <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-medium text-black/45">
-                  <span>✓ Free to try</span>
-                  <span>✓ No signup needed</span>
-                  <span>✓ Nothing changes on your real website</span>
+                <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-medium text-black/50">
+                  {[
+                    "Free to try",
+                    "No signup needed",
+                    "No changes to your live site",
+                  ].map((item) => (
+                    <span key={item} className="inline-flex items-center gap-1.5">
+                      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#BFE262] text-[10px] font-black leading-none text-black">
+                        ✓
+                      </span>
+                      {item}
+                    </span>
+                  ))}
                 </div>
               </div>
 
               <div className="relative mx-auto min-h-[390px] w-full max-w-xl sm:min-h-[470px] lg:max-w-none">
+                <div className="pointer-events-none absolute -inset-10 rounded-full bg-[radial-gradient(circle_at_62%_42%,rgba(191,226,98,0.36),transparent_58%)] blur-2xl" />
+                <div className="pointer-events-none absolute bottom-8 right-6 h-44 w-44 rounded-full bg-[#BFE262]/35 blur-3xl" />
                 <div className="absolute left-0 top-0 w-[92%] -rotate-2 overflow-hidden rounded-[1.6rem] border border-black/10 bg-white opacity-90 shadow-xl shadow-black/10">
                   <div className="relative h-[294px] overflow-hidden bg-white sm:h-[364px]">
                     <Image
@@ -1245,7 +1354,7 @@ export default function RefreshPage({
                   </div>
                 </div>
 
-                <div className="before-after-reveal-clip absolute bottom-0 right-0 w-[92%] rotate-2 overflow-hidden rounded-[1.8rem] border-2 border-kiwi-green bg-white shadow-2xl shadow-[#8bbf4d]/25">
+                <div className="before-after-reveal-clip before-after-reveal-fast absolute bottom-0 right-0 w-[92%] rotate-2 overflow-hidden rounded-[1.8rem] border-2 border-kiwi-green bg-white shadow-2xl shadow-[#8bbf4d]/25">
                   <div className="relative h-[294px] overflow-hidden bg-white sm:h-[364px]">
                     <Image
                       src={engineerAfterPreview}
@@ -1275,13 +1384,15 @@ export default function RefreshPage({
               <span className="font-semibold text-black/55">
                 Built for businesses like yours:
               </span>
-              <span>Plumbers</span>
-              <span>Garages</span>
-              <span>Salons</span>
-              <span>Cafés</span>
-              <span>Clinics</span>
-              <span>Builders</span>
-              <span>Cleaners</span>
+              {BUSINESS_TYPES.map((business) => (
+                <span
+                  key={business.label}
+                  className="inline-flex items-center gap-2 text-black/45"
+                >
+                  <BusinessIcon name={business.icon} />
+                  {business.label}
+                </span>
+              ))}
             </div>
           </section>
 
@@ -1376,8 +1487,8 @@ export default function RefreshPage({
                       beforeAlt={example.beforeAlt}
                       afterAlt={example.afterAlt}
                       className="border-white/10 bg-white/10 shadow-black/20"
-                      aspectClassName="aspect-[4/3]"
-                      imageClassName="object-contain object-left-top"
+                      aspectClassName="h-[320px] sm:h-[390px]"
+                      imageClassName="object-cover object-left-top"
                     />
                     <div className="mt-5 px-1">
                       <h3 className="text-lg font-bold">{example.name}</h3>

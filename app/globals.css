@@ -73,6 +73,10 @@ body {
   animation: before-after-handle 8s ease-in-out infinite;
 }
 
+.before-after-reveal-fast {
+  animation-duration: 4.8s;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .preview-pop,
   .before-after-reveal-clip,
