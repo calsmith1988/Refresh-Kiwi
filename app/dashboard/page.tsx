@@ -708,13 +708,31 @@ export default function DashboardPage() {
     }
   };
 
-  const toggleImagesPanel = (websiteId: string) => {
-    const isOpening = imagesPanelWebsiteId !== websiteId;
-    setImagesPanelWebsiteId(isOpening ? websiteId : null);
+  const openWebsitePanel = (
+    website: Website,
+    panel: "edit" | "images" | "manage",
+  ) => {
+    setEditingWebsiteId(panel === "edit" ? website.id : null);
+    setImagesPanelWebsiteId(panel === "images" ? website.id : null);
+    setManagingWebsiteId(panel === "manage" ? website.id : null);
 
-    if (isOpening && websiteImages[websiteId]?.status !== "ready") {
-      void loadWebsiteImages(websiteId);
+    if (panel === "images" && websiteImages[website.id]?.status !== "ready") {
+      void loadWebsiteImages(website.id);
     }
+
+    if (panel === "manage") {
+      setRenameValues((current) => ({
+        ...current,
+        [website.id]:
+          current[website.id] ?? website.brandName ?? website.slug,
+      }));
+    }
+
+    window.setTimeout(() => {
+      document
+        .getElementById(`${panel}-panel-${website.id}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
   };
 
   const replaceImage = async (
@@ -1466,9 +1484,7 @@ export default function DashboardPage() {
                                 return;
                               }
 
-                              setEditingWebsiteId((current) =>
-                                current === website.id ? null : website.id,
-                              );
+                              openWebsitePanel(website, "edit");
                             }}
                             className="rounded-full border border-black/10 bg-white px-5 py-2.5 text-sm font-semibold text-black transition hover:border-black/25"
                           >
@@ -1478,7 +1494,7 @@ export default function DashboardPage() {
                         {state.canEdit ? (
                           <button
                             type="button"
-                            onClick={() => toggleImagesPanel(website.id)}
+                            onClick={() => openWebsitePanel(website, "images")}
                             className="rounded-full border border-black/10 bg-white px-5 py-2.5 text-sm font-semibold text-black transition hover:border-black/25"
                           >
                             Images
@@ -1527,18 +1543,7 @@ export default function DashboardPage() {
                         ) : null}
                         <button
                           type="button"
-                          onClick={() => {
-                            setManagingWebsiteId((current) =>
-                              current === website.id ? null : website.id,
-                            );
-                            setRenameValues((current) => ({
-                              ...current,
-                              [website.id]:
-                                current[website.id] ??
-                                website.brandName ??
-                                website.slug,
-                            }));
-                          }}
+                          onClick={() => openWebsitePanel(website, "manage")}
                           className="rounded-full border border-black/10 bg-white px-5 py-2.5 text-sm font-semibold text-black transition hover:border-black/25"
                         >
                           Manage
@@ -1623,7 +1628,10 @@ export default function DashboardPage() {
                     ) : null}
 
                     {imagesPanelWebsiteId === website.id ? (
-                      <div className="mt-5 rounded-2xl bg-[#faf8f1] p-4">
+                      <div
+                        id={`images-panel-${website.id}`}
+                        className="mt-5 scroll-mt-24 rounded-2xl bg-[#faf8f1] p-4"
+                      >
                         <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
                           <div>
                             <p className="text-sm font-semibold text-black">
@@ -1872,7 +1880,10 @@ export default function DashboardPage() {
                     ) : null}
 
                     {managingWebsiteId === website.id ? (
-                      <div className="mt-5 rounded-2xl border border-black/10 bg-white p-4">
+                      <div
+                        id={`manage-panel-${website.id}`}
+                        className="mt-5 scroll-mt-24 rounded-2xl border border-black/10 bg-white p-4"
+                      >
                         <div className="mb-5 rounded-2xl bg-[#faf8f1] p-4">
                           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                             <div>
@@ -2083,7 +2094,8 @@ export default function DashboardPage() {
 
                     {editingWebsiteId === website.id ? (
                       <form
-                        className="mt-5 rounded-2xl bg-[#faf8f1] p-4"
+                        id={`edit-panel-${website.id}`}
+                        className="mt-5 scroll-mt-24 rounded-2xl bg-[#faf8f1] p-4"
                         onSubmit={(event) => {
                           event.preventDefault();
                           void submitEditRequest(website.id);
@@ -2189,7 +2201,7 @@ export default function DashboardPage() {
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-5 backdrop-blur-sm"
         >
           <div className="preview-pop w-full max-w-md rounded-3xl border border-black/10 bg-white p-6 text-center shadow-2xl sm:max-w-lg sm:p-8">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-kiwi-green/35">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-white">
               <Image
                 src="/refresh-kiwi-favicon-v2.png"
                 alt=""
