@@ -1139,18 +1139,16 @@ export default function DashboardPage() {
               >
                 Add website
               </Link>
-            ) : (
+            ) : !isPro ? (
               <button
                 type="button"
-                onClick={() =>
-                  isPro ? void startBillingFlow("portal") : openProSheet()
-                }
+                onClick={openProSheet}
                 disabled={billingAction !== null}
                 className="rounded-full bg-kiwi-green px-5 py-2.5 text-sm font-semibold text-black shadow-sm transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {isPro ? "Manage plan" : "Upgrade to add more"}
+                Upgrade to add more
               </button>
-            )}
+            ) : null}
             <button
               type="button"
               onClick={() => void logout()}

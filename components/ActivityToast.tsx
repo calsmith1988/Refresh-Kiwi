@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
+import { useEffect, useState } from "react";
 
 type Activity = {
   type: "refresh" | "edit" | "pro";
@@ -14,16 +15,33 @@ const SHOW_DELAY_MS = 6500;
 const ROTATE_MS = 12000;
 const MAX_IMPRESSIONS = 3;
 
-function activityAccent(type: Activity["type"]) {
-  if (type === "pro") {
-    return "bg-kiwi-green";
+function relativeActivityTime(occurredAt: string): string {
+  const elapsedMs = Date.now() - new Date(occurredAt).getTime();
+  const elapsedMinutes = Math.max(0, Math.floor(elapsedMs / 60000));
+
+  if (elapsedMinutes < 1) {
+    return "Just now";
   }
 
-  if (type === "edit") {
-    return "bg-[#8bbf4d]";
+  if (elapsedMinutes === 1) {
+    return "1 minute ago";
   }
 
-  return "bg-black";
+  if (elapsedMinutes < 60) {
+    return `${elapsedMinutes} minutes ago`;
+  }
+
+  const elapsedHours = Math.floor(elapsedMinutes / 60);
+
+  if (elapsedHours === 1) {
+    return "1 hour ago";
+  }
+
+  if (elapsedHours < 24) {
+    return `${elapsedHours} hours ago`;
+  }
+
+  return "Recently";
 }
 
 export default function ActivityToast() {
@@ -97,10 +115,6 @@ export default function ActivityToast() {
   }, [activities.length, isVisible]);
 
   const activity = activities[index];
-  const accentClass = useMemo(
-    () => (activity ? activityAccent(activity.type) : "bg-black"),
-    [activity],
-  );
 
   if (!isVisible || !activity) {
     return null;
@@ -108,18 +122,38 @@ export default function ActivityToast() {
 
   return (
     <div className="fixed bottom-5 left-5 z-40 hidden max-w-[calc(100vw-2.5rem)] sm:block">
-      <div className="preview-pop flex w-80 items-start gap-3 rounded-2xl border border-black/10 bg-white/95 p-4 shadow-2xl shadow-black/10 backdrop-blur">
-        <span
+      <div className="preview-pop relative flex w-[25.5rem] items-start gap-4 overflow-hidden rounded-3xl border border-black/10 bg-white/95 p-5 shadow-2xl shadow-black/10 backdrop-blur">
+        <div
           aria-hidden
-          className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${accentClass}`}
+          className="pointer-events-none absolute -bottom-12 -left-10 h-32 w-32 rounded-full bg-kiwi-green/35 blur-3xl"
         />
+        <div className="relative mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/10 bg-[#f8fde9] shadow-sm">
+          <Image
+            src="/refresh-kiwi-favicon-v2.png"
+            alt=""
+            width={26}
+            height={26}
+            className="rounded-full"
+          />
+        </div>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold leading-5 text-black">
+          <p className="text-[15px] font-semibold leading-5 text-black">
             {activity.message}
           </p>
-          <p className="mt-1 text-xs leading-5 text-black/45">
-            Live Refresh Kiwi activity
-          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-medium leading-5 text-black/40">
+            <span className="inline-flex items-center gap-1.5">
+              <svg
+                aria-hidden
+                viewBox="0 0 12 12"
+                className="h-3.5 w-3.5 fill-[#76ad34]"
+              >
+                <path d="M6.75.75 2.2 6.35h3.25L5.25 11.25l4.55-5.6H6.55L6.75.75Z" />
+              </svg>
+              Live activity
+            </span>
+            <span aria-hidden>•</span>
+            <span>{relativeActivityTime(activity.occurredAt)}</span>
+          </div>
         </div>
         <button
           type="button"
@@ -135,7 +169,7 @@ export default function ActivityToast() {
             }
           }}
           aria-label="Dismiss activity update"
-          className="rounded-full px-2 text-lg leading-none text-black/35 transition hover:text-black"
+          className="relative -mt-1 rounded-full px-2 text-xl leading-none text-black/35 transition hover:text-black"
         >
           ×
         </button>
