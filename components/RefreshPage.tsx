@@ -10,6 +10,7 @@ import accountantAfterPreview from "../after-preview.png";
 import engineerAfterPreview from "../after-preview2.png";
 import accountantBeforePreview from "../before-preview.png";
 import engineerBeforePreview from "../before-preview2.png";
+import ActivityToast from "@/components/ActivityToast";
 import CookieSettingsButton from "@/components/CookieSettingsButton";
 import type { JobResponse } from "@/lib/jobs/types";
 import {
@@ -1817,6 +1818,8 @@ export default function RefreshPage({
           </div>
         </div>
       ) : null}
+
+      {!isRefreshing && !showReveal ? <ActivityToast /> : null}
     </main>
   );
 }
