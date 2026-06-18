@@ -1599,24 +1599,25 @@ export default function DashboardPage() {
                         : "border-red-100 bg-white"
                     }`}
                   >
-                    <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h2 className="font-fraunces text-2xl font-semibold">
-                            {website.brandName || website.slug}
-                          </h2>
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs font-semibold ${state.badgeClass}`}
-                          >
-                            {state.label}
-                          </span>
-                        </div>
-                        <p className="mt-2 text-sm text-black/50">
-                          Generated from {sourceHostname(website.sourceUrl)}
-                        </p>
-                        <p className="mt-2 text-sm font-medium text-black/60">
-                          {state.description}
-                        </p>
+                    <div className="flex flex-col gap-5">
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h2 className="font-fraunces text-2xl font-semibold">
+                              {website.brandName || website.slug}
+                            </h2>
+                            <span
+                              className={`rounded-full px-3 py-1 text-xs font-semibold ${state.badgeClass}`}
+                            >
+                              {state.label}
+                            </span>
+                          </div>
+                          <p className="mt-2 text-sm text-black/50">
+                            Generated from {sourceHostname(website.sourceUrl)}
+                          </p>
+                          <p className="mt-2 text-sm font-medium text-black/60">
+                            {state.description}
+                          </p>
                         {state.canView ? (
                           <div className="mt-3 flex max-w-full flex-wrap items-center gap-2 rounded-2xl bg-[#faf8f1] px-3 py-2">
                             <span className="text-[11px] font-semibold uppercase tracking-wide text-black/35">
@@ -1757,18 +1758,49 @@ export default function DashboardPage() {
                             </button>
                           </div>
                         ) : null}
+                        </div>
+
+                        <div className="flex flex-col gap-2 sm:flex-row lg:shrink-0 lg:justify-end">
+                          {state.canView ? (
+                            <Link
+                              href={previewHref(website.slug)}
+                              target="_blank"
+                              className="rounded-full bg-[#141811] px-5 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-black"
+                            >
+                              {website.status === "live"
+                                ? "View live site"
+                                : "View preview"}
+                            </Link>
+                          ) : null}
+                          {isPro && state.showKeepLive ? (
+                            <button
+                              type="button"
+                              onClick={() => void publishWebsite(website.id)}
+                              disabled={publishingWebsiteId === website.id}
+                              className="rounded-full bg-kiwi-green px-5 py-2.5 text-sm font-semibold text-black transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              {publishingWebsiteId === website.id
+                                ? "Publishing…"
+                                : state.label === "Expired preview"
+                                  ? "Restore live"
+                                  : "Publish live"}
+                            </button>
+                          ) : null}
+                          {!isPro && state.showKeepLive ? (
+                            <button
+                              type="button"
+                              onClick={openProSheet}
+                              className="rounded-full bg-kiwi-green px-5 py-2.5 text-sm font-semibold text-black transition hover:bg-kiwi-green-hover"
+                            >
+                              {state.label === "Expired preview"
+                                ? "Go live again — £10/mo"
+                                : "Put it online — £10/mo"}
+                            </button>
+                          ) : null}
+                        </div>
                       </div>
 
-                      <div className="flex flex-col gap-2 sm:flex-row lg:shrink-0">
-                        {state.canView ? (
-                          <Link
-                            href={previewHref(website.slug)}
-                            target="_blank"
-                            className="rounded-full bg-[#141811] px-5 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-black"
-                          >
-                            {website.status === "live" ? "View live site" : "View preview"}
-                          </Link>
-                        ) : null}
+                      <div className="flex flex-wrap gap-2 border-t border-black/5 pt-4">
                         {state.canEdit ? (
                           <button
                             type="button"
@@ -1799,31 +1831,6 @@ export default function DashboardPage() {
                             Images
                           </button>
                         ) : null}
-                        {isPro && state.showKeepLive ? (
-                          <button
-                            type="button"
-                            onClick={() => void publishWebsite(website.id)}
-                            disabled={publishingWebsiteId === website.id}
-                            className="rounded-full bg-kiwi-green px-5 py-2.5 text-sm font-semibold text-black transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            {publishingWebsiteId === website.id
-                              ? "Publishing…"
-                              : state.label === "Expired preview"
-                                ? "Restore live"
-                                : "Publish live"}
-                          </button>
-                        ) : null}
-                        {!isPro && state.showKeepLive ? (
-                          <button
-                            type="button"
-                            onClick={openProSheet}
-                            className="rounded-full bg-kiwi-green px-5 py-2.5 text-sm font-semibold text-black transition hover:bg-kiwi-green-hover"
-                          >
-                            {state.label === "Expired preview"
-                              ? "Go live again — £10/mo"
-                              : "Put it online — £10/mo"}
-                          </button>
-                        ) : null}
                         {state.canView && isPro && generatedPages.length === 0 ? (
                           <button
                             type="button"
@@ -1837,7 +1844,7 @@ export default function DashboardPage() {
                             {isGeneratingPages ||
                             generatingPagesWebsiteId === website.id
                               ? "Generating…"
-                              : "Generate additional pages"}
+                              : "Generate pages"}
                           </button>
                         ) : null}
                         <button
