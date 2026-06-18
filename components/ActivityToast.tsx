@@ -121,7 +121,7 @@ export default function ActivityToast() {
   }
 
   return (
-    <div className="fixed bottom-5 left-5 z-40 hidden max-w-[calc(100vw-2.5rem)] sm:block">
+    <div className="fixed bottom-5 right-5 z-40 hidden max-w-[calc(100vw-2.5rem)] sm:block">
       <div className="preview-pop relative flex w-[25.5rem] items-start gap-4 overflow-hidden rounded-3xl border border-black/10 bg-white/95 p-5 shadow-2xl shadow-black/10 backdrop-blur">
         <div
           aria-hidden

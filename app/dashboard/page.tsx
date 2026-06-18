@@ -436,6 +436,9 @@ export default function DashboardPage() {
   );
   const [revertingImageId, setRevertingImageId] = useState<string | null>(null);
   const [copiedWebsiteId, setCopiedWebsiteId] = useState<string | null>(null);
+  const [copiedDeleteNameId, setCopiedDeleteNameId] = useState<string | null>(
+    null,
+  );
   const [progressTick, setProgressTick] = useState(() => Date.now());
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [confirmRegenerateId, setConfirmRegenerateId] = useState<string | null>(
@@ -1020,6 +1023,25 @@ export default function DashboardPage() {
       }, 2000);
     } catch {
       // Clipboard can be blocked — select-and-copy still works on the text.
+    }
+  };
+
+  const copyDeleteConfirmationName = async (website: Website) => {
+    const name = website.brandName || website.slug;
+
+    try {
+      await navigator.clipboard.writeText(name);
+      setCopiedDeleteNameId(website.id);
+      window.setTimeout(() => {
+        setCopiedDeleteNameId((current) =>
+          current === website.id ? null : current,
+        );
+      }, 2000);
+    } catch {
+      setDeleteConfirmations((current) => ({
+        ...current,
+        [website.id]: name,
+      }));
     }
   };
 
@@ -2332,8 +2354,42 @@ export default function DashboardPage() {
                             </p>
                             <p className="mt-2 text-xs leading-5 text-black/45">
                               Type{" "}
-                              <span className="font-semibold text-black">
-                                {website.brandName || website.slug}
+                              <span className="inline-flex items-center gap-1.5">
+                                <span className="font-semibold text-black">
+                                  {website.brandName || website.slug}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    void copyDeleteConfirmationName(website)
+                                  }
+                                  className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-black/10 bg-white text-black/45 transition hover:border-black/25 hover:text-black"
+                                  aria-label={`Copy ${
+                                    website.brandName || website.slug
+                                  }`}
+                                  title={
+                                    copiedDeleteNameId === website.id
+                                      ? "Copied!"
+                                      : "Copy name"
+                                  }
+                                >
+                                  {copiedDeleteNameId === website.id ? (
+                                    <span className="text-[10px] font-bold">
+                                      ✓
+                                    </span>
+                                  ) : (
+                                    <svg
+                                      aria-hidden
+                                      viewBox="0 0 16 16"
+                                      className="h-3.5 w-3.5"
+                                    >
+                                      <path
+                                        fill="currentColor"
+                                        d="M5 2.5A1.5 1.5 0 0 1 6.5 1h5A1.5 1.5 0 0 1 13 2.5v5A1.5 1.5 0 0 1 11.5 9h-5A1.5 1.5 0 0 1 5 7.5v-5Zm1.5-.25a.25.25 0 0 0-.25.25v5c0 .14.11.25.25.25h5c.14 0 .25-.11.25-.25v-5a.25.25 0 0 0-.25-.25h-5ZM3.5 5.25c-.14 0-.25.11-.25.25v7c0 .14.11.25.25.25h7c.14 0 .25-.11.25-.25V11H12v1.5A1.5 1.5 0 0 1 10.5 14h-7A1.5 1.5 0 0 1 2 12.5v-7A1.5 1.5 0 0 1 3.5 4H4v1.25h-.5Z"
+                                      />
+                                    </svg>
+                                  )}
+                                </button>
                               </span>{" "}
                               to delete it from your dashboard.
                             </p>
