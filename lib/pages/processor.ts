@@ -112,9 +112,14 @@ export async function processAdditionalPages(
             console.info(
               `[refresh-kiwi] legal pages source discovery starting websiteId=${websiteId} slug=${website.slug}`,
             );
-            const discoveredLegal = await discoverLegalPagesFromSource(
-              website.sourceUrl,
-            );
+            const discoveredLegal = website.sourceUrl
+              ? await discoverLegalPagesFromSource(website.sourceUrl)
+              : {
+                  pages: [],
+                  content: "",
+                  summary:
+                    "This site was created from scratch, so there is no source website to inspect for existing legal pages.",
+                };
             console.info(
               `[refresh-kiwi] legal pages source discovery complete websiteId=${websiteId} slug=${website.slug} found=${discoveredLegal.pages.length}`,
             );
@@ -143,6 +148,8 @@ export async function processAdditionalPages(
               sourceUrl: website.sourceUrl,
               slug: website.slug,
               agentId: job.homepageAgentId,
+              generationMode: website.generationMode,
+              creationPrompt: website.creationPrompt,
               legalDraft: legalDraft?.draft ?? "",
               existingLegalSummary: legalDraft?.summary ?? "",
             },
@@ -158,6 +165,8 @@ export async function processAdditionalPages(
               sourceUrl: website.sourceUrl,
               slug: website.slug,
               agentId: job.homepageAgentId,
+              generationMode: website.generationMode,
+              creationPrompt: website.creationPrompt,
             },
             async (started) => {
               await updateJob(job.id, {

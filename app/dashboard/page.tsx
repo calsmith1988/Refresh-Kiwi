@@ -20,7 +20,9 @@ type User = {
 type Website = {
   id: string;
   jobId: string;
-  sourceUrl: string;
+  sourceUrl: string | null;
+  generationMode: "refresh" | "fresh";
+  creationPrompt: string | null;
   slug: string;
   brandName: string | null;
   jobStatus:
@@ -64,7 +66,9 @@ type Website = {
 
 type ActiveRefreshJob = {
   id: string;
-  sourceUrl: string;
+  sourceUrl: string | null;
+  generationMode: "refresh" | "fresh";
+  creationPrompt: string | null;
   slug: string;
   brandName: string | null;
   status: Exclude<Website["jobStatus"], null>;
@@ -303,12 +307,36 @@ function websiteAddress(website: Website): string {
   return `${origin}/preview/${website.slug}`;
 }
 
-function sourceHostname(sourceUrl: string): string {
+function sourceHostname(sourceUrl: string | null): string {
+  if (!sourceUrl) {
+    return "new website";
+  }
+
   try {
     return new URL(sourceUrl).hostname.replace(/^www\./, "");
   } catch {
     return sourceUrl;
   }
+}
+
+function promptTitle(prompt: string | null, fallback = "New website"): string {
+  return prompt?.split(/\r?\n/)[0]?.trim() || fallback;
+}
+
+function websiteSourceLabel(website: Website): string {
+  if (website.generationMode === "fresh") {
+    return `Created from brief: ${promptTitle(website.creationPrompt, website.slug)}`;
+  }
+
+  return `Generated from ${sourceHostname(website.sourceUrl)}`;
+}
+
+function activeJobTitle(job: ActiveRefreshJob): string {
+  if (job.generationMode === "fresh") {
+    return job.brandName || promptTitle(job.creationPrompt);
+  }
+
+  return job.brandName || sourceHostname(job.sourceUrl);
 }
 
 function daysUntil(value: string): number {
@@ -1522,14 +1550,16 @@ export default function DashboardPage() {
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
                         <h2 className="font-fraunces text-2xl font-semibold">
-                          {job.brandName || sourceHostname(job.sourceUrl)}
+                          {activeJobTitle(job)}
                         </h2>
                         <span className="rounded-full bg-kiwi-green px-3 py-1 text-xs font-semibold text-black">
                           Processing
                         </span>
                       </div>
                       <p className="mt-2 text-sm text-black/50">
-                        Refreshing {sourceHostname(job.sourceUrl)}
+                        {job.generationMode === "fresh"
+                          ? "Creating a new website from your brief"
+                          : `Refreshing ${sourceHostname(job.sourceUrl)}`}
                       </p>
                       <div className="mt-4 flex items-center gap-3 rounded-2xl bg-white/70 px-4 py-3">
                         <Image
@@ -1561,7 +1591,9 @@ export default function DashboardPage() {
                       >
                         {cancellingRefreshJobId === job.id
                           ? "Cancelling..."
-                          : "Cancel refresh"}
+                          : job.generationMode === "fresh"
+                            ? "Cancel creation"
+                            : "Cancel refresh"}
                       </button>
                       <Link
                         href="/"
@@ -1608,7 +1640,7 @@ export default function DashboardPage() {
                             </span>
                           </div>
                           <p className="mt-2 text-sm text-black/50">
-                            Generated from {sourceHostname(website.sourceUrl)}
+                            {websiteSourceLabel(website)}
                           </p>
                           <p className="mt-2 text-sm font-medium text-black/60">
                             {state.description}

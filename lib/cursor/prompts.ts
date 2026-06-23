@@ -1,10 +1,25 @@
 export interface PromptParams {
-  sourceUrl: string;
+  sourceUrl: string | null;
   slug: string;
+  generationMode?: "refresh" | "fresh";
+  creationPrompt?: string | null;
 }
 
 export interface EditPromptParams extends PromptParams {
   editPrompt: string;
+}
+
+export type PromptSeedAsset = {
+  role: "logo" | "image";
+  file: string;
+  url: string;
+  contentType: string;
+  bytes: number;
+};
+
+export interface FreshHomepagePromptParams extends PromptParams {
+  creationPrompt: string;
+  seedAssets: PromptSeedAsset[];
 }
 
 export interface LegalPagesPromptParams extends PromptParams {
@@ -13,6 +28,10 @@ export interface LegalPagesPromptParams extends PromptParams {
 }
 
 export function buildHomepagePrompt({ sourceUrl, slug }: PromptParams): string {
+  if (!sourceUrl) {
+    throw new Error("Refresh homepage prompt requires a source URL");
+  }
+
   return `Rebuild the homepage for Refresh Kiwi. Work fast — target ~2 minutes, but the result must look like a premium designed website, not a text extraction.
 
 SOURCE: ${sourceUrl}
@@ -74,7 +93,116 @@ Avoid:
 Do not build secondary pages in this phase. Do not spend time on a multi-page plan. The first preview is artifact-first, so the generated files are the deliverable even if no git commit is created.`;
 }
 
-export function buildAdditionalPagesPrompt({ sourceUrl, slug }: PromptParams): string {
+function formatSeedAssets(seedAssets: PromptSeedAsset[]): string {
+  if (seedAssets.length === 0) {
+    return "No user-uploaded assets were provided. Use tasteful CSS shapes, gradients, layout, and typography instead of inventing image paths.";
+  }
+
+  return seedAssets
+    .map(
+      (asset) =>
+        `- ${asset.role}: ${asset.url} (${asset.contentType}, ${asset.bytes} bytes)`,
+    )
+    .join("\n");
+}
+
+export function buildFreshHomepagePrompt({
+  slug,
+  creationPrompt,
+  seedAssets,
+}: FreshHomepagePromptParams): string {
+  return `Create a brand-new homepage for Refresh Kiwi from a user brief. Work fast — target ~2 minutes, but the result must look like a premium designed website, not a generic AI template.
+
+OUTPUT: sites/${slug}/
+
+## User brief
+
+${creationPrompt}
+
+## Uploaded assets
+
+${formatSeedAssets(seedAssets)}
+
+## Speed-first scope (homepage only)
+
+1. Do not crawl the web. The user brief and uploaded assets are the source of truth.
+2. Build a single static homepage using plain index.html, styles.css, and optional script.js. Avoid build tools unless absolutely necessary.
+3. Infer a clear brand name, audience, offer, services, proof points, tone, and calls to action from the brief. If details are missing, make conservative, useful assumptions and keep copy easy to edit later.
+4. Write sites/${slug}/site.json:
+   - brandName, slug ("${slug}"), sourceUrl null
+   - pages: [{ "path": "/", "title": "Home", "gated": false }]
+   - discoveredPages: []
+5. Stop as soon as index.html, styles.css, and site.json are written under sites/${slug}/ and available as run artifacts. Do not wait to commit before finishing.
+
+## Images and logo
+
+- Use the uploaded logo in the header if a logo asset is listed above.
+- Use uploaded image assets as real site imagery where they fit: hero, services, gallery, team, product, or proof sections.
+- Reference uploaded assets exactly by the public URLs listed above. Do not invent local image paths.
+- If no suitable image exists for a section, use refined CSS composition instead of stock-photo placeholders.
+- Do not download any images or embed third-party images unless the user explicitly included a URL in the brief.
+
+## Design bar
+
+Create a proper small-business landing page:
+- Above-the-fold hero with a clear headline, subheadline, primary CTA, secondary CTA, and visual composition.
+- Strong responsive layout with spacing, contrast, hierarchy, and sections that feel intentionally designed.
+- Turn the brief into short marketing copy, cards, stats, testimonials/placeholders only when credible, service blocks, FAQs, and CTAs.
+- If contact details, locations, hours, prices, or social proof are present in the brief, include them. Do not invent phone numbers, addresses, awards, or testimonials.
+- Add micro-interactions, hover states, or subtle scroll animations if useful, but keep it static and fast.
+- Do not use emoji as UI icons; use inline SVG if icons are needed.
+
+Avoid:
+- A wall of text.
+- A generic Tailwind/AI landing page look.
+- Fake factual claims.
+- Broken image references.
+
+Do not build secondary pages in this phase. The first preview is artifact-first, so the generated files are the deliverable even if no git commit is created.`;
+}
+
+export function buildAdditionalPagesPrompt({
+  sourceUrl,
+  slug,
+  generationMode,
+  creationPrompt,
+}: PromptParams): string {
+  if (generationMode === "fresh" || !sourceUrl) {
+    return `Generate additional pages for an existing Refresh Kiwi static website that was created from a user brief.
+
+SITE: sites/${slug}/
+
+## Original user brief
+
+${creationPrompt ?? "No original brief was stored. Infer cautiously from the existing homepage."}
+
+## Goal
+
+The homepage already exists. Your job is to expand it into a small multi-page website in the same design language, using the original brief and existing homepage as the source of truth.
+
+## Scope
+
+1. Work only inside sites/${slug}/.
+2. Read the existing files first, especially index.html, styles.css, script.js if present, and site.json.
+3. Build up to 6 useful pages such as About, Services, Products, Gallery, FAQs, Contact, Pricing, or location/service pages. Create only pages that fit the brief and homepage.
+4. Use existing uploaded/local assets from assets/ where they fit. Do not invent image paths or download third-party images.
+5. Match the homepage design system: same brand colours and palette, spacing, typography, visual style, header/nav/footer, and responsive behavior.
+6. Update the homepage navigation to link to the generated pages.
+7. Update site.json with:
+   - pages: include "/" plus each generated page with path, title, and gated false
+   - discoveredPages: []
+8. Commit the finished multi-page site to the repo.
+
+## Quality bar
+
+- These should be real pages, not lock placeholders.
+- Keep factual claims grounded in the brief and existing homepage. Do not invent addresses, phone numbers, awards, testimonials, or compliance claims.
+- Every generated page must load shared CSS and assets correctly from preview subpaths. Prefer root-relative preview paths like /preview/${slug}/styles.css, /preview/${slug}/script.js, /preview/${slug}/assets/file.png, and /preview/${slug}/page-path for navigation links.
+- Avoid rebuilding the homepage from scratch unless a small nav/footer update is needed.
+
+Stop when the generated pages and updated site.json are complete.`;
+  }
+
   return `Generate additional pages for an existing Refresh Kiwi static website.
 
 SOURCE: ${sourceUrl}
@@ -120,7 +248,7 @@ export function buildLegalPagesPrompt({
 }: LegalPagesPromptParams): string {
   return `Generate starter legal pages for an existing Refresh Kiwi static website.
 
-SOURCE: ${sourceUrl}
+SOURCE: ${sourceUrl ?? "No source website; use the existing generated site and starter legal draft only."}
 SITE: sites/${slug}/
 
 ## Source legal page check already completed
@@ -163,10 +291,17 @@ export function buildEditPrompt({
   sourceUrl,
   slug,
   editPrompt,
+  generationMode,
+  creationPrompt,
 }: EditPromptParams): string {
+  const sourceContext =
+    generationMode === "fresh" || !sourceUrl
+      ? `ORIGINAL USER BRIEF: ${creationPrompt ?? "Not available. Infer from the existing site files."}`
+      : `SOURCE: ${sourceUrl}`;
+
   return `Apply this user-requested edit to the existing Refresh Kiwi static website.
 
-SOURCE: ${sourceUrl}
+${sourceContext}
 SITE: sites/${slug}/
 USER REQUEST: ${editPrompt}
 
@@ -179,7 +314,7 @@ USER REQUEST: ${editPrompt}
 5. Images may be referenced two ways — preserve whichever is in use:
    - Hotlinked absolute https URLs pointing at the original business website. Keep them as-is.
    - Local files under assets/ (referenced as ./assets/file.ext or /preview/${slug}/assets/file.ext). Keep those paths intact.
-   If the edit asks for new imagery, prefer real https image URLs from the original source website (${sourceUrl}); never invent image paths.
+   If the edit asks for new imagery, use existing local assets first, then only use URLs explicitly provided by the user or present in the original source context. Never invent image paths.
 6. Videos may appear as YouTube/Vimeo iframes or hotlinked <video> tags pointing at the original site — preserve them as-is. If the edit asks for a new video, only use an embed or URL that exists on the source site or that the user provided; never download video files or invent video URLs.
 7. Update site.json only if the edit changes metadata, page titles, or page structure.
 8. Commit the finished edit to the repo.

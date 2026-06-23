@@ -4,8 +4,10 @@ import { getCursorApiKey, getSitesRepoUrl } from "@/lib/cursor/config";
 import {
   buildAdditionalPagesPrompt,
   buildEditPrompt,
+  buildFreshHomepagePrompt,
   buildHomepagePrompt,
   buildLegalPagesPrompt,
+  type PromptSeedAsset,
 } from "@/lib/cursor/prompts";
 import { RUN_TIMEOUTS, waitForRun } from "@/lib/cursor/run";
 
@@ -73,11 +75,67 @@ export async function runHomepagePhase(
   }
 }
 
+export async function runFreshHomepagePhase(
+  params: {
+    creationPrompt: string;
+    slug: string;
+    seedAssets: PromptSeedAsset[];
+  },
+  onStarted?: (info: PhaseRunResult) => Promise<void>,
+): Promise<PhaseRunResult> {
+  const apiKey = getCursorApiKey();
+  const agent = await Agent.create({
+    apiKey,
+    model: MODEL,
+    name: `Refresh Kiwi — ${params.slug} (fresh homepage)`,
+    cloud: cloudOptions(),
+  });
+
+  try {
+    const run = await agent.send(
+      buildFreshHomepagePrompt({
+        sourceUrl: null,
+        generationMode: "fresh",
+        creationPrompt: params.creationPrompt,
+        slug: params.slug,
+        seedAssets: params.seedAssets,
+      }),
+    );
+    const started = { agentId: agent.agentId, runId: run.id };
+
+    console.info(
+      `[refresh-kiwi] fresh homepage agent started agentId=${started.agentId} runId=${started.runId} slug=${params.slug}`,
+    );
+
+    await onStarted?.(started);
+
+    const result = await waitForRun(run, RUN_TIMEOUTS.homepage);
+
+    console.info(
+      `[refresh-kiwi] fresh homepage agent finished agentId=${started.agentId} runId=${result.id} status=${result.status}`,
+    );
+
+    if (result.status === "error") {
+      throw new Error(`Fresh homepage build failed (run ${result.id})`);
+    }
+
+    if (result.status === "cancelled") {
+      throw new Error(`Fresh homepage build was cancelled (run ${result.id})`);
+    }
+
+    return { agentId: started.agentId, runId: result.id };
+  } finally {
+    await disposeAgent(agent);
+  }
+}
+
 export async function runAdditionalPagesPhase(
   params: {
-    sourceUrl: string;
+    sourceUrl: string | null;
     slug: string;
     agentId?: string | null;
+    generationMode?: "refresh" | "fresh";
+    creationPrompt?: string | null;
   },
   onStarted?: (info: PhaseRunResult) => Promise<void>,
 ): Promise<PhaseRunResult> {
@@ -127,9 +185,11 @@ export async function runAdditionalPagesPhase(
 
 export async function runLegalPagesPhase(
   params: {
-    sourceUrl: string;
+    sourceUrl: string | null;
     slug: string;
     agentId?: string | null;
+    generationMode?: "refresh" | "fresh";
+    creationPrompt?: string | null;
     legalDraft: string;
     existingLegalSummary: string;
   },
@@ -181,9 +241,11 @@ export async function runLegalPagesPhase(
 
 export async function runEditPhase(
   params: {
-    sourceUrl: string;
+    sourceUrl: string | null;
     slug: string;
     editPrompt: string;
+    generationMode?: "refresh" | "fresh";
+    creationPrompt?: string | null;
   },
   onStarted?: (info: PhaseRunResult) => Promise<void>,
 ): Promise<PhaseRunResult> {

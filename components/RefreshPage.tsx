@@ -47,6 +47,12 @@ const LOADING_STAGES = [
   "Finishing touches",
 ] as const;
 
+const FRESH_LOADING_STAGES = [
+  "Reading your brief",
+  "Designing your first draft",
+  "Finishing touches",
+] as const;
+
 const REFRESH_STATUS_MESSAGES = [
   "Peeling back the old homepage…",
   "Scooping up the useful bits…",
@@ -58,6 +64,21 @@ const REFRESH_STATUS_MESSAGES = [
   "Checking the mobile crop…",
   "Polishing the green bits…",
   "Making sure the buttons are ripe…",
+  "Packing the preview basket…",
+  "One last kiwi quality check…",
+  "Nearly ripe — just finishing the homepage…",
+] as const;
+
+const FRESH_STATUS_MESSAGES = [
+  "Reading the brief…",
+  "Finding the right positioning…",
+  "Shaping the homepage story…",
+  "Working in your logo and images…",
+  "Choosing a fresh visual direction…",
+  "Writing sharper first-draft copy…",
+  "Building the responsive layout…",
+  "Polishing the calls to action…",
+  "Checking the mobile crop…",
   "Packing the preview basket…",
   "One last kiwi quality check…",
   "Nearly ripe — just finishing the homepage…",
@@ -81,24 +102,51 @@ type BlogSnippet = {
   readingTime: string;
 };
 
-function readStoredJob(): { jobId: string; url: string } | null {
+type FlowMode = "refresh" | "fresh";
+
+function readStoredJob(): {
+  jobId: string;
+  url: string;
+  mode: FlowMode;
+  prompt: string;
+} | null {
   try {
     const raw = window.localStorage.getItem(ACTIVE_JOB_STORAGE_KEY);
     if (!raw) {
       return null;
     }
-    const parsed = JSON.parse(raw) as { jobId?: string; url?: string };
-    return parsed.jobId ? { jobId: parsed.jobId, url: parsed.url ?? "" } : null;
+    const parsed = JSON.parse(raw) as {
+      jobId?: string;
+      url?: string;
+      mode?: FlowMode;
+      prompt?: string;
+    };
+    return parsed.jobId
+      ? {
+          jobId: parsed.jobId,
+          url: parsed.url ?? "",
+          mode: parsed.mode ?? "refresh",
+          prompt: parsed.prompt ?? "",
+        }
+      : null;
   } catch {
     return null;
   }
 }
 
-function storeJob(jobId: string, url: string) {
+function storeJob(
+  jobId: string,
+  params: { url?: string; mode: FlowMode; prompt?: string },
+) {
   try {
     window.localStorage.setItem(
       ACTIVE_JOB_STORAGE_KEY,
-      JSON.stringify({ jobId, url }),
+      JSON.stringify({
+        jobId,
+        url: params.url ?? "",
+        mode: params.mode,
+        prompt: params.prompt ?? "",
+      }),
     );
   } catch {
     // Storage unavailable (private mode etc.) — refresh resume just won't work.
@@ -133,6 +181,19 @@ function hostLabel(raw: string): string {
   } catch {
     return raw;
   }
+}
+
+function jobLabel(
+  job: JobResponse | null,
+  mode: FlowMode,
+  fallbackUrl: string,
+  fallbackPrompt: string,
+) {
+  if (mode === "fresh") {
+    return job?.brandName || fallbackPrompt.split(/\r?\n/)[0]?.trim() || "your new site";
+  }
+
+  return hostLabel(job?.sourceUrl ?? fallbackUrl);
 }
 
 function formatElapsed(ms: number): string {
@@ -316,7 +377,11 @@ export default function RefreshPage({
 }: {
   blogSnippets?: BlogSnippet[];
 }) {
+  const [flowMode, setFlowMode] = useState<FlowMode>("refresh");
   const [url, setUrl] = useState("");
+  const [freshPrompt, setFreshPrompt] = useState("");
+  const [freshLogo, setFreshLogo] = useState<File | null>(null);
+  const [freshImages, setFreshImages] = useState<File[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [job, setJob] = useState<JobResponse | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -469,8 +534,10 @@ export default function RefreshPage({
   );
 
   const resumeJob = useCallback(
-    (stored: { jobId: string; url: string }) => {
+    (stored: { jobId: string; url: string; mode: FlowMode; prompt: string }) => {
+      setFlowMode(stored.mode);
       setUrl((current) => current || stored.url);
+      setFreshPrompt((current) => current || stored.prompt);
 
       void fetch(`/api/refresh/${stored.jobId}`)
         .then(async (response) => {
@@ -534,8 +601,16 @@ export default function RefreshPage({
         const linkedJobId = params.get("job");
         if (linkedJobId) {
           const linkedUrl = params.get("url") ?? "";
-          storeJob(linkedJobId, linkedUrl);
-          resumeJob({ jobId: linkedJobId, url: linkedUrl });
+          storeJob(linkedJobId, {
+            url: linkedUrl,
+            mode: "refresh",
+          });
+          resumeJob({
+            jobId: linkedJobId,
+            url: linkedUrl,
+            mode: "refresh",
+            prompt: "",
+          });
           window.history.replaceState(null, "", "/");
           return;
         }
@@ -940,6 +1015,9 @@ export default function RefreshPage({
     clearStoredJob();
     setJob(null);
     setUrl("");
+    setFreshPrompt("");
+    setFreshLogo(null);
+    setFreshImages([]);
     setErrorMessage(null);
     setEditStatus("idle");
     setActiveEditRequestId(null);
@@ -986,7 +1064,7 @@ export default function RefreshPage({
         },
       });
       setJob(createdJob);
-      storeJob(createdJob.id, url);
+      storeJob(createdJob.id, { url, mode: "refresh" });
       beginPolling(createdJob.id);
     } catch (error) {
       setIsRefreshing(false);
@@ -994,6 +1072,72 @@ export default function RefreshPage({
       stopStatusRotation();
       setErrorMessage(
         error instanceof Error ? error.message : "Failed to start refresh",
+      );
+    }
+  };
+
+  const handleFresh = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!freshPrompt.trim() || isRefreshing) {
+      return;
+    }
+
+    setIsRefreshing(true);
+    setJob(null);
+    setErrorMessage(null);
+    setEditStatus("idle");
+    setActiveEditRequestId(null);
+    setStatusMessageIndex(0);
+    stopPolling();
+    stopEditPolling();
+    startProgressTimers();
+
+    try {
+      const metaEventId = createMetaEventId("lead");
+      const body = new FormData();
+      body.append("prompt", freshPrompt);
+      body.append("metaEventId", metaEventId);
+
+      if (freshLogo) {
+        body.append("logo", freshLogo);
+      }
+
+      for (const image of freshImages) {
+        body.append("images", image);
+      }
+
+      const response = await fetch("/api/fresh", {
+        method: "POST",
+        body,
+      });
+
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Failed to start website creation");
+      }
+
+      const createdJob = payload as JobResponse;
+      trackMetaBrowserEvent({
+        eventName: "Lead",
+        eventId: metaEventId,
+        customData: {
+          content_name: "Fresh website creation request",
+        },
+      });
+      setJob(createdJob);
+      storeJob(createdJob.id, {
+        mode: "fresh",
+        prompt: freshPrompt,
+      });
+      beginPolling(createdJob.id);
+    } catch (error) {
+      setIsRefreshing(false);
+      stopTimer();
+      stopStatusRotation();
+      setErrorMessage(
+        error instanceof Error ? error.message : "Failed to start website creation",
       );
     }
   };
@@ -1007,6 +1151,12 @@ export default function RefreshPage({
         : 0;
   const previewHref = normalizePreviewUrl(job?.previewUrl ?? null);
   const showReveal = !isRefreshing && Boolean(previewHref);
+  const activeMode = job?.generationMode ?? flowMode;
+  const activeLabel = jobLabel(job, activeMode, url, freshPrompt);
+  const activeLoadingStages =
+    activeMode === "fresh" ? FRESH_LOADING_STAGES : LOADING_STAGES;
+  const activeStatusMessages =
+    activeMode === "fresh" ? FRESH_STATUS_MESSAGES : REFRESH_STATUS_MESSAGES;
   const expiryLabel = job?.expiresAt
     ? new Intl.DateTimeFormat("en-GB", {
         day: "numeric",
@@ -1076,7 +1226,7 @@ export default function RefreshPage({
                 onClick={startFresh}
                 className="rounded-full bg-[#141811] px-4 py-2 text-sm font-semibold text-white transition hover:bg-black sm:px-5"
               >
-                Refresh another
+                Start another
               </button>
             ) : (
               <a
@@ -1101,14 +1251,14 @@ export default function RefreshPage({
                 aria-live="polite"
               >
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-black/40">
-                  Refreshing
+                  {activeMode === "fresh" ? "Creating" : "Refreshing"}
                 </p>
                 <h1 className="mx-auto mt-2 max-w-[22ch] font-fraunces text-[clamp(1.6rem,4.5vw,2.15rem)] font-semibold leading-none tracking-tight [overflow-wrap:anywhere]">
-                  {hostLabel(url)}
+                  {activeLabel}
                 </h1>
 
                 <ol className="mx-auto mt-8 max-w-xs space-y-3.5 text-left">
-                  {LOADING_STAGES.map((label, index) => {
+                  {activeLoadingStages.map((label, index) => {
                     const done = index < loadingStage;
                     const current = index === loadingStage;
 
@@ -1149,7 +1299,9 @@ export default function RefreshPage({
                 <p className="mt-7 text-sm italic text-black/55">
                   {elapsedMs > OVERTIME_THRESHOLD_MS
                     ? OVERTIME_MESSAGE
-                    : REFRESH_STATUS_MESSAGES[statusMessageIndex]}
+                    : activeStatusMessages[
+                        Math.min(statusMessageIndex, activeStatusMessages.length - 1)
+                      ]}
                 </p>
 
                 <div className="mx-auto mt-5 flex w-fit items-center gap-2 rounded-full border border-black/10 bg-white px-4 py-1.5 text-sm font-medium">
@@ -1165,7 +1317,7 @@ export default function RefreshPage({
 
                 <p className="mt-5 text-xs leading-5 text-black/45">
                   {user
-                    ? "You can leave this page — your refresh keeps going and will be waiting in your dashboard."
+                    ? `You can leave this page — your ${activeMode === "fresh" ? "website" : "refresh"} keeps going and will be waiting in your dashboard.`
                     : "Keep this tab open — your new website will appear right here in a minute or two."}
                 </p>
                 {job?.id ? (
@@ -1177,7 +1329,11 @@ export default function RefreshPage({
                     disabled={isCancellingRefresh}
                     className="mt-5 rounded-full border border-black/10 bg-white px-5 py-2 text-sm font-semibold text-black/60 transition hover:border-black/25 hover:text-black disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {isCancellingRefresh ? "Cancelling..." : "Cancel refresh"}
+                    {isCancellingRefresh
+                      ? "Cancelling..."
+                      : activeMode === "fresh"
+                        ? "Cancel creation"
+                        : "Cancel refresh"}
                   </button>
                 ) : null}
               </div>
@@ -1189,7 +1345,9 @@ export default function RefreshPage({
                   Your new website is ready ✨
                 </span>
                 <h1 className="mt-5 font-fraunces text-4xl font-semibold tracking-tight sm:text-5xl">
-                  Here&apos;s {hostLabel(url)}, refreshed.
+                  {activeMode === "fresh"
+                    ? `Here's ${activeLabel}.`
+                    : `Here's ${activeLabel}, refreshed.`}
                 </h1>
                 <p className="mx-auto mt-3 max-w-md text-base leading-7 text-black/55">
                   {job?.isClaimed
@@ -1209,7 +1367,9 @@ export default function RefreshPage({
                     <span className="h-2.5 w-2.5 rounded-full bg-yellow-300" />
                     <span className="h-2.5 w-2.5 rounded-full bg-green-300" />
                     <span className="ml-3 truncate text-xs text-black/40">
-                      {hostLabel(url)} — refreshed by Refresh Kiwi
+                      {activeLabel} —{" "}
+                      {activeMode === "fresh" ? "created" : "refreshed"} by
+                      Refresh Kiwi
                     </span>
                   </div>
                   <iframe
@@ -1368,13 +1528,13 @@ export default function RefreshPage({
               <div>
                 <p className="inline-flex items-center gap-2 rounded-full border border-black/5 bg-white/50 px-4 py-1.5 text-xs font-semibold text-black/45">
                   <span className="h-1.5 w-1.5 rounded-full bg-kiwi-green" />
-                  Affordable website redesign for local businesses
+                  Affordable AI websites for local businesses
                 </p>
                 <h1 className="mt-6 font-fraunces text-5xl font-semibold leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl">
-                  Same website.
+                  {flowMode === "fresh" ? "New website." : "Same website."}
                   <br />
                   <span className="relative inline-block">
-                    Fresher skin.
+                    {flowMode === "fresh" ? "Fresh start." : "Fresher skin."}
                     <span
                       aria-hidden
                       className="absolute inset-x-0 bottom-1 -z-10 h-4 rounded-sm bg-kiwi-green/70 sm:h-5"
@@ -1382,38 +1542,121 @@ export default function RefreshPage({
                   </span>
                 </h1>
                 <p className="mt-6 max-w-md text-lg leading-8 text-black/55">
-                  Paste your web address. In about 2 minutes, our AI website
-                  redesign service rebuilds your site with a fresh, modern
-                  design — your words, your photos, your business.
+                  {flowMode === "fresh"
+                    ? "Describe the business, add a logo or photos if you have them, and get a polished first website draft in about 2 minutes."
+                    : "Paste your web address. In about 2 minutes, our AI website redesign service rebuilds your site with a fresh, modern design — your words, your photos, your business."}
                 </p>
 
-                <form
-                  onSubmit={handleRefresh}
-                  className="mt-8 flex max-w-lg flex-col gap-2 rounded-[1.75rem] border-2 border-black/20 bg-white p-2 shadow-xl shadow-black/10 transition focus-within:border-black/40 sm:flex-row sm:items-center sm:rounded-full"
-                >
-                  <label htmlFor="refresh-input" className="sr-only">
-                    Your website address
-                  </label>
-                  <input
-                    id="refresh-input"
-                    type="text"
-                    inputMode="url"
-                    autoCapitalize="none"
-                    autoCorrect="off"
-                    spellCheck={false}
-                    placeholder="yourwebsite.co.uk"
-                    value={url}
-                    onChange={(event) => setUrl(event.target.value)}
-                    className="h-12 w-full rounded-full bg-transparent px-5 text-base outline-none placeholder:text-black/30 sm:flex-1"
-                  />
-                  <button
-                    type="submit"
-                    disabled={!url.trim()}
-                    className="h-12 shrink-0 rounded-full bg-kiwi-green px-6 text-sm font-bold transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    Refresh it →
-                  </button>
-                </form>
+                <div className="mt-8 max-w-lg">
+                  <div className="inline-flex rounded-full border border-black/10 bg-white p-1 shadow-sm">
+                    {(["refresh", "fresh"] as const).map((mode) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => {
+                          setFlowMode(mode);
+                          setErrorMessage(null);
+                        }}
+                        className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                          flowMode === mode
+                            ? "bg-[#141811] text-white"
+                            : "text-black/50 hover:text-black"
+                        }`}
+                      >
+                        {mode === "refresh" ? "Refresh" : "Fresh"}
+                      </button>
+                    ))}
+                  </div>
+
+                  {flowMode === "refresh" ? (
+                    <form
+                      onSubmit={handleRefresh}
+                      className="mt-3 flex flex-col gap-2 rounded-[1.75rem] border-2 border-black/20 bg-white p-2 shadow-xl shadow-black/10 transition focus-within:border-black/40 sm:flex-row sm:items-center sm:rounded-full"
+                    >
+                      <label htmlFor="refresh-input" className="sr-only">
+                        Your website address
+                      </label>
+                      <input
+                        id="refresh-input"
+                        type="text"
+                        inputMode="url"
+                        autoCapitalize="none"
+                        autoCorrect="off"
+                        spellCheck={false}
+                        placeholder="yourwebsite.co.uk"
+                        value={url}
+                        onChange={(event) => setUrl(event.target.value)}
+                        className="h-12 w-full rounded-full bg-transparent px-5 text-base outline-none placeholder:text-black/30 sm:flex-1"
+                      />
+                      <button
+                        type="submit"
+                        disabled={!url.trim()}
+                        className="h-12 shrink-0 rounded-full bg-kiwi-green px-6 text-sm font-bold transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        Refresh it →
+                      </button>
+                    </form>
+                  ) : (
+                    <form
+                      onSubmit={handleFresh}
+                      className="mt-3 rounded-[1.75rem] border-2 border-black/20 bg-white p-3 shadow-xl shadow-black/10 transition focus-within:border-black/40"
+                    >
+                      <label htmlFor="fresh-input" className="sr-only">
+                        Describe the website you want
+                      </label>
+                      <textarea
+                        id="fresh-input"
+                        rows={5}
+                        value={freshPrompt}
+                        onChange={(event) => setFreshPrompt(event.target.value)}
+                        placeholder="Tell us the business name, what you sell, who it is for, the style you like, and any must-have sections..."
+                        className="w-full resize-none rounded-2xl bg-[#faf8f1] px-4 py-3 text-base outline-none placeholder:text-black/30"
+                      />
+                      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                        <label className="flex cursor-pointer flex-col rounded-2xl border border-black/10 px-4 py-3 text-sm font-semibold transition hover:border-black/25">
+                          <span>Logo</span>
+                          <span className="mt-1 truncate text-xs font-normal text-black/45">
+                            {freshLogo?.name ?? "Optional PNG, JPG, SVG..."}
+                          </span>
+                          <input
+                            type="file"
+                            accept="image/png,image/jpeg,image/webp,image/gif,image/avif,image/svg+xml"
+                            className="hidden"
+                            onChange={(event) => {
+                              setFreshLogo(event.target.files?.[0] ?? null);
+                            }}
+                          />
+                        </label>
+                        <label className="flex cursor-pointer flex-col rounded-2xl border border-black/10 px-4 py-3 text-sm font-semibold transition hover:border-black/25">
+                          <span>Photos</span>
+                          <span className="mt-1 truncate text-xs font-normal text-black/45">
+                            {freshImages.length > 0
+                              ? `${freshImages.length} selected`
+                              : "Optional, up to 8 images"}
+                          </span>
+                          <input
+                            type="file"
+                            accept="image/png,image/jpeg,image/webp,image/gif,image/avif,image/svg+xml"
+                            multiple
+                            className="hidden"
+                            onChange={(event) => {
+                              setFreshImages(
+                                Array.from(event.target.files ?? []).slice(0, 8),
+                              );
+                            }}
+                          />
+                        </label>
+                      </div>
+                      <button
+                        type="submit"
+                        disabled={!freshPrompt.trim()}
+                        className="mt-3 h-12 w-full rounded-full bg-kiwi-green px-6 text-sm font-bold transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        Create it →
+                      </button>
+                    </form>
+                  )}
+                </div>
 
                 {errorMessage ? (
                   <div

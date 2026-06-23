@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 
 import { getDb, schema } from "@/lib/db";
 import { previewPublicPath } from "@/lib/preview/paths";
-import { resolveUniqueSlug, slugFromUrl } from "@/lib/jobs/slug";
+import { normalizeSlug, resolveUniqueSlug, slugFromUrl } from "@/lib/jobs/slug";
 import { STATUS_MESSAGES, type JobResponse, type JobStatus } from "@/lib/jobs/types";
 
 const { jobs, websites } = schema;
@@ -29,6 +29,8 @@ function toJobResponse(
   return {
     id: job.id,
     sourceUrl: job.sourceUrl,
+    generationMode: job.generationMode,
+    creationPrompt: job.creationPrompt,
     slug: job.slug,
     websiteId: website?.id ?? null,
     brandName: job.brandName,
@@ -47,15 +49,10 @@ function toJobResponse(
   };
 }
 
-export async function createRefreshJob(
-  sourceUrl: string,
-  userId?: string | null,
-  clientIp?: string | null,
-): Promise<JobResponse> {
+async function uniqueJobSlug(baseSlug: string): Promise<string> {
   const db = getDb();
-  const baseSlug = slugFromUrl(sourceUrl);
 
-  const slug = await resolveUniqueSlug(baseSlug, async (candidate) => {
+  return resolveUniqueSlug(baseSlug, async (candidate) => {
     const existing = await db
       .select({ id: jobs.id })
       .from(jobs)
@@ -64,11 +61,62 @@ export async function createRefreshJob(
 
     return existing.length > 0;
   });
+}
+
+export function slugFromPrompt(prompt: string): string {
+  const firstUsefulLine =
+    prompt
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .find((line) => line.length > 0) ?? "";
+  const withoutLabel = firstUsefulLine.replace(
+    /^(business|company|brand|name|website)\s*[:\-]\s*/i,
+    "",
+  );
+  const firstSentence = withoutLabel.split(/[.!?]/)[0] ?? withoutLabel;
+  const compact = firstSentence.split(/\s+/).slice(0, 5).join(" ");
+
+  return normalizeSlug(compact) || "fresh-site";
+}
+
+export async function createRefreshJob(
+  sourceUrl: string,
+  userId?: string | null,
+  clientIp?: string | null,
+): Promise<JobResponse> {
+  const db = getDb();
+  const baseSlug = slugFromUrl(sourceUrl);
+  const slug = await uniqueJobSlug(baseSlug);
 
   const [job] = await db
     .insert(jobs)
     .values({
       sourceUrl,
+      generationMode: "refresh",
+      slug,
+      userId: userId ?? null,
+      clientIp: clientIp ?? null,
+      status: "queued",
+    })
+    .returning();
+
+  return toJobResponse(job);
+}
+
+export async function createFreshJob(
+  creationPrompt: string,
+  userId?: string | null,
+  clientIp?: string | null,
+): Promise<JobResponse> {
+  const db = getDb();
+  const slug = await uniqueJobSlug(slugFromPrompt(creationPrompt));
+
+  const [job] = await db
+    .insert(jobs)
+    .values({
+      sourceUrl: null,
+      generationMode: "fresh",
+      creationPrompt,
       slug,
       userId: userId ?? null,
       clientIp: clientIp ?? null,

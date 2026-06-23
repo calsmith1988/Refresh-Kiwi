@@ -10,6 +10,10 @@ export const JOB_STATUSES = [
 
 export type JobStatus = (typeof JOB_STATUSES)[number];
 
+export const GENERATION_MODES = ["refresh", "fresh"] as const;
+
+export type GenerationMode = (typeof GENERATION_MODES)[number];
+
 export const PAGE_STATUSES = ["pending", "building", "ready"] as const;
 
 export type PageStatus = (typeof PAGE_STATUSES)[number];
@@ -26,7 +30,9 @@ export const STATUS_MESSAGES: Record<JobStatus, string> = {
 
 export interface JobResponse {
   id: string;
-  sourceUrl: string;
+  sourceUrl: string | null;
+  generationMode: GenerationMode;
+  creationPrompt: string | null;
   slug: string;
   websiteId: string | null;
   brandName: string | null;

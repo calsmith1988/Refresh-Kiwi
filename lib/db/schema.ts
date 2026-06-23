@@ -25,6 +25,8 @@ export const pageStatusEnum = pgEnum("page_status", [
   "ready",
 ]);
 
+export const generationModeEnum = pgEnum("generation_mode", ["refresh", "fresh"]);
+
 export const planEnum = pgEnum("plan", ["free", "pro"]);
 
 export const subscriptionStatusEnum = pgEnum("subscription_status", [
@@ -170,7 +172,11 @@ export const twoFactorRecoveryCodes = pgTable("two_factor_recovery_codes", {
 
 export const jobs = pgTable("jobs", {
   id: uuid("id").defaultRandom().primaryKey(),
-  sourceUrl: text("source_url").notNull(),
+  sourceUrl: text("source_url"),
+  generationMode: generationModeEnum("generation_mode")
+    .notNull()
+    .default("refresh"),
+  creationPrompt: text("creation_prompt"),
   slug: text("slug").notNull().unique(),
   userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
   clientIp: text("client_ip"),
@@ -195,7 +201,11 @@ export const websites = pgTable("websites", {
   jobId: uuid("job_id")
     .notNull()
     .references(() => jobs.id, { onDelete: "cascade" }),
-  sourceUrl: text("source_url").notNull(),
+  sourceUrl: text("source_url"),
+  generationMode: generationModeEnum("generation_mode")
+    .notNull()
+    .default("refresh"),
+  creationPrompt: text("creation_prompt"),
   slug: text("slug").notNull().unique(),
   brandName: text("brand_name"),
   status: websiteStatusEnum("status").notNull().default("preview"),

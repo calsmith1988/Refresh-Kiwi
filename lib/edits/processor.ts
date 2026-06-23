@@ -53,6 +53,8 @@ export async function processEditRequest(editRequestId: string): Promise<void> {
         sourceUrl: editRequest.website.sourceUrl,
         slug: editRequest.website.slug,
         editPrompt: editRequest.prompt,
+        generationMode: editRequest.website.generationMode,
+        creationPrompt: editRequest.website.creationPrompt,
       },
       async (started) => {
         await updateEditRequest(editRequest.id, {

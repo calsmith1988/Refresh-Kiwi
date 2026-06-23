@@ -59,6 +59,8 @@ export async function GET() {
       .select({
         id: jobs.id,
         sourceUrl: jobs.sourceUrl,
+        generationMode: jobs.generationMode,
+        creationPrompt: jobs.creationPrompt,
         slug: jobs.slug,
         brandName: jobs.brandName,
         status: jobs.status,
@@ -79,6 +81,8 @@ export async function GET() {
     activeRefreshJobs: activeRefreshJobs.map((job) => ({
       id: job.id,
       sourceUrl: job.sourceUrl,
+      generationMode: job.generationMode,
+      creationPrompt: job.creationPrompt,
       slug: job.slug,
       brandName: job.brandName,
       status: job.status,
