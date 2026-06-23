@@ -1371,7 +1371,7 @@ export default function RefreshPage({
                   Affordable website redesign for local businesses
                 </p>
                 <h1 className="mt-6 font-fraunces text-5xl font-semibold leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl">
-                  Website redesign.
+                  Same website.
                   <br />
                   <span className="relative inline-block">
                     Fresher skin.
