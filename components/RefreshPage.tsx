@@ -49,7 +49,7 @@ const LOADING_STAGES = [
 
 const FRESH_LOADING_STAGES = [
   "Reading your brief",
-  "Designing your first draft",
+  "Designing your website",
   "Finishing touches",
 ] as const;
 
@@ -75,7 +75,7 @@ const FRESH_STATUS_MESSAGES = [
   "Shaping the homepage story…",
   "Working in your logo and images…",
   "Choosing a fresh visual direction…",
-  "Writing sharper first-draft copy…",
+  "Writing sharper website copy…",
   "Building the responsive layout…",
   "Polishing the calls to action…",
   "Checking the mobile crop…",
@@ -1230,7 +1230,7 @@ export default function RefreshPage({
               </button>
             ) : (
               <a
-                href="#refresh-input"
+                href={flowMode === "fresh" ? "#fresh-input" : "#refresh-input"}
                 className="rounded-full bg-[#141811] px-4 py-2 text-sm font-semibold text-white transition hover:bg-black sm:px-5"
               >
                 Try it free
@@ -1528,7 +1528,9 @@ export default function RefreshPage({
               <div>
                 <p className="inline-flex items-center gap-2 rounded-full border border-black/5 bg-white/50 px-4 py-1.5 text-xs font-semibold text-black/45">
                   <span className="h-1.5 w-1.5 rounded-full bg-kiwi-green" />
-                  Affordable AI websites for local businesses
+                  {flowMode === "fresh"
+                    ? "Affordable small business website design"
+                    : "Affordable website redesign for small business"}
                 </p>
                 <h1 className="mt-6 font-fraunces text-5xl font-semibold leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl">
                   {flowMode === "fresh" ? "New website." : "Same website."}
@@ -1543,8 +1545,8 @@ export default function RefreshPage({
                 </h1>
                 <p className="mt-6 max-w-md text-lg leading-8 text-black/55">
                   {flowMode === "fresh"
-                    ? "Describe the business, add a logo or photos if you have them, and get a polished first website draft in about 2 minutes."
-                    : "Paste your web address. In about 2 minutes, our AI website redesign service rebuilds your site with a fresh, modern design — your words, your photos, your business."}
+                    ? "Describe your business, add a logo or photos if you have them, and get a polished website from a website creation company built for small businesses."
+                    : "Input your web address. In about 2 minutes, our website redesign service rebuilds your site with a fresh, modern design — your words, your photos, your business."}
                 </p>
 
                 <div className="mt-8 max-w-lg">
@@ -1779,28 +1781,48 @@ export default function RefreshPage({
                 Three steps. No tech skills.
               </h2>
               <p className="mt-3 max-w-md text-base leading-7 text-black/55">
-                If you can copy and paste, you can start a small business
-                website redesign.
+                {flowMode === "fresh"
+                  ? "Our web design services for small business help you go from a simple description to a professional website in about 2 minutes."
+                  : "If you can copy and paste, you can start a small business website redesign."}
               </p>
 
               <div className="mt-10 grid gap-4 md:grid-cols-3">
-                {[
-                  {
-                    n: "01",
-                    title: "Paste your address",
-                    body: "Pop in your current website — Wix, WordPress, anything. No account, no card.",
-                  },
-                  {
-                    n: "02",
-                    title: "Watch the site redesign happen",
-                    body: "In about 2 minutes we rebuild it with a clean, modern design. Your words and photos stay.",
-                  },
-                  {
-                    n: "03",
-                    title: "Go live when you're happy",
-                    body: "£10/month puts it online with unlimited changes — just ask in plain English.",
-                  },
-                ].map((step) => (
+                {(flowMode === "fresh"
+                  ? [
+                      {
+                        n: "01",
+                        title: "Describe your business",
+                        body: "Tell us what you do, who you help, and what style you like. Add a logo or photos if you have them.",
+                      },
+                      {
+                        n: "02",
+                        title: "Get your new website",
+                        body: "In about 2 minutes we turn your notes into a modern website with words, design, colours, and buttons ready to go.",
+                      },
+                      {
+                        n: "03",
+                        title: "Go live when you're happy",
+                        body: "Save it, ask for changes in normal everyday language, add pages, and put it online when you're ready.",
+                      },
+                    ]
+                  : [
+                      {
+                        n: "01",
+                        title: "Paste your address",
+                        body: "Pop in your current website — Wix, WordPress, anything. No account, no card.",
+                      },
+                      {
+                        n: "02",
+                        title: "Watch the site redesign happen",
+                        body: "In about 2 minutes we rebuild it with a clean, modern design. Your words and photos stay.",
+                      },
+                      {
+                        n: "03",
+                        title: "Go live when you're happy",
+                        body: "£10/month puts it online with as many changes as you need — just ask normally.",
+                      },
+                    ]
+                ).map((step) => (
                   <div
                     key={step.n}
                     className="rounded-3xl border border-black/10 bg-white p-7"
@@ -1825,11 +1847,14 @@ export default function RefreshPage({
           >
             <div className="mx-auto w-full max-w-6xl">
               <h2 className="font-fraunces text-3xl font-semibold tracking-tight sm:text-4xl">
-                Old website in, fresh website redesign out.
+                {flowMode === "fresh"
+                  ? "Local business web design, without the usual wait."
+                  : "Old website in, fresh website redesign out."}
               </h2>
               <p className="mt-3 max-w-md text-base leading-7 text-white/55">
-                Real site redesign examples for the kinds of websites that
-                haven&apos;t changed since 2012.
+                {flowMode === "fresh"
+                  ? "Start from scratch or refresh what you already have. Refresh Kiwi gives local businesses a modern website they can edit by asking for changes."
+                  : "Real site redesign examples for the kinds of websites that haven't changed since 2012."}
               </p>
 
               <div className="mt-10 grid gap-5 lg:grid-cols-2">
@@ -1877,10 +1902,11 @@ export default function RefreshPage({
               </div>
 
               <p className="mt-9 text-sm text-white/55">
-                The best small business website redesign example is your own
-                website —{" "}
+                {flowMode === "fresh"
+                  ? "Want to start from scratch? Describe your business and "
+                  : "The best small business website redesign example is your own website — "}
                 <a
-                  href="#refresh-input"
+                  href={flowMode === "fresh" ? "#fresh-input" : "#refresh-input"}
                   className="font-semibold text-kiwi-green underline underline-offset-4"
                 >
                   try it free
@@ -1894,27 +1920,34 @@ export default function RefreshPage({
           <section id="pricing" className="scroll-mt-20 px-5 py-20 sm:px-8">
             <div className="mx-auto w-full max-w-4xl">
               <h2 className="text-center font-fraunces text-3xl font-semibold tracking-tight sm:text-4xl">
-                One simple website redesign cost.
+                {flowMode === "fresh"
+                  ? "Simple website design costs for small business."
+                  : "One simple website redesign cost."}
               </h2>
               <p className="mx-auto mt-3 max-w-md text-center text-base leading-7 text-black/55">
-                No credits, no tokens, no surprises. An affordable website
-                redesign starts free, and you only pay when you want your new
-                website online.
+                {flowMode === "fresh"
+                  ? "See your website for free. Only pay when you want to put it online and keep making changes."
+                  : "No credits, no tokens, no surprises. An affordable website redesign starts free, and you only pay when you want your new website online."}
               </p>
 
               <div className="mt-10 grid gap-4 md:grid-cols-2">
                 <div className="rounded-3xl border border-black/10 bg-white p-8">
-                  <h3 className="text-lg font-bold">Free preview</h3>
+                  <h3 className="text-lg font-bold">Try for free</h3>
                   <p className="mt-2 font-fraunces text-4xl font-semibold">
                     £0
                   </p>
                   <ul className="mt-6 space-y-3 text-sm leading-6 text-black/60">
-                    <li>✓ See your AI website redesign — no signup</li>
+                    <li>
+                      ✓{" "}
+                      {flowMode === "fresh"
+                        ? "See your new website — no signup"
+                        : "See your website redesigned — no signup"}
+                    </li>
                     <li>✓ Keep it for 7 days with a free account</li>
                     <li>✓ 3 free changes included</li>
                   </ul>
                   <a
-                    href="#refresh-input"
+                    href={flowMode === "fresh" ? "#fresh-input" : "#refresh-input"}
                     className="mt-7 inline-flex h-12 items-center rounded-full border border-black/15 bg-white px-6 text-sm font-semibold transition hover:border-black/30"
                   >
                     Try it free
@@ -1933,17 +1966,24 @@ export default function RefreshPage({
                     </span>
                   </p>
                   <ul className="mt-6 space-y-3 text-sm leading-6 text-white/70">
-                    <li>✓ Your redesigned website live online — we host it</li>
-                    <li>✓ Unlimited changes, asked for in plain English</li>
+                    <li>
+                      ✓{" "}
+                      {flowMode === "fresh"
+                        ? "Your new website live online — we host it"
+                        : "Your redesigned website live online — we host it"}
+                    </li>
+                    <li>✓ Ask for as many changes as you need</li>
                     <li>✓ Your own web address (www.yourbusiness.com)</li>
                     <li>✓ Extra pages built for you</li>
                     <li>✓ Cancel anytime — no contracts</li>
                   </ul>
                   <a
-                    href="#refresh-input"
+                    href={flowMode === "fresh" ? "#fresh-input" : "#refresh-input"}
                     className="mt-7 inline-flex h-12 items-center rounded-full bg-kiwi-green px-6 text-sm font-bold text-black transition hover:bg-kiwi-green-hover"
                   >
-                    Start with a free preview
+                    {flowMode === "fresh"
+                      ? "Create my website free"
+                      : "Start with a free preview"}
                   </a>
                 </div>
               </div>
@@ -1961,36 +2001,72 @@ export default function RefreshPage({
               </h2>
 
               <div className="mt-8 divide-y divide-black/5">
-                {[
-                  {
-                    q: "Will this change my real website?",
-                    a: "No. We make a separate website redesign preview. Your current website stays exactly as it is until you decide to switch.",
-                  },
-                  {
-                    q: "Do I lose my words and photos?",
-                    a: "No — that's the whole point. We keep your business details, services, photos and phone number, and give them a cleaner, more modern home.",
-                  },
-                  {
-                    q: "Is this a web redesign service or a full new build?",
-                    a: "Refresh Kiwi is a web redesign service. We use your existing site as the starting point, then create a fresher version you can preview, edit and publish.",
-                  },
-                  {
-                    q: "What is the website redesign cost?",
-                    a: "The preview is free. If you want the redesigned website hosted online, Kiwi Pro is £10/month with unlimited plain-English changes and no long contract.",
-                  },
-                  {
-                    q: "I'm not good with computers. Is this for me?",
-                    a: "Yes. You paste your web address and press one button. Changes are made by typing what you want in plain English, like \"make the phone number bigger\".",
-                  },
-                  {
-                    q: "What happens after I pay £10/month?",
-                    a: "Your new website goes live on the internet and we host it for you. You get unlimited changes and can connect your own web address. Cancel anytime.",
-                  },
-                  {
-                    q: "What if I don't like the result?",
-                    a: "Then it costs you nothing. The preview is free, and you can simply walk away — or try again with different changes.",
-                  },
-                ].map((item) => (
+                {(flowMode === "fresh"
+                  ? [
+                      {
+                        q: "Do I need an old website?",
+                        a: "No. Describe your business, add a logo or photos if you have them, and we create a new website for you.",
+                      },
+                      {
+                        q: "What if I don't have photos yet?",
+                        a: "That's fine. We can still make a clean, professional website using your business details, colours, layout, and simple visual design.",
+                      },
+                      {
+                        q: "Is this a full new website?",
+                        a: "Yes. You get a new website you can save, change, add pages to, and publish online when you're ready.",
+                      },
+                      {
+                        q: "What does it cost?",
+                        a: "You can see your new website for free. If you want it live online, Kiwi Pro is £10/month with changes included and no long contract.",
+                      },
+                      {
+                        q: "How is this different from local web design companies?",
+                        a: "Most local web design companies need meetings, quotes, and weeks of back-and-forth. Refresh Kiwi gives you a website quickly, then lets you ask for changes whenever you need them.",
+                      },
+                      {
+                        q: "I'm not good with computers. Is this for me?",
+                        a: "Yes. You describe what you want in normal everyday language. If you want a change later, type it like you would say it.",
+                      },
+                      {
+                        q: "What happens after I pay £10/month?",
+                        a: "Your website goes live on the internet and we host it for you. You can ask for changes, add extra pages, and connect your own web address. Cancel anytime.",
+                      },
+                      {
+                        q: "What if I don't like the result?",
+                        a: "Then it costs you nothing. You can walk away, change your description, or try again.",
+                      },
+                    ]
+                  : [
+                      {
+                        q: "Will this change my real website?",
+                        a: "No. We make a separate redesigned version. Your current website stays exactly as it is until you decide to switch.",
+                      },
+                      {
+                        q: "Do I lose my words and photos?",
+                        a: "No — that's the whole point. We keep your business details, services, photos and phone number, and give them a cleaner, more modern home.",
+                      },
+                      {
+                        q: "Is this a web redesign service or a full new build?",
+                        a: "Refresh Kiwi is a web redesign service. We use your existing site as the starting point, then create a fresher version you can preview, edit and publish.",
+                      },
+                      {
+                        q: "What is the website redesign cost?",
+                        a: "You can see the redesign for free. If you want the redesigned website live online, Kiwi Pro is £10/month with changes included and no long contract.",
+                      },
+                      {
+                        q: "I'm not good with computers. Is this for me?",
+                        a: "Yes. You paste your web address and press one button. If you want a change later, type it like you would say it, such as \"make the phone number bigger\".",
+                      },
+                      {
+                        q: "What happens after I pay £10/month?",
+                        a: "Your new website goes live on the internet and we host it for you. You can ask for changes and connect your own web address. Cancel anytime.",
+                      },
+                      {
+                        q: "What if I don't like the result?",
+                        a: "Then it costs you nothing. You can simply walk away, ask for changes, or try again.",
+                      },
+                    ]
+                ).map((item) => (
                   <details key={item.q} className="group py-5">
                     <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-base font-semibold [&::-webkit-details-marker]:hidden">
                       {item.q}
@@ -2019,7 +2095,9 @@ export default function RefreshPage({
                       From the blog
                     </p>
                     <h2 className="mt-3 max-w-2xl font-fraunces text-3xl font-semibold tracking-tight sm:text-4xl">
-                      Quick reads before you refresh your website.
+                      {flowMode === "fresh"
+                        ? "Quick reads before you start your website."
+                        : "Quick reads before you refresh your website."}
                     </h2>
                   </div>
                   <Link
@@ -2059,17 +2137,22 @@ export default function RefreshPage({
           <section className="px-5 py-20 sm:px-8">
             <div className="mx-auto w-full max-w-6xl rounded-[2.5rem] bg-kiwi-green px-6 py-16 text-center sm:px-12">
               <h2 className="mx-auto max-w-2xl font-fraunces text-4xl font-semibold tracking-tight sm:text-5xl">
-                Your website called. It wants a redesign.
+                {flowMode === "fresh"
+                  ? "Start your website in about 2 minutes."
+                  : "Your website called. It wants a redesign."}
               </h2>
               <p className="mx-auto mt-4 max-w-md text-base leading-7 text-black/60">
-                Revamping website design? Try it for free. It takes about 2
-                minutes, and nothing changes until you say so.
+                {flowMode === "fresh"
+                  ? "Describe your business and get a fresh website you can save, change, and publish when you're ready."
+                  : "Revamping website design? Try it for free. It takes about 2 minutes, and nothing changes until you say so."}
               </p>
               <a
-                href="#refresh-input"
+                href={flowMode === "fresh" ? "#fresh-input" : "#refresh-input"}
                 className="mt-8 inline-flex items-center rounded-full bg-[#141811] px-8 py-4 text-sm font-bold text-white transition hover:bg-black"
               >
-                Refresh my website — free
+                {flowMode === "fresh"
+                  ? "Create my website — free"
+                  : "Refresh my website — free"}
               </a>
             </div>
           </section>
