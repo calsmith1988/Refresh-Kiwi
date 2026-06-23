@@ -1596,66 +1596,7 @@ export default function RefreshPage({
                         Refresh it →
                       </button>
                     </form>
-                  ) : (
-                    <form
-                      onSubmit={handleFresh}
-                      className="mt-3 rounded-[1.75rem] border-2 border-black/20 bg-white p-3 shadow-xl shadow-black/10 transition focus-within:border-black/40"
-                    >
-                      <label htmlFor="fresh-input" className="sr-only">
-                        Describe the website you want
-                      </label>
-                      <textarea
-                        id="fresh-input"
-                        rows={5}
-                        value={freshPrompt}
-                        onChange={(event) => setFreshPrompt(event.target.value)}
-                        placeholder="Tell us the business name, what you sell, who it is for, the style you like, and any must-have sections..."
-                        className="w-full resize-none rounded-2xl bg-[#faf8f1] px-4 py-3 text-base outline-none placeholder:text-black/30"
-                      />
-                      <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                        <label className="flex cursor-pointer flex-col rounded-2xl border border-black/10 px-4 py-3 text-sm font-semibold transition hover:border-black/25">
-                          <span>Logo</span>
-                          <span className="mt-1 truncate text-xs font-normal text-black/45">
-                            {freshLogo?.name ?? "Optional PNG, JPG, SVG..."}
-                          </span>
-                          <input
-                            type="file"
-                            accept="image/png,image/jpeg,image/webp,image/gif,image/avif,image/svg+xml"
-                            className="hidden"
-                            onChange={(event) => {
-                              setFreshLogo(event.target.files?.[0] ?? null);
-                            }}
-                          />
-                        </label>
-                        <label className="flex cursor-pointer flex-col rounded-2xl border border-black/10 px-4 py-3 text-sm font-semibold transition hover:border-black/25">
-                          <span>Photos</span>
-                          <span className="mt-1 truncate text-xs font-normal text-black/45">
-                            {freshImages.length > 0
-                              ? `${freshImages.length} selected`
-                              : "Optional, up to 8 images"}
-                          </span>
-                          <input
-                            type="file"
-                            accept="image/png,image/jpeg,image/webp,image/gif,image/avif,image/svg+xml"
-                            multiple
-                            className="hidden"
-                            onChange={(event) => {
-                              setFreshImages(
-                                Array.from(event.target.files ?? []).slice(0, 8),
-                              );
-                            }}
-                          />
-                        </label>
-                      </div>
-                      <button
-                        type="submit"
-                        disabled={!freshPrompt.trim()}
-                        className="mt-3 h-12 w-full rounded-full bg-kiwi-green px-6 text-sm font-bold transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        Create it →
-                      </button>
-                    </form>
-                  )}
+                  ) : null}
                 </div>
 
                 {errorMessage ? (
@@ -1688,43 +1629,124 @@ export default function RefreshPage({
                 </div>
               </div>
 
-              <div className="relative mx-auto min-h-[390px] w-full max-w-xl sm:min-h-[470px] lg:max-w-none">
-                <div className="pointer-events-none absolute -inset-10 rounded-full bg-[radial-gradient(circle_at_62%_42%,rgba(191,226,98,0.36),transparent_58%)] blur-2xl" />
-                <div className="pointer-events-none absolute bottom-8 right-6 h-44 w-44 rounded-full bg-[#BFE262]/35 blur-3xl" />
-                <div className="absolute left-0 top-0 w-[92%] -rotate-2 overflow-hidden rounded-[1.6rem] border border-black/10 bg-white opacity-90 shadow-xl shadow-black/10">
-                  <div className="relative h-[294px] overflow-hidden bg-white sm:h-[364px]">
-                    <Image
-                      src={engineerBeforePreview}
-                      alt="Original engineering website before Refresh Kiwi"
-                      fill
-                      priority
-                      sizes="(min-width: 1024px) 520px, 92vw"
-                      className="object-cover object-left-top"
+              {flowMode === "fresh" ? (
+                <div className="relative mx-auto w-full max-w-xl lg:max-w-none">
+                  <div className="pointer-events-none absolute -inset-8 rounded-full bg-[radial-gradient(circle_at_58%_30%,rgba(191,226,98,0.32),transparent_58%)] blur-2xl" />
+                  <form
+                    onSubmit={handleFresh}
+                    className="relative rounded-[2rem] border-2 border-black/20 bg-white p-4 shadow-2xl shadow-black/10 transition focus-within:border-black/40 sm:p-5"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-black/35">
+                          Create from scratch
+                        </p>
+                        <h2 className="mt-1 font-fraunces text-2xl font-semibold tracking-tight">
+                          Describe the website you want
+                        </h2>
+                      </div>
+                      <span className="hidden rounded-full bg-kiwi-green px-3 py-1 text-xs font-bold sm:inline-flex">
+                        About 2 min
+                      </span>
+                    </div>
+                    <label htmlFor="fresh-input" className="sr-only">
+                      Describe the website you want
+                    </label>
+                    <textarea
+                      id="fresh-input"
+                      rows={7}
+                      value={freshPrompt}
+                      onChange={(event) => setFreshPrompt(event.target.value)}
+                      placeholder="Tell us the business name, what you sell, who it is for, the style you like, and any must-have sections..."
+                      className="mt-4 w-full resize-none rounded-3xl bg-[#faf8f1] px-5 py-4 text-base leading-7 outline-none placeholder:text-black/30"
                     />
-                    <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/35 to-transparent" />
-                    <span className="absolute left-3 top-3 rounded-full bg-black/70 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-white backdrop-blur">
-                      Before
-                    </span>
-                  </div>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                      <label className="flex cursor-pointer flex-col rounded-2xl border border-black/10 px-4 py-3 text-sm font-semibold transition hover:border-black/25">
+                        <span>Logo</span>
+                        <span className="mt-1 truncate text-xs font-normal text-black/45">
+                          {freshLogo?.name ?? "Optional PNG, JPG, SVG..."}
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp,image/gif,image/avif,image/svg+xml"
+                          className="hidden"
+                          onChange={(event) => {
+                            setFreshLogo(event.target.files?.[0] ?? null);
+                          }}
+                        />
+                      </label>
+                      <label className="flex cursor-pointer flex-col rounded-2xl border border-black/10 px-4 py-3 text-sm font-semibold transition hover:border-black/25">
+                        <span>Photos</span>
+                        <span className="mt-1 truncate text-xs font-normal text-black/45">
+                          {freshImages.length > 0
+                            ? `${freshImages.length} selected`
+                            : "Optional, up to 8 images"}
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp,image/gif,image/avif,image/svg+xml"
+                          multiple
+                          className="hidden"
+                          onChange={(event) => {
+                            setFreshImages(
+                              Array.from(event.target.files ?? []).slice(0, 8),
+                            );
+                          }}
+                        />
+                      </label>
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={!freshPrompt.trim()}
+                      className="mt-3 h-12 w-full rounded-full bg-kiwi-green px-6 text-sm font-bold transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      Create it →
+                    </button>
+                    <p className="mt-3 text-center text-xs leading-5 text-black/40">
+                      Tip: include your audience, services, location, tone, and any
+                      must-have sections.
+                    </p>
+                  </form>
                 </div>
+              ) : (
+                <div className="relative mx-auto min-h-[390px] w-full max-w-xl sm:min-h-[470px] lg:max-w-none">
+                  <div className="pointer-events-none absolute -inset-10 rounded-full bg-[radial-gradient(circle_at_62%_42%,rgba(191,226,98,0.36),transparent_58%)] blur-2xl" />
+                  <div className="pointer-events-none absolute bottom-8 right-6 h-44 w-44 rounded-full bg-[#BFE262]/35 blur-3xl" />
+                  <div className="absolute left-0 top-0 w-[92%] -rotate-2 overflow-hidden rounded-[1.6rem] border border-black/10 bg-white opacity-90 shadow-xl shadow-black/10">
+                    <div className="relative h-[294px] overflow-hidden bg-white sm:h-[364px]">
+                      <Image
+                        src={engineerBeforePreview}
+                        alt="Original engineering website before Refresh Kiwi"
+                        fill
+                        priority
+                        sizes="(min-width: 1024px) 520px, 92vw"
+                        className="object-cover object-left-top"
+                      />
+                      <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/35 to-transparent" />
+                      <span className="absolute left-3 top-3 rounded-full bg-black/70 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-white backdrop-blur">
+                        Before
+                      </span>
+                    </div>
+                  </div>
 
-                <div className="before-after-reveal-clip before-after-reveal-fast absolute bottom-0 right-0 w-[92%] rotate-2 overflow-hidden rounded-[1.8rem] border-2 border-kiwi-green bg-white shadow-2xl shadow-[#8bbf4d]/25">
-                  <div className="relative h-[294px] overflow-hidden bg-white sm:h-[364px]">
-                    <Image
-                      src={engineerAfterPreview}
-                      alt="Refreshed engineering website generated by Refresh Kiwi"
-                      fill
-                      priority
-                      sizes="(min-width: 1024px) 560px, 92vw"
-                      className="object-cover object-left-top"
-                    />
-                    <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/25 to-transparent" />
-                    <span className="absolute left-3 top-3 rounded-full bg-kiwi-green px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-black shadow-sm">
-                      After Refresh Kiwi
-                    </span>
+                  <div className="before-after-reveal-clip before-after-reveal-fast absolute bottom-0 right-0 w-[92%] rotate-2 overflow-hidden rounded-[1.8rem] border-2 border-kiwi-green bg-white shadow-2xl shadow-[#8bbf4d]/25">
+                    <div className="relative h-[294px] overflow-hidden bg-white sm:h-[364px]">
+                      <Image
+                        src={engineerAfterPreview}
+                        alt="Refreshed engineering website generated by Refresh Kiwi"
+                        fill
+                        priority
+                        sizes="(min-width: 1024px) 560px, 92vw"
+                        className="object-cover object-left-top"
+                      />
+                      <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/25 to-transparent" />
+                      <span className="absolute left-3 top-3 rounded-full bg-kiwi-green px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-black shadow-sm">
+                        After Refresh Kiwi
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
         </div>
