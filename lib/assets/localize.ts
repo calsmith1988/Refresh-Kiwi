@@ -34,7 +34,7 @@ const IMAGE_EXTENSIONS: Record<string, string> = {
   "image/avif": ".avif",
 };
 
-export type ImageSource = "original" | "upload" | "remix";
+export type ImageSource = "original" | "upload" | "remix" | "generated";
 
 export type ImageVersion = {
   /** Path relative to the site root, e.g. "assets/img-ab12cd34.webp" */
@@ -321,6 +321,7 @@ export async function appendLocalizedImages(params: {
     buffer: Buffer;
     contentType: string;
     role: "logo" | "image";
+    source?: "upload" | "generated";
   }>;
 }): Promise<LocalizedImage[]> {
   const { slug, assets } = params;
@@ -373,7 +374,7 @@ export async function appendLocalizedImages(params: {
       originalUrl: localAssetUrl(slug, fileName),
       contentType: asset.contentType,
       bytes: asset.buffer.byteLength,
-      source: "upload",
+      source: asset.source ?? "upload",
       replacedAt: now,
     };
 

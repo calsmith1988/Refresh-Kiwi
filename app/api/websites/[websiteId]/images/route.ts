@@ -5,12 +5,12 @@ import { and, eq, inArray } from "drizzle-orm";
 import {
   appendLocalizedImages,
   isSupportedImageType,
-  type LocalizedImage,
   MAX_IMAGES_PER_UPLOAD,
   MAX_UPLOAD_BYTES,
   readWebsiteImageManifest,
 } from "@/lib/assets/localize";
 import { optimizeImage } from "@/lib/assets/optimize";
+import { buildImagePlacementPrompt } from "@/lib/assets/placement";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getDb, schema } from "@/lib/db";
 import {
@@ -26,44 +26,6 @@ interface RouteContext {
 }
 
 const { editRequests, websites } = schema;
-
-const PLACEMENT_LABELS: Record<string, string> = {
-  auto: "Let Refresh Kiwi choose the best place for these assets.",
-  hero: "Place these assets in the hero section.",
-  gallery: "Place these assets in a gallery or portfolio section.",
-  services: "Place these assets in the services section.",
-  about: "Place these assets in the about section.",
-  header_logo: "Use the first uploaded asset as the header logo or brand mark.",
-};
-
-function placementInstruction(placement: string): string | null {
-  return PLACEMENT_LABELS[placement] ?? null;
-}
-
-function buildPlacementPrompt(params: {
-  assets: LocalizedImage[];
-  placement: string;
-  note: string | null;
-}) {
-  const listedAssets = params.assets
-    .map(
-      (asset, index) =>
-        `${index + 1}. ${asset.role ?? "image"}: ${asset.url} (${asset.contentType})`,
-    )
-    .join("\n");
-
-  return [
-    "Add these newly uploaded website assets to the existing site design.",
-    "",
-    listedAssets,
-    "",
-    placementInstruction(params.placement) ?? PLACEMENT_LABELS.auto,
-    "Keep the result consistent with the current design system, responsive on mobile, and avoid removing existing important content.",
-    params.note ? `Extra user instruction: ${params.note}` : null,
-  ]
-    .filter(Boolean)
-    .join("\n");
-}
 
 export async function GET(_request: Request, context: RouteContext) {
   const user = await getCurrentUser();
@@ -238,7 +200,7 @@ export async function POST(request: Request, context: RouteContext) {
         .values({
           websiteId: website.id,
           userId: user.id,
-          prompt: buildPlacementPrompt({
+          prompt: buildImagePlacementPrompt({
             assets: uploadedImages,
             placement,
             note,
