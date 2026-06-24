@@ -590,7 +590,6 @@ function PromptStarterCarousel({
     didDragRef.current = false;
     dragStartXRef.current = event.clientX;
     dragStartScrollRef.current = scroller.scrollLeft;
-    event.currentTarget.setPointerCapture(event.pointerId);
   };
 
   const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -609,16 +608,12 @@ function PromptStarterCarousel({
     scroller.scrollLeft = dragStartScrollRef.current - deltaX;
   };
 
-  const finishPointerInteraction = (event: React.PointerEvent<HTMLDivElement>) => {
+  const finishPointerInteraction = () => {
     if (!isDraggingRef.current) {
       return;
     }
 
     isDraggingRef.current = false;
-
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
 
     resumeSoon();
   };
@@ -664,7 +659,9 @@ function PromptStarterCarousel({
                     return;
                   }
 
+                  pause();
                   onSelect(starter);
+                  resumeSoon();
                 }}
               >
                 {starter.label}
