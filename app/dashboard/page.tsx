@@ -131,6 +131,10 @@ function imageSourceLabel(source: WebsiteImage["source"]): string {
   return "From your old site";
 }
 
+function imageRoleLabel(role: WebsiteImage["role"]): string {
+  return role === "logo" ? "Logo / brand mark" : "Site image";
+}
+
 type WebsiteImagesState =
   | { status: "loading" }
   | { status: "error" }
@@ -479,6 +483,7 @@ export default function DashboardPage() {
   const [generatingImageWebsiteId, setGeneratingImageWebsiteId] = useState<
     string | null
   >(null);
+  const [placingImageId, setPlacingImageId] = useState<string | null>(null);
   const [replacingImageId, setReplacingImageId] = useState<string | null>(null);
   const [remixingImageId, setRemixingImageId] = useState<string | null>(null);
   const [remixNoteImageId, setRemixNoteImageId] = useState<string | null>(null);
@@ -1311,6 +1316,58 @@ export default function DashboardPage() {
     }
   };
 
+  const placeImageAsLogo = async (websiteId: string, imageId: string) => {
+    setPlacingImageId(imageId);
+    setErrorMessage(null);
+
+    try {
+      const response = await fetch(
+        `/api/websites/${websiteId}/images/${imageId}/place`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            role: "logo",
+            placement: "header_logo",
+          }),
+        },
+      );
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Failed to place image");
+      }
+
+      updateImageInState(websiteId, payload.image as WebsiteImage);
+
+      if (payload.website) {
+        setWebsites((current) =>
+          current.map((entry) =>
+            entry.id === websiteId
+              ? {
+                  ...entry,
+                  freeEditsUsed: payload.website.freeEditsUsed,
+                  freeEditsLimit: payload.website.freeEditsLimit,
+                  freeEditsRemaining: payload.website.freeEditsRemaining,
+                }
+              : entry,
+          ),
+        );
+      }
+
+      if (payload.queued) {
+        await loadDashboard();
+        setImagesPanelWebsiteId(websiteId);
+      }
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Failed to place image",
+      );
+    } finally {
+      setPlacingImageId(null);
+    }
+  };
+
   const revertImage = async (
     websiteId: string,
     imageId: string,
@@ -1867,6 +1924,7 @@ export default function DashboardPage() {
                   isGeneratingImage ||
                   replacingImageId !== null ||
                   remixingImageId !== null ||
+                  placingImageId !== null ||
                   revertingImageId !== null ||
                   hasActiveEditForWebsite;
 
@@ -2454,6 +2512,7 @@ export default function DashboardPage() {
                                 const isBusy =
                                   replacingImageId === image.id ||
                                   remixingImageId === image.id ||
+                                  placingImageId === image.id ||
                                   revertingImageId === image.id;
                                 const anyBusy =
                                   imageActionBusy;
@@ -2479,10 +2538,15 @@ export default function DashboardPage() {
                                       />
                                     </button>
                                     <div className="p-2.5">
-                                      <div className="flex items-center justify-between gap-2">
-                                        <span className="truncate text-[11px] font-medium text-black/40">
-                                          {imageSourceLabel(image.source)}
-                                        </span>
+                                      <div className="flex items-start justify-between gap-2">
+                                        <div className="min-w-0">
+                                          <span className="inline-flex rounded-full bg-[#f0f4e7] px-2 py-0.5 text-[10px] font-semibold text-black/60">
+                                            {imageRoleLabel(image.role)}
+                                          </span>
+                                          <p className="mt-1 truncate text-[11px] font-medium text-black/40">
+                                            {imageSourceLabel(image.source)}
+                                          </p>
+                                        </div>
                                         {versions.length > 0 ? (
                                           <button
                                             type="button"
@@ -2532,6 +2596,23 @@ export default function DashboardPage() {
                                             }}
                                           />
                                         </label>
+                                        {image.role !== "logo" ? (
+                                          <button
+                                            type="button"
+                                            disabled={anyBusy}
+                                            onClick={() =>
+                                              void placeImageAsLogo(
+                                                website.id,
+                                                image.id,
+                                              )
+                                            }
+                                            className="rounded-full border border-black/10 px-3 py-1 text-xs font-semibold transition hover:border-black/25 disabled:cursor-not-allowed disabled:opacity-50"
+                                          >
+                                            {placingImageId === image.id
+                                              ? "Placing..."
+                                              : "Use as logo"}
+                                          </button>
+                                        ) : null}
                                         {REMIXABLE_IMAGE_TYPES.has(
                                           image.contentType,
                                         ) ? (
