@@ -39,7 +39,7 @@ export function toWebsiteResponse(website: typeof websites.$inferSelect) {
   return {
     id: website.id,
     jobId: website.jobId,
-    sourceUrl: website.sourceUrl,
+    sourceUrl: website.generationMode === "fresh" ? null : website.sourceUrl,
     generationMode: website.generationMode,
     creationPrompt: website.creationPrompt,
     slug: website.slug,

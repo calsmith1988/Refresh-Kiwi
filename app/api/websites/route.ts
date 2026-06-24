@@ -80,7 +80,7 @@ export async function GET() {
   return NextResponse.json({
     activeRefreshJobs: activeRefreshJobs.map((job) => ({
       id: job.id,
-      sourceUrl: job.sourceUrl,
+      sourceUrl: job.generationMode === "fresh" ? null : job.sourceUrl,
       generationMode: job.generationMode,
       creationPrompt: job.creationPrompt,
       slug: job.slug,

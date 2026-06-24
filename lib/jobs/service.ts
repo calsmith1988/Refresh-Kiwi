@@ -13,6 +13,10 @@ const PREVIEW_READY_STATUSES = new Set<JobStatus>([
   "complete",
 ]);
 
+function internalFreshSourceUrl(slug: string): string {
+  return `https://refresh.kiwi/fresh/${slug}`;
+}
+
 function toJobResponse(
   job: typeof jobs.$inferSelect,
   website: typeof websites.$inferSelect | null = null,
@@ -28,7 +32,7 @@ function toJobResponse(
 
   return {
     id: job.id,
-    sourceUrl: job.sourceUrl,
+    sourceUrl: job.generationMode === "fresh" ? null : job.sourceUrl,
     generationMode: job.generationMode,
     creationPrompt: job.creationPrompt,
     slug: job.slug,
@@ -114,7 +118,7 @@ export async function createFreshJob(
   const [job] = await db
     .insert(jobs)
     .values({
-      sourceUrl: null,
+      sourceUrl: internalFreshSourceUrl(slug),
       generationMode: "fresh",
       creationPrompt,
       slug,
