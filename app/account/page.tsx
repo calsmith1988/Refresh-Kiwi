@@ -23,6 +23,10 @@ export default function AccountPage() {
   const [newEmail, setNewEmail] = useState("");
   const [emailChangePassword, setEmailChangePassword] = useState("");
   const [isRequestingEmailChange, setIsRequestingEmailChange] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [isSigningOutEverywhere, setIsSigningOutEverywhere] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -158,6 +162,58 @@ export default function AccountPage() {
     await fetch("/api/auth/logout", { method: "POST" });
     window.localStorage.removeItem("refresh-kiwi:active-job");
     window.location.href = "/";
+  };
+
+  const signOutEverywhere = async () => {
+    setMessage(null);
+    setError(null);
+    setIsSigningOutEverywhere(true);
+
+    try {
+      const response = await fetch("/api/account/sessions", { method: "DELETE" });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Unable to sign out everywhere");
+      }
+
+      window.localStorage.removeItem("refresh-kiwi:active-job");
+      window.location.href = "/";
+    } catch (caught) {
+      setError(
+        caught instanceof Error ? caught.message : "Unable to sign out everywhere",
+      );
+      setIsSigningOutEverywhere(false);
+    }
+  };
+
+  const deleteCurrentAccount = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setMessage(null);
+    setError(null);
+    setIsDeletingAccount(true);
+
+    try {
+      const response = await fetch("/api/account", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentPassword: deletePassword,
+          confirmation: deleteConfirmation,
+        }),
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Unable to delete account");
+      }
+
+      window.localStorage.removeItem("refresh-kiwi:active-job");
+      window.location.href = "/";
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to delete account");
+      setIsDeletingAccount(false);
+    }
   };
 
   const startBillingFlow = async () => {
@@ -751,6 +807,16 @@ export default function AccountPage() {
                     ? "Manage billing"
                     : "Go Pro"}
               </button>
+              {user.plan === "pro" ? (
+                <button
+                  type="button"
+                  onClick={() => void startBillingFlow()}
+                  disabled={billingAction !== null}
+                  className="mt-3 h-11 w-full rounded-full border border-black/10 bg-white px-5 text-sm font-semibold text-black transition hover:border-black/25 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  View invoices and receipts
+                </button>
+              ) : null}
               <p className="mt-3 text-xs leading-5 text-black/45">
                 Payments and invoices are handled securely by Stripe.
               </p>
@@ -787,18 +853,76 @@ export default function AccountPage() {
                 Account actions
               </p>
               <h2 className="mt-1 font-fraunces text-2xl font-semibold tracking-tight">
-                Need to leave?
+                Sessions
               </h2>
               <p className="mt-2 text-sm leading-6 text-black/55">
-                Sign out of this device. Your saved websites stay in your account.
+                Sign out of this device, or sign out everywhere if you used a
+                shared computer.
               </p>
-              <button
-                type="button"
-                onClick={() => void logout()}
-                className="mt-5 h-11 w-full rounded-full border border-black/10 bg-white px-5 text-sm font-semibold text-black transition hover:border-black/25"
-              >
-                Log out
-              </button>
+              <div className="mt-5 grid gap-2">
+                <button
+                  type="button"
+                  onClick={() => void logout()}
+                  className="h-11 w-full rounded-full border border-black/10 bg-white px-5 text-sm font-semibold text-black transition hover:border-black/25"
+                >
+                  Log out of this device
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void signOutEverywhere()}
+                  disabled={isSigningOutEverywhere}
+                  className="h-11 w-full rounded-full border border-black/10 bg-white px-5 text-sm font-semibold text-black/60 transition hover:border-black/25 hover:text-black disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isSigningOutEverywhere
+                    ? "Signing out..."
+                    : "Sign out everywhere"}
+                </button>
+              </div>
+            </section>
+
+            <section className="rounded-[2rem] border border-red-100 bg-white p-6 shadow-xl shadow-black/5">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-red-500/70">
+                Danger zone
+              </p>
+              <h2 className="mt-1 font-fraunces text-2xl font-semibold tracking-tight">
+                Delete account
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-black/55">
+                This archives your saved websites, removes custom-domain links,
+                and deletes your login. Pro users should cancel billing first.
+              </p>
+              <form onSubmit={deleteCurrentAccount} className="mt-5 space-y-3">
+                <label className="block">
+                  <span className="text-sm font-semibold">Current password</span>
+                  <input
+                    type="password"
+                    value={deletePassword}
+                    onChange={(event) => setDeletePassword(event.target.value)}
+                    autoComplete="current-password"
+                    className="mt-2 h-11 w-full rounded-full border border-black/10 bg-white px-4 text-sm outline-none transition focus:border-black/30"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-sm font-semibold">
+                    Type DELETE to confirm
+                  </span>
+                  <input
+                    value={deleteConfirmation}
+                    onChange={(event) => setDeleteConfirmation(event.target.value)}
+                    className="mt-2 h-11 w-full rounded-full border border-black/10 bg-white px-4 text-sm outline-none transition focus:border-black/30"
+                  />
+                </label>
+                <button
+                  disabled={
+                    isDeletingAccount ||
+                    !deletePassword ||
+                    deleteConfirmation.trim().toUpperCase() !== "DELETE"
+                  }
+                  className="h-11 w-full rounded-full border border-red-200 bg-red-50 px-5 text-sm font-semibold text-red-700 transition hover:border-red-300 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isDeletingAccount ? "Deleting..." : "Delete my account"}
+                </button>
+              </form>
             </section>
           </aside>
         </div>

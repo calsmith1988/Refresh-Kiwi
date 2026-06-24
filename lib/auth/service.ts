@@ -35,7 +35,7 @@ import {
   sendWelcomeEmail,
 } from "@/lib/email/service";
 
-const { emailChangeTokens, users } = schema;
+const { emailChangeTokens, users, websites } = schema;
 
 export interface AuthUserResponse {
   id: string;
@@ -415,6 +415,53 @@ export async function changePassword(params: {
   await sendPasswordChangedEmail({ to: user.email });
 
   return updated;
+}
+
+export async function deleteAccount(params: {
+  userId: string;
+  currentPassword: string;
+  confirmation: string;
+}) {
+  if (params.confirmation.trim().toUpperCase() !== "DELETE") {
+    throw new Error("Type DELETE to confirm account deletion");
+  }
+
+  const db = getDb();
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, params.userId))
+    .limit(1);
+
+  if (!user || !(await verifyPassword(params.currentPassword, user.passwordHash))) {
+    throw new Error("Current password is incorrect");
+  }
+
+  if (
+    user.subscriptionStatus !== "none" &&
+    user.subscriptionStatus !== "canceled"
+  ) {
+    throw new Error(
+      "Cancel your subscription from billing before deleting your account",
+    );
+  }
+
+  await db
+    .update(websites)
+    .set({
+      status: "archived",
+      customDomain: null,
+      customDomainStatus: "none",
+      customDomainRenderId: null,
+      customDomainError: null,
+      customDomainVerifiedAt: null,
+      customDomainLastCheckedAt: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(websites.userId, user.id));
+
+  await clearUserSessions(user.id);
+  await db.delete(users).where(eq(users.id, user.id));
 }
 
 export async function createTwoFactorSetup(userId: string) {

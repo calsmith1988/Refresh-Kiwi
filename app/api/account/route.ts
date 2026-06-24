@@ -2,8 +2,12 @@ import { NextResponse } from "next/server";
 
 import { assertRateLimit, rateLimitKey } from "@/lib/auth/rateLimit";
 import { rateLimitResponse } from "@/lib/auth/rateLimitResponse";
-import { getCurrentUser } from "@/lib/auth/session";
-import { toAuthUserResponse, updateAccount } from "@/lib/auth/service";
+import { clearSessionCookie, getCurrentUser } from "@/lib/auth/session";
+import {
+  deleteAccount,
+  toAuthUserResponse,
+  updateAccount,
+} from "@/lib/auth/service";
 
 export const runtime = "nodejs";
 
@@ -11,7 +15,10 @@ export async function PATCH(request: Request) {
   const user = await getCurrentUser();
 
   if (!user) {
-    return NextResponse.json({ error: "Sign in to update your account" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Sign in to update your account" },
+      { status: 401 },
+    );
   }
 
   try {
@@ -33,7 +40,51 @@ export async function PATCH(request: Request) {
       return limited;
     }
 
-    const message = error instanceof Error ? error.message : "Unable to update account";
+    const message =
+      error instanceof Error ? error.message : "Unable to update account";
+
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return NextResponse.json(
+      { error: "Sign in to delete your account" },
+      { status: 401 },
+    );
+  }
+
+  try {
+    await assertRateLimit(rateLimitKey(request, "account-delete"), {
+      limit: 5,
+      windowMs: 15 * 60 * 1000,
+      message: "Too many account deletion attempts. Please wait and try again.",
+    });
+
+    const body = (await request.json()) as {
+      currentPassword?: string;
+      confirmation?: string;
+    };
+
+    await deleteAccount({
+      userId: user.id,
+      currentPassword: body.currentPassword ?? "",
+      confirmation: body.confirmation ?? "",
+    });
+    await clearSessionCookie();
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    const limited = rateLimitResponse(error);
+    if (limited) {
+      return limited;
+    }
+
+    const message =
+      error instanceof Error ? error.message : "Unable to delete account";
 
     return NextResponse.json({ error: message }, { status: 400 });
   }
