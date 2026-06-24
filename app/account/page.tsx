@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -278,15 +279,30 @@ export default function AccountPage() {
   };
 
   if (isLoading) {
-    return <main className="p-8">Loading...</main>;
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#faf8f1] px-5 text-[#141811]">
+        <div className="rounded-[2rem] border border-black/10 bg-white p-6 text-sm font-medium text-black/55 shadow-xl">
+          Loading account settings...
+        </div>
+      </main>
+    );
   }
 
   if (!user) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-white px-5">
-        <div className="rounded-[2rem] border border-black/10 p-6 text-center shadow-xl">
-          <h1 className="text-2xl font-bold">Sign in required</h1>
-          <Link href="/" className="mt-4 inline-block text-sm font-medium underline">
+      <main className="flex min-h-screen items-center justify-center bg-[#faf8f1] px-5 text-[#141811]">
+        <div className="w-full max-w-md rounded-[2rem] border border-black/10 bg-white p-7 text-center shadow-xl">
+          <h1 className="font-fraunces text-3xl font-semibold tracking-tight">
+            Sign in required
+          </h1>
+          <p className="mt-2 text-sm leading-6 text-black/55">
+            Log in to manage your profile, password, billing, and security
+            settings.
+          </p>
+          <Link
+            href="/"
+            className="mt-5 inline-flex h-11 items-center justify-center rounded-full bg-[#141811] px-5 text-sm font-semibold text-white transition hover:bg-black"
+          >
             Back to homepage
           </Link>
         </div>
@@ -294,241 +310,414 @@ export default function AccountPage() {
     );
   }
 
-  return (
-    <main className="min-h-screen bg-white px-5 py-8">
-      <div className="mx-auto max-w-3xl">
-        <Link href="/" className="text-sm font-medium underline">
-          Back to homepage
-        </Link>
-        <button
-          type="button"
-          onClick={() => void logout()}
-          className="ml-4 text-sm font-medium underline"
-        >
-          Log out
-        </button>
-        <h1 className="mt-6 text-4xl font-bold tracking-tight">Account settings</h1>
-        <p className="mt-2 text-sm text-black/60">{user.email}</p>
+  const planLabel = user.plan === "pro" ? "Kiwi Pro" : "Free";
+  const subscriptionLabel = user.subscriptionStatus.replaceAll("_", " ");
 
-        <div className="mt-6 rounded-[2rem] border border-black/10 bg-white p-6 shadow-lg">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+  return (
+    <main className="min-h-screen bg-[#faf8f1] px-5 py-5 text-[#141811] sm:px-8 lg:px-10">
+      <div className="mx-auto w-full max-w-6xl">
+        <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <Link href="/" className="flex items-center gap-2.5">
+            <Image
+              src="/refresh-kiwi-favicon-v2.png"
+              alt=""
+              width={34}
+              height={34}
+              aria-hidden
+              className="rounded-full"
+            />
+            <span className="font-montserrat text-xl font-bold">
+              Refresh Kiwi
+            </span>
+          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/dashboard"
+              className="rounded-full border border-black/10 bg-white px-5 py-2.5 text-sm font-semibold text-black transition hover:border-black/25"
+            >
+              My websites
+            </Link>
+            <button
+              type="button"
+              onClick={() => void logout()}
+              className="rounded-full border border-black/10 bg-white px-5 py-2.5 text-sm font-semibold text-black/60 transition hover:border-black/25 hover:text-black"
+            >
+              Log out
+            </button>
+          </div>
+        </header>
+
+        <section className="mt-10 rounded-[2rem] border border-black/10 bg-white p-6 shadow-2xl shadow-black/5 sm:p-8">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <h2 className="text-xl font-bold">Billing</h2>
-              <p className="mt-1 text-sm text-black/60">
-                Plan: <span className="font-semibold capitalize">{user.plan}</span>
-                {" · "}
-                Status:{" "}
-                <span className="font-semibold capitalize">
-                  {user.subscriptionStatus.replaceAll("_", " ")}
+              <p className="inline-flex items-center gap-2 rounded-full bg-[#f0f4e7] px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-black/45">
+                Account
+              </p>
+              <h1 className="mt-4 font-fraunces text-4xl font-semibold tracking-tight sm:text-5xl">
+                Profile &amp; settings
+              </h1>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-black/55">
+                Manage how you sign in, keep your account secure, and update the
+                billing or email preferences for your Refresh Kiwi websites.
+              </p>
+            </div>
+            <div className="grid gap-2 text-sm sm:min-w-72">
+              <div className="rounded-2xl bg-[#faf8f1] px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-black/35">
+                  Signed in as
+                </p>
+                <p className="mt-1 break-all font-semibold">{user.email}</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <span className="rounded-full bg-kiwi-green px-3 py-1 text-xs font-bold capitalize text-black">
+                  {planLabel}
                 </span>
+                <span className="rounded-full bg-black/5 px-3 py-1 text-xs font-semibold capitalize text-black/55">
+                  {subscriptionLabel}
+                </span>
+                <span
+                  className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                    user.emailVerified
+                      ? "bg-[#f0f4e7] text-black/60"
+                      : "bg-yellow-50 text-yellow-800"
+                  }`}
+                >
+                  {user.emailVerified ? "Email verified" : "Email not verified"}
+                </span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {message ? (
+          <div className="mt-5 rounded-3xl border border-[#bfe262] bg-[#f4fbe8] p-4 text-sm font-medium text-[#315a16]">
+            {message}
+          </div>
+        ) : null}
+        {error ? (
+          <div className="mt-5 rounded-3xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">
+            {error}
+          </div>
+        ) : null}
+
+        {!user.emailVerified ? (
+          <div className="mt-6 flex flex-col gap-4 rounded-3xl border border-yellow-200 bg-yellow-50 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold">Verify your email address</p>
+              <p className="mt-1 text-sm leading-6 text-black/60">
+                Verification helps keep password resets and account emails
+                reliable.
               </p>
             </div>
             <button
               type="button"
-              onClick={() => void startBillingFlow()}
-              disabled={billingAction !== null}
-              className="rounded-full border border-black bg-kiwi-green px-5 py-3 text-sm font-semibold text-black disabled:opacity-50"
-            >
-              {billingAction
-                ? "Opening..."
-                : user.plan === "pro"
-                  ? "Manage billing"
-                  : "Go Pro"}
-            </button>
-          </div>
-        </div>
-
-        {!user.emailVerified ? (
-          <div className="mt-6 rounded-3xl border border-yellow-200 bg-yellow-50 p-5">
-            <p className="text-sm font-semibold">Verify your email address</p>
-            <p className="mt-1 text-sm text-black/60">
-              Verification helps keep account and recovery emails reliable.
-            </p>
-            <button
-              type="button"
               onClick={() => void resendVerification()}
-              className="mt-3 rounded-full border border-black bg-white px-4 py-2 text-sm font-semibold"
+              className="h-11 shrink-0 rounded-full border border-black/10 bg-white px-5 text-sm font-semibold transition hover:border-black/25"
             >
-              Resend verification email
+              Resend verification
             </button>
           </div>
         ) : null}
 
-        <div className="mt-6 rounded-[2rem] border border-black/10 bg-white p-6 shadow-lg">
-          <h2 className="text-xl font-bold">Email preferences</h2>
-          <p className="mt-1 text-sm leading-6 text-black/60">
-            Transactional emails like password resets and billing notices always
-            send. Follow-up emails are optional.
-          </p>
-          <label className="mt-4 flex items-center gap-3 text-sm font-medium">
-            <input
-              type="checkbox"
-              checked={user.marketingEmailsEnabled}
-              onChange={(event) =>
-                void updateEmailPreferences(event.target.checked)
-              }
-              className="h-4 w-4"
-            />
-            Receive follow-up emails about my previews and Kiwi Pro
-          </label>
-        </div>
+        <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.72fr)]">
+          <div className="space-y-6">
+            <section className="rounded-[2rem] border border-black/10 bg-white p-6 shadow-xl shadow-black/5">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-black/35">
+                    Profile
+                  </p>
+                  <h2 className="mt-1 font-fraunces text-2xl font-semibold tracking-tight">
+                    Your details
+                  </h2>
+                </div>
+              </div>
+              <form onSubmit={updateProfile} className="mt-5">
+                <label className="block text-sm font-semibold" htmlFor="name">
+                  Name
+                </label>
+                <input
+                  id="name"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  placeholder="Your name"
+                  className="mt-2 h-12 w-full rounded-full border border-black/10 bg-white px-4 text-sm outline-none transition placeholder:text-black/30 focus:border-black/30"
+                />
+                <button className="mt-4 h-11 rounded-full bg-kiwi-green px-5 text-sm font-bold text-black transition hover:bg-kiwi-green-hover">
+                  Save profile
+                </button>
+              </form>
 
-        <div className="mt-6 rounded-[2rem] border border-black/10 bg-white p-6 shadow-lg">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <h2 className="text-xl font-bold">Two-factor authentication</h2>
-              <p className="mt-1 text-sm leading-6 text-black/60">
-                {user.twoFactorEnabled
-                  ? "2FA is enabled. You will need an authenticator code when logging in."
-                  : "Add an authenticator app code to protect your account."}
+              <div className="mt-6 rounded-3xl bg-[#faf8f1] p-5">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold">Email address</p>
+                    <p className="mt-1 break-all text-sm text-black/60">
+                      {user.email}
+                    </p>
+                  </div>
+                  <span className="w-fit rounded-full bg-white px-3 py-1 text-xs font-semibold text-black/45">
+                    Change email coming next
+                  </span>
+                </div>
+                <p className="mt-3 text-xs leading-5 text-black/45">
+                  Phase 1 keeps your current email visible here. A secure change
+                  email flow should verify the new address before replacing it.
+                </p>
+              </div>
+            </section>
+
+            <section className="rounded-[2rem] border border-black/10 bg-white p-6 shadow-xl shadow-black/5">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-black/35">
+                Password
               </p>
-            </div>
-            {!user.twoFactorEnabled ? (
-              <button
-                type="button"
-                onClick={() => void startTwoFactorSetup()}
-                className="rounded-full border border-black bg-kiwi-green px-5 py-3 text-sm font-semibold text-black"
-              >
-                Set up 2FA
-              </button>
-            ) : null}
+              <h2 className="mt-1 font-fraunces text-2xl font-semibold tracking-tight">
+                Change password
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-black/55">
+                Use a password with at least 8 characters. You will keep your
+                current session after changing it.
+              </p>
+              <form onSubmit={changePassword} className="mt-5 space-y-3">
+                <label className="block">
+                  <span className="text-sm font-semibold">Current password</span>
+                  <input
+                    type="password"
+                    value={currentPassword}
+                    onChange={(event) => setCurrentPassword(event.target.value)}
+                    autoComplete="current-password"
+                    className="mt-2 h-12 w-full rounded-full border border-black/10 px-4 text-sm outline-none transition focus:border-black/30"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-sm font-semibold">New password</span>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(event) => setNewPassword(event.target.value)}
+                    autoComplete="new-password"
+                    className="mt-2 h-12 w-full rounded-full border border-black/10 px-4 text-sm outline-none transition focus:border-black/30"
+                  />
+                </label>
+                <button
+                  disabled={!currentPassword || newPassword.length < 8}
+                  className="h-11 rounded-full bg-[#141811] px-5 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Change password
+                </button>
+              </form>
+            </section>
+
+            <section className="rounded-[2rem] border border-black/10 bg-white p-6 shadow-xl shadow-black/5">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-black/35">
+                    Security
+                  </p>
+                  <h2 className="mt-1 font-fraunces text-2xl font-semibold tracking-tight">
+                    Two-factor authentication
+                  </h2>
+                  <p className="mt-2 text-sm leading-6 text-black/55">
+                    {user.twoFactorEnabled
+                      ? "2FA is enabled. You will need an authenticator code when logging in."
+                      : "Add an authenticator app code for extra protection."}
+                  </p>
+                </div>
+                <span
+                  className={`w-fit rounded-full px-3 py-1 text-xs font-bold ${
+                    user.twoFactorEnabled
+                      ? "bg-kiwi-green text-black"
+                      : "bg-black/5 text-black/45"
+                  }`}
+                >
+                  {user.twoFactorEnabled ? "Enabled" : "Optional"}
+                </span>
+              </div>
+
+              {!user.twoFactorEnabled ? (
+                <button
+                  type="button"
+                  onClick={() => void startTwoFactorSetup()}
+                  className="mt-5 h-11 rounded-full bg-kiwi-green px-5 text-sm font-bold text-black transition hover:bg-kiwi-green-hover"
+                >
+                  Set up 2FA
+                </button>
+              ) : null}
+
+              {twoFactorSetup ? (
+                <form
+                  onSubmit={enableTwoFactor}
+                  className="mt-5 rounded-3xl bg-[#faf8f1] p-5"
+                >
+                  <p className="text-sm font-semibold">
+                    Add this to your authenticator app
+                  </p>
+                  <p className="mt-2 break-all rounded-2xl bg-white p-3 font-mono text-xs text-black/70">
+                    {twoFactorSetup.secret}
+                  </p>
+                  <a
+                    href={twoFactorSetup.otpauthUrl}
+                    className="mt-3 inline-block text-sm font-semibold underline underline-offset-2"
+                  >
+                    Open authenticator setup link
+                  </a>
+                  <input
+                    value={twoFactorCode}
+                    onChange={(event) => setTwoFactorCode(event.target.value)}
+                    placeholder="6-digit code"
+                    autoComplete="one-time-code"
+                    className="mt-4 h-11 w-full rounded-full border border-black/10 bg-white px-4 text-sm outline-none focus:border-black/30"
+                  />
+                  <button
+                    disabled={!twoFactorCode.trim()}
+                    className="mt-3 h-11 rounded-full bg-[#141811] px-5 text-sm font-semibold text-white disabled:opacity-50"
+                  >
+                    Verify and enable
+                  </button>
+                </form>
+              ) : null}
+
+              {user.twoFactorEnabled ? (
+                <div className="mt-5 rounded-3xl bg-[#faf8f1] p-5">
+                  <label
+                    className="block text-sm font-semibold"
+                    htmlFor="two-factor-password"
+                  >
+                    Confirm your password
+                  </label>
+                  <input
+                    id="two-factor-password"
+                    type="password"
+                    value={twoFactorPassword}
+                    onChange={(event) => setTwoFactorPassword(event.target.value)}
+                    placeholder="Password"
+                    className="mt-2 h-11 w-full rounded-full border border-black/10 bg-white px-4 text-sm outline-none focus:border-black/30"
+                  />
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                    <button
+                      type="button"
+                      onClick={() => void regenerateRecoveryCodes()}
+                      disabled={!twoFactorPassword}
+                      className="h-11 rounded-full border border-black/10 bg-white px-5 text-sm font-semibold transition hover:border-black/25 disabled:opacity-50"
+                    >
+                      Regenerate recovery codes
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void disableTwoFactor()}
+                      disabled={!twoFactorPassword}
+                      className="h-11 rounded-full border border-red-200 bg-white px-5 text-sm font-semibold text-red-700 transition hover:border-red-300 disabled:opacity-50"
+                    >
+                      Disable 2FA
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
+              {recoveryCodes.length > 0 ? (
+                <div className="mt-5 rounded-3xl border border-yellow-200 bg-yellow-50 p-5">
+                  <p className="text-sm font-semibold">
+                    Save these recovery codes now
+                  </p>
+                  <p className="mt-1 text-sm text-black/60">
+                    Each code can be used once if you lose your authenticator app.
+                  </p>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {recoveryCodes.map((code) => (
+                      <code
+                        key={code}
+                        className="rounded-xl bg-white px-3 py-2 text-sm font-semibold"
+                      >
+                        {code}
+                      </code>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </section>
           </div>
 
-          {twoFactorSetup ? (
-            <form onSubmit={enableTwoFactor} className="mt-5 rounded-3xl bg-[#faf8f1] p-5">
-              <p className="text-sm font-semibold">Add this to your authenticator app</p>
-              <p className="mt-2 break-all rounded-2xl bg-white p-3 font-mono text-xs text-black/70">
-                {twoFactorSetup.secret}
+          <aside className="space-y-6">
+            <section className="rounded-[2rem] border border-black/10 bg-white p-6 shadow-xl shadow-black/5">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-black/35">
+                Billing
               </p>
-              <a
-                href={twoFactorSetup.otpauthUrl}
-                className="mt-3 inline-block text-sm font-medium underline"
-              >
-                Open authenticator setup link
-              </a>
-              <input
-                value={twoFactorCode}
-                onChange={(event) => setTwoFactorCode(event.target.value)}
-                placeholder="6-digit code"
-                autoComplete="one-time-code"
-                className="mt-4 h-11 w-full rounded-full border border-black/10 px-4 text-sm outline-none focus:border-black/30"
-              />
+              <h2 className="mt-1 font-fraunces text-2xl font-semibold tracking-tight">
+                Plan &amp; payment
+              </h2>
+              <dl className="mt-5 space-y-3 text-sm">
+                <div className="flex items-center justify-between gap-4 rounded-2xl bg-[#faf8f1] px-4 py-3">
+                  <dt className="text-black/50">Current plan</dt>
+                  <dd className="font-semibold capitalize">{planLabel}</dd>
+                </div>
+                <div className="flex items-center justify-between gap-4 rounded-2xl bg-[#faf8f1] px-4 py-3">
+                  <dt className="text-black/50">Subscription</dt>
+                  <dd className="font-semibold capitalize">{subscriptionLabel}</dd>
+                </div>
+              </dl>
               <button
-                disabled={!twoFactorCode.trim()}
-                className="mt-3 rounded-full border border-black bg-black px-5 py-3 text-sm font-semibold text-white disabled:opacity-50"
+                type="button"
+                onClick={() => void startBillingFlow()}
+                disabled={billingAction !== null}
+                className="mt-5 h-11 w-full rounded-full bg-kiwi-green px-5 text-sm font-bold text-black transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Verify and enable
+                {billingAction
+                  ? "Opening..."
+                  : user.plan === "pro"
+                    ? "Manage billing"
+                    : "Go Pro"}
               </button>
-            </form>
-          ) : null}
-
-          {user.twoFactorEnabled ? (
-            <div className="mt-5 rounded-3xl bg-[#faf8f1] p-5">
-              <label
-                className="block text-sm font-medium"
-                htmlFor="two-factor-password"
-              >
-                Password
-              </label>
-              <input
-                id="two-factor-password"
-                type="password"
-                value={twoFactorPassword}
-                onChange={(event) => setTwoFactorPassword(event.target.value)}
-                placeholder="Confirm your password"
-                className="mt-2 h-11 w-full rounded-full border border-black/10 bg-white px-4 text-sm outline-none focus:border-black/30"
-              />
-              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                <button
-                  type="button"
-                  onClick={() => void regenerateRecoveryCodes()}
-                  disabled={!twoFactorPassword}
-                  className="rounded-full border border-black/10 bg-white px-5 py-3 text-sm font-semibold disabled:opacity-50"
-                >
-                  Regenerate recovery codes
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void disableTwoFactor()}
-                  disabled={!twoFactorPassword}
-                  className="rounded-full border border-red-200 bg-white px-5 py-3 text-sm font-semibold text-red-700 disabled:opacity-50"
-                >
-                  Disable 2FA
-                </button>
-              </div>
-            </div>
-          ) : null}
-
-          {recoveryCodes.length > 0 ? (
-            <div className="mt-5 rounded-3xl border border-yellow-200 bg-yellow-50 p-5">
-              <p className="text-sm font-semibold">Save these recovery codes now</p>
-              <p className="mt-1 text-sm text-black/60">
-                Each code can be used once if you lose your authenticator app.
+              <p className="mt-3 text-xs leading-5 text-black/45">
+                Payments and invoices are handled securely by Stripe.
               </p>
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                {recoveryCodes.map((code) => (
-                  <code
-                    key={code}
-                    className="rounded-xl bg-white px-3 py-2 text-sm font-semibold"
-                  >
-                    {code}
-                  </code>
-                ))}
-              </div>
-            </div>
-          ) : null}
+            </section>
+
+            <section className="rounded-[2rem] border border-black/10 bg-white p-6 shadow-xl shadow-black/5">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-black/35">
+                Emails
+              </p>
+              <h2 className="mt-1 font-fraunces text-2xl font-semibold tracking-tight">
+                Email preferences
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-black/55">
+                Transactional emails like password resets and billing notices
+                always send. Follow-up emails are optional.
+              </p>
+              <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-3xl bg-[#faf8f1] p-4 text-sm font-medium">
+                <input
+                  type="checkbox"
+                  checked={user.marketingEmailsEnabled}
+                  onChange={(event) =>
+                    void updateEmailPreferences(event.target.checked)
+                  }
+                  className="mt-1 h-4 w-4"
+                />
+                <span>
+                  Receive follow-up emails about my previews and Kiwi Pro
+                </span>
+              </label>
+            </section>
+
+            <section className="rounded-[2rem] border border-black/10 bg-white p-6 shadow-xl shadow-black/5">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-black/35">
+                Account actions
+              </p>
+              <h2 className="mt-1 font-fraunces text-2xl font-semibold tracking-tight">
+                Need to leave?
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-black/55">
+                Sign out of this device. Your saved websites stay in your account.
+              </p>
+              <button
+                type="button"
+                onClick={() => void logout()}
+                className="mt-5 h-11 w-full rounded-full border border-black/10 bg-white px-5 text-sm font-semibold text-black transition hover:border-black/25"
+              >
+                Log out
+              </button>
+            </section>
+          </aside>
         </div>
-
-        <div className="mt-6 grid gap-6 md:grid-cols-2">
-          <form
-            onSubmit={updateProfile}
-            className="rounded-[2rem] border border-black/10 p-6 shadow-lg"
-          >
-            <h2 className="text-xl font-bold">Profile</h2>
-            <label className="mt-4 block text-sm font-medium" htmlFor="name">
-              Name
-            </label>
-            <input
-              id="name"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              className="mt-2 h-11 w-full rounded-full border border-black/10 px-4 text-sm outline-none focus:border-black/30"
-            />
-            <button className="mt-4 rounded-full border border-black bg-kiwi-green px-5 py-3 text-sm font-semibold">
-              Save profile
-            </button>
-          </form>
-
-          <form
-            onSubmit={changePassword}
-            className="rounded-[2rem] border border-black/10 p-6 shadow-lg"
-          >
-            <h2 className="text-xl font-bold">Password</h2>
-            <input
-              type="password"
-              value={currentPassword}
-              onChange={(event) => setCurrentPassword(event.target.value)}
-              placeholder="Current password"
-              className="mt-4 h-11 w-full rounded-full border border-black/10 px-4 text-sm outline-none focus:border-black/30"
-            />
-            <input
-              type="password"
-              value={newPassword}
-              onChange={(event) => setNewPassword(event.target.value)}
-              placeholder="New password"
-              className="mt-3 h-11 w-full rounded-full border border-black/10 px-4 text-sm outline-none focus:border-black/30"
-            />
-            <button
-              disabled={!currentPassword || newPassword.length < 8}
-              className="mt-4 rounded-full border border-black bg-black px-5 py-3 text-sm font-semibold text-white disabled:opacity-50"
-            >
-              Change password
-            </button>
-          </form>
-        </div>
-
-        {message ? <p className="mt-5 text-sm text-green-700">{message}</p> : null}
-        {error ? <p className="mt-5 text-sm text-red-600">{error}</p> : null}
       </div>
     </main>
   );

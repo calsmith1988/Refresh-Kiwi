@@ -1382,6 +1382,12 @@ export default function DashboardPage() {
                 Upgrade to add more
               </button>
             ) : null}
+            <Link
+              href="/account"
+              className="rounded-full border border-black/10 bg-white px-5 py-2.5 text-sm font-semibold text-black/60 transition hover:border-black/25 hover:text-black"
+            >
+              Account
+            </Link>
             <button
               type="button"
               onClick={() => void logout()}
