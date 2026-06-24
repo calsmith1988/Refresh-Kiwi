@@ -89,6 +89,7 @@ type WebsiteImageVersion = {
 
 type WebsiteImage = {
   id: string;
+  role?: "logo" | "image";
   file: string;
   url: string;
   originalUrl: string;
@@ -104,6 +105,15 @@ const REMIXABLE_IMAGE_TYPES = new Set([
   "image/jpeg",
   "image/webp",
 ]);
+const IMAGE_PLACEMENT_OPTIONS = [
+  { value: "library", label: "Just add to image library" },
+  { value: "auto", label: "Let Refresh Kiwi choose" },
+  { value: "hero", label: "Hero section" },
+  { value: "gallery", label: "Gallery / portfolio" },
+  { value: "services", label: "Services section" },
+  { value: "about", label: "About section" },
+  { value: "header_logo", label: "Header logo / brand mark" },
+] as const;
 
 function imageSourceLabel(source: WebsiteImage["source"]): string {
   if (source === "upload") {
@@ -459,6 +469,9 @@ export default function DashboardPage() {
   const [websiteImages, setWebsiteImages] = useState<
     Record<string, WebsiteImagesState>
   >({});
+  const [uploadingImagesWebsiteId, setUploadingImagesWebsiteId] = useState<
+    string | null
+  >(null);
   const [replacingImageId, setReplacingImageId] = useState<string | null>(null);
   const [remixingImageId, setRemixingImageId] = useState<string | null>(null);
   const [remixNoteImageId, setRemixNoteImageId] = useState<string | null>(null);
@@ -1005,6 +1018,65 @@ export default function DashboardPage() {
       }));
     }
 
+  };
+
+  const uploadImages = async (websiteId: string, form: HTMLFormElement) => {
+    const body = new FormData(form);
+    const files = body
+      .getAll("files")
+      .filter((entry): entry is File => entry instanceof File && entry.size > 0);
+
+    if (files.length === 0) {
+      setErrorMessage("Choose at least one image to upload");
+      return;
+    }
+
+    setUploadingImagesWebsiteId(websiteId);
+    setErrorMessage(null);
+
+    try {
+      const response = await fetch(`/api/websites/${websiteId}/images`, {
+        method: "POST",
+        body,
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Failed to upload images");
+      }
+
+      const uploaded = (payload.images ?? []) as WebsiteImage[];
+
+      setWebsiteImages((current) => {
+        const state = current[websiteId];
+        const existing = state?.status === "ready" ? state.images : [];
+        const existingIds = new Set(existing.map((image) => image.id));
+
+        return {
+          ...current,
+          [websiteId]: {
+            status: "ready",
+            images: [
+              ...existing,
+              ...uploaded.filter((image) => !existingIds.has(image.id)),
+            ],
+          },
+        };
+      });
+
+      form.reset();
+
+      if (payload.queued) {
+        await loadDashboard();
+        setImagesPanelWebsiteId(websiteId);
+      }
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Failed to upload images",
+      );
+    } finally {
+      setUploadingImagesWebsiteId(null);
+    }
   };
 
   const replaceImage = async (
@@ -1704,6 +1776,14 @@ export default function DashboardPage() {
                   website.latestEditRequest &&
                     ACTIVE_EDIT_STATUSES.has(website.latestEditRequest.status),
                 );
+                const isUploadingImages =
+                  uploadingImagesWebsiteId === website.id;
+                const imageActionBusy =
+                  isUploadingImages ||
+                  replacingImageId !== null ||
+                  remixingImageId !== null ||
+                  revertingImageId !== null ||
+                  hasActiveEditForWebsite;
 
                 return (
                   <article
@@ -2072,6 +2152,89 @@ export default function DashboardPage() {
                           ) : null}
                         </div>
 
+                        <form
+                          className="mt-4 rounded-2xl border border-black/10 bg-white p-3"
+                          onSubmit={(event) => {
+                            event.preventDefault();
+                            void uploadImages(website.id, event.currentTarget);
+                          }}
+                        >
+                          <div className="grid gap-3 lg:grid-cols-[1.1fr_0.7fr_0.9fr]">
+                            <label className="block">
+                              <span className="text-xs font-semibold text-black/60">
+                                Upload images
+                              </span>
+                              <input
+                                name="files"
+                                type="file"
+                                multiple
+                                accept="image/png,image/jpeg,image/webp,image/gif,image/avif,image/svg+xml"
+                                disabled={imageActionBusy || !state.canEdit}
+                                className="mt-1 block w-full rounded-2xl border border-black/10 bg-[#faf8f1] px-3 py-2 text-xs text-black/60 file:mr-3 file:rounded-full file:border-0 file:bg-white file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-black disabled:cursor-not-allowed disabled:opacity-50"
+                              />
+                            </label>
+
+                            <label className="block">
+                              <span className="text-xs font-semibold text-black/60">
+                                Asset type
+                              </span>
+                              <select
+                                name="role"
+                                disabled={imageActionBusy || !state.canEdit}
+                                defaultValue="image"
+                                className="mt-1 h-10 w-full rounded-full border border-black/10 bg-[#faf8f1] px-3 text-xs font-medium text-black/70 outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                <option value="image">Images</option>
+                                <option value="logo">Logo / brand mark</option>
+                              </select>
+                            </label>
+
+                            <label className="block">
+                              <span className="text-xs font-semibold text-black/60">
+                                Placement
+                              </span>
+                              <select
+                                name="placement"
+                                disabled={imageActionBusy || !state.canEdit}
+                                defaultValue="auto"
+                                className="mt-1 h-10 w-full rounded-full border border-black/10 bg-[#faf8f1] px-3 text-xs font-medium text-black/70 outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                {IMAGE_PLACEMENT_OPTIONS.map((option) => (
+                                  <option key={option.value} value={option.value}>
+                                    {option.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                          </div>
+
+                          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                            <input
+                              name="note"
+                              maxLength={500}
+                              disabled={imageActionBusy || !state.canEdit}
+                              placeholder="Optional — e.g. use these in the hero, or add a small gallery"
+                              className="h-10 flex-1 rounded-full border border-black/10 bg-[#faf8f1] px-3 text-xs outline-none placeholder:text-black/30 focus:border-black/30 disabled:cursor-not-allowed disabled:opacity-50"
+                            />
+                            <button
+                              type="submit"
+                              disabled={imageActionBusy || !state.canEdit}
+                              className="h-10 rounded-full bg-kiwi-green px-4 text-xs font-semibold text-black transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              {isUploadingImages
+                                ? "Uploading..."
+                                : hasActiveEditForWebsite
+                                  ? "Edit in progress"
+                                  : "Upload images"}
+                            </button>
+                          </div>
+                          <p className="mt-2 text-[11px] leading-4 text-black/40">
+                            Add up to 8 images. Choosing a placement queues a
+                            design edit; “Just add to image library” stores the
+                            files for later.
+                          </p>
+                        </form>
+
                         {(() => {
                           if (!imagesState || imagesState.status === "loading") {
                             return (
@@ -2092,10 +2255,16 @@ export default function DashboardPage() {
 
                           if (imagesState.images.length === 0) {
                             return (
-                              <p className="mt-4 text-sm text-black/45">
-                                No images found yet. They appear here shortly
-                                after your website is created or published.
-                              </p>
+                              <div className="mt-4 rounded-2xl bg-white/70 p-4">
+                                <p className="text-sm font-semibold text-black">
+                                  No images yet
+                                </p>
+                                <p className="mt-1 text-sm text-black/45">
+                                  Upload images above and choose where they
+                                  should go. Refresh Kiwi will save them here
+                                  and can place them into your design.
+                                </p>
+                              </div>
                             );
                           }
 
@@ -2107,9 +2276,7 @@ export default function DashboardPage() {
                                   remixingImageId === image.id ||
                                   revertingImageId === image.id;
                                 const anyBusy =
-                                  replacingImageId !== null ||
-                                  remixingImageId !== null ||
-                                  revertingImageId !== null;
+                                  imageActionBusy;
                                 const versions = image.history ?? [];
 
                                 return (

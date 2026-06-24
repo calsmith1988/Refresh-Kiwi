@@ -49,6 +49,8 @@ export type ImageVersion = {
 
 export type LocalizedImage = {
   id: string;
+  /** Optional intent for user-added assets. Cursor uses this when placing new images. */
+  role?: "logo" | "image";
   /** Path relative to the site root, e.g. "assets/img-ab12cd34.webp" */
   file: string;
   /** Public URL served by the preview route */
@@ -269,6 +271,7 @@ export function isSupportedImageType(contentType: string): boolean {
 }
 
 export const MAX_UPLOAD_BYTES = MAX_IMAGE_BYTES;
+export const MAX_IMAGES_PER_UPLOAD = 8;
 
 const MAX_HISTORY_VERSIONS = 10;
 
@@ -293,6 +296,113 @@ function trimHistory(history: ImageVersion[]): ImageVersion[] {
   }
 
   return [history[0], ...history.slice(history.length - MAX_HISTORY_VERSIONS + 1)];
+}
+
+function uploadedAssetFileName(
+  buffer: Buffer,
+  contentType: string,
+  role: "logo" | "image",
+): string {
+  const extension = IMAGE_EXTENSIONS[contentType];
+
+  if (!extension) {
+    throw new Error("Unsupported image type");
+  }
+
+  const hash = createHash("sha1").update(buffer).digest("hex").slice(0, 10);
+  const prefix = role === "logo" ? "logo" : "img";
+
+  return `${prefix}-${hash}${extension}`;
+}
+
+export async function appendLocalizedImages(params: {
+  slug: string;
+  assets: Array<{
+    buffer: Buffer;
+    contentType: string;
+    role: "logo" | "image";
+  }>;
+}): Promise<LocalizedImage[]> {
+  const { slug, assets } = params;
+
+  if (assets.length === 0) {
+    return [];
+  }
+
+  if (assets.length > MAX_IMAGES_PER_UPLOAD) {
+    throw new Error(`Upload up to ${MAX_IMAGES_PER_UPLOAD} images at a time`);
+  }
+
+  const baseDir = await ensureLocalSiteFiles(slug);
+
+  if (!baseDir) {
+    throw new Error("Website files not found");
+  }
+
+  const now = new Date().toISOString();
+  const manifest: ImageManifest = (await readExistingManifest(baseDir)) ?? {
+    version: 1,
+    slug,
+    localizedAt: now,
+    images: [],
+  };
+  const added: LocalizedImage[] = [];
+  const repoFiles: RepoFile[] = [];
+
+  for (const asset of assets) {
+    const fileName = uploadedAssetFileName(
+      asset.buffer,
+      asset.contentType,
+      asset.role,
+    );
+    const file = `assets/${fileName}`;
+    const existing = manifest.images.find((image) => image.file === file);
+
+    if (existing) {
+      added.push(existing);
+      continue;
+    }
+
+    await saveAsset(baseDir, fileName, asset.buffer);
+
+    const image: LocalizedImage = {
+      id: fileName.replace(/\.[^.]+$/, ""),
+      role: asset.role,
+      file,
+      url: localAssetUrl(slug, fileName),
+      originalUrl: localAssetUrl(slug, fileName),
+      contentType: asset.contentType,
+      bytes: asset.buffer.byteLength,
+      source: "upload",
+      replacedAt: now,
+    };
+
+    manifest.images.push(image);
+    added.push(image);
+    repoFiles.push({
+      path: `sites/${slug}/${file}`,
+      content: asset.buffer,
+    });
+  }
+
+  manifest.localizedAt = now;
+  const manifestJson = JSON.stringify(manifest, null, 2);
+  await saveAsset(baseDir, "manifest.json", Buffer.from(manifestJson));
+  repoFiles.push({
+    path: `sites/${slug}/assets/manifest.json`,
+    content: Buffer.from(manifestJson),
+  });
+
+  try {
+    await commitFilesToSitesRepo(repoFiles, `Add uploaded image(s) for ${slug}`);
+  } catch (error) {
+    console.error(
+      `[refresh-kiwi] image upload: failed to commit ${slug} to sites repo:`,
+      error,
+    );
+  }
+
+  return added;
 }
 
 /** Rewrites every HTML/CSS reference from one asset URL to another. Returns
