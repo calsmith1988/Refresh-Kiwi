@@ -22,6 +22,7 @@ export type SeedAssetInput = {
   buffer: Buffer;
   contentType: string;
   originalName?: string;
+  source?: "upload" | "generated";
 };
 
 export type SeedAsset = LocalizedImage & {
@@ -75,7 +76,7 @@ export async function seedWebsiteAssets(
       originalUrl: url,
       contentType: input.contentType,
       bytes: input.buffer.byteLength,
-      source: "upload",
+      source: input.source ?? "upload",
       replacedAt: now,
     });
   }

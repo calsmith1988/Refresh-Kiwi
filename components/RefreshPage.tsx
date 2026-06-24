@@ -757,6 +757,8 @@ export default function RefreshPage({
   const [freshPrompt, setFreshPrompt] = useState("");
   const [freshLogo, setFreshLogo] = useState<File | null>(null);
   const [freshImages, setFreshImages] = useState<File[]>([]);
+  const [freshGenerateStarterVisuals, setFreshGenerateStarterVisuals] =
+    useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [job, setJob] = useState<JobResponse | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -1508,6 +1510,10 @@ export default function RefreshPage({
         body.append("images", image);
       }
 
+      if (!freshLogo && freshImages.length === 0 && freshGenerateStarterVisuals) {
+        body.append("generateStarterVisuals", "1");
+      }
+
       const response = await fetch("/api/fresh", {
         method: "POST",
         body,
@@ -2103,6 +2109,28 @@ export default function RefreshPage({
                         />
                       </label>
                     </div>
+                    {!freshLogo && freshImages.length === 0 ? (
+                      <label className="mt-3 flex cursor-pointer gap-3 rounded-2xl border border-black/10 bg-[#faf8f1] px-4 py-3 text-sm transition hover:border-black/25">
+                        <input
+                          type="checkbox"
+                          checked={freshGenerateStarterVisuals}
+                          onChange={(event) =>
+                            setFreshGenerateStarterVisuals(event.target.checked)
+                          }
+                          className="mt-1 h-4 w-4 shrink-0 accent-[#141811]"
+                        />
+                        <span>
+                          <span className="font-semibold">
+                            Generate starter visuals if I don&apos;t upload any
+                          </span>
+                          <span className="mt-1 block text-xs leading-5 text-black/45">
+                            We&apos;ll create one text-free website visual for
+                            Cursor to use in the first design. You can replace,
+                            remix, or add more images later.
+                          </span>
+                        </span>
+                      </label>
+                    ) : null}
                     <button
                       type="submit"
                       disabled={!freshPrompt.trim()}

@@ -4,6 +4,7 @@ import {
   isSupportedImageType,
   MAX_UPLOAD_BYTES,
 } from "@/lib/assets/localize";
+import { generateWebsiteImage } from "@/lib/assets/generate";
 import { optimizeImage } from "@/lib/assets/optimize";
 import type { SeedAssetInput } from "@/lib/assets/seed";
 import { assertRateLimit, rateLimitKey } from "@/lib/auth/rateLimit";
@@ -22,6 +23,41 @@ export const runtime = "nodejs";
 const MIN_PROMPT_LENGTH = 20;
 const MAX_PROMPT_LENGTH = 4_000;
 const MAX_SUPPORTING_IMAGES = 8;
+
+function wantsStarterVisuals(form: FormData): boolean {
+  const value = String(form.get("generateStarterVisuals") ?? "").toLowerCase();
+
+  return value === "1" || value === "true" || value === "on";
+}
+
+async function generateStarterSeedAssets(
+  prompt: string,
+): Promise<SeedAssetInput[]> {
+  try {
+    const generated = await generateWebsiteImage({
+      prompt: [
+        "Create a website hero/supporting visual for this new small-business website brief.",
+        "Make it broadly useful for the first homepage version, not too specific, with no readable text.",
+        prompt,
+      ].join(" "),
+      role: "image",
+    });
+    const optimized = await optimizeImage(generated.buffer, generated.contentType);
+
+    return [
+      {
+        role: "image",
+        buffer: optimized.buffer,
+        contentType: optimized.contentType,
+        originalName: "ai-starter-visual.png",
+        source: "generated",
+      },
+    ];
+  } catch (error) {
+    console.error("[refresh-kiwi] fresh starter visual generation failed:", error);
+    return [];
+  }
+}
 
 async function fileToSeedAsset(
   file: File,
@@ -91,8 +127,11 @@ export async function POST(request: Request) {
   try {
     const seedAssets: SeedAssetInput[] = [];
     const logo = form.get("logo");
+    const hasUploadedLogo = logo instanceof File && logo.size > 0;
+    const shouldGenerateStarterVisuals =
+      wantsStarterVisuals(form) && !hasUploadedLogo && imageEntries.length === 0;
 
-    if (logo instanceof File && logo.size > 0) {
+    if (hasUploadedLogo) {
       seedAssets.push(await fileToSeedAsset(logo, "logo"));
     }
 
@@ -134,7 +173,11 @@ export async function POST(request: Request) {
     after(async () => {
       try {
         const { processFreshJob } = await import("@/lib/jobs/processor");
-        await processFreshJob(job.id, seedAssets);
+        const starterSeedAssets = shouldGenerateStarterVisuals
+          ? await generateStarterSeedAssets(prompt)
+          : [];
+
+        await processFreshJob(job.id, [...seedAssets, ...starterSeedAssets]);
       } catch (error) {
         const message =
           error instanceof Error

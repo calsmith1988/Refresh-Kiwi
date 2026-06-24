@@ -119,7 +119,7 @@ OUTPUT: sites/${slug}/
 
 ${creationPrompt}
 
-## Uploaded assets
+## Provided assets
 
 ${formatSeedAssets(seedAssets)}
 
@@ -136,9 +136,9 @@ ${formatSeedAssets(seedAssets)}
 
 ## Images and logo
 
-- Use the uploaded logo in the header if a logo asset is listed above.
-- Use uploaded image assets as real site imagery where they fit: hero, services, gallery, team, product, or proof sections.
-- Reference uploaded assets exactly by the public URLs listed above. Do not invent local image paths.
+- Use the provided logo in the header if a logo asset is listed above.
+- Use provided image assets as real site imagery where they fit: hero, services, gallery, team, product, or proof sections.
+- Reference provided assets exactly by the public URLs listed above. Do not invent local image paths.
 - If no suitable image exists for a section, use refined CSS composition instead of stock-photo placeholders.
 - Do not download any images or embed third-party images unless the user explicitly included a URL in the brief.
 
