@@ -187,10 +187,9 @@ function jobLabel(
   job: JobResponse | null,
   mode: FlowMode,
   fallbackUrl: string,
-  fallbackPrompt: string,
 ) {
   if (mode === "fresh") {
-    return job?.brandName || fallbackPrompt.split(/\r?\n/)[0]?.trim() || "your new site";
+    return job?.brandName || "your new website";
   }
 
   return hostLabel(job?.sourceUrl ?? fallbackUrl);
@@ -1152,7 +1151,7 @@ export default function RefreshPage({
   const previewHref = normalizePreviewUrl(job?.previewUrl ?? null);
   const showReveal = !isRefreshing && Boolean(previewHref);
   const activeMode = job?.generationMode ?? flowMode;
-  const activeLabel = jobLabel(job, activeMode, url, freshPrompt);
+  const activeLabel = jobLabel(job, activeMode, url);
   const activeLoadingStages =
     activeMode === "fresh" ? FRESH_LOADING_STAGES : LOADING_STAGES;
   const activeStatusMessages =
@@ -1254,7 +1253,7 @@ export default function RefreshPage({
                   {activeMode === "fresh" ? "Creating" : "Refreshing"}
                 </p>
                 <h1 className="mx-auto mt-2 max-w-[22ch] font-fraunces text-[clamp(1.6rem,4.5vw,2.15rem)] font-semibold leading-none tracking-tight [overflow-wrap:anywhere]">
-                  {activeLabel}
+                  {activeMode === "fresh" ? "Creating your new website" : activeLabel}
                 </h1>
 
                 <ol className="mx-auto mt-8 max-w-xs space-y-3.5 text-left">
