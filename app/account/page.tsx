@@ -20,6 +20,9 @@ export default function AccountPage() {
   const [name, setName] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [emailChangePassword, setEmailChangePassword] = useState("");
+  const [isRequestingEmailChange, setIsRequestingEmailChange] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -91,6 +94,41 @@ export default function AccountPage() {
       setMessage("Password changed.");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to change password");
+    }
+  };
+
+  const requestEmailUpdate = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setMessage(null);
+    setError(null);
+    setIsRequestingEmailChange(true);
+
+    try {
+      const response = await fetch("/api/account/email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          newEmail,
+          currentPassword: emailChangePassword,
+        }),
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Unable to request email change");
+      }
+
+      setNewEmail("");
+      setEmailChangePassword("");
+      setMessage(
+        `Check ${payload.newEmail} to confirm your new email address. Your account email will not change until you open that link.`,
+      );
+    } catch (caught) {
+      setError(
+        caught instanceof Error ? caught.message : "Unable to request email change",
+      );
+    } finally {
+      setIsRequestingEmailChange(false);
     }
   };
 
@@ -448,7 +486,10 @@ export default function AccountPage() {
                 </button>
               </form>
 
-              <div className="mt-6 rounded-3xl bg-[#faf8f1] p-5">
+              <form
+                onSubmit={requestEmailUpdate}
+                className="mt-6 rounded-3xl bg-[#faf8f1] p-5"
+              >
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <p className="text-sm font-semibold">Email address</p>
@@ -456,15 +497,58 @@ export default function AccountPage() {
                       {user.email}
                     </p>
                   </div>
-                  <span className="w-fit rounded-full bg-white px-3 py-1 text-xs font-semibold text-black/45">
-                    Change email coming next
+                  <span
+                    className={`w-fit rounded-full px-3 py-1 text-xs font-semibold ${
+                      user.emailVerified
+                        ? "bg-white text-black/45"
+                        : "bg-yellow-50 text-yellow-800"
+                    }`}
+                  >
+                    {user.emailVerified ? "Verified" : "Needs verification"}
                   </span>
                 </div>
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                  <label className="block">
+                    <span className="text-sm font-semibold">New email</span>
+                    <input
+                      type="email"
+                      value={newEmail}
+                      onChange={(event) => setNewEmail(event.target.value)}
+                      placeholder="new@email.com"
+                      autoComplete="email"
+                      className="mt-2 h-11 w-full rounded-full border border-black/10 bg-white px-4 text-sm outline-none transition placeholder:text-black/30 focus:border-black/30"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-sm font-semibold">Current password</span>
+                    <input
+                      type="password"
+                      value={emailChangePassword}
+                      onChange={(event) =>
+                        setEmailChangePassword(event.target.value)
+                      }
+                      autoComplete="current-password"
+                      className="mt-2 h-11 w-full rounded-full border border-black/10 bg-white px-4 text-sm outline-none transition focus:border-black/30"
+                    />
+                  </label>
+                </div>
+                <button
+                  disabled={
+                    isRequestingEmailChange ||
+                    !newEmail.trim() ||
+                    !emailChangePassword
+                  }
+                  className="mt-4 h-11 rounded-full border border-black/10 bg-white px-5 text-sm font-semibold text-black transition hover:border-black/25 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isRequestingEmailChange
+                    ? "Sending confirmation..."
+                    : "Send confirmation link"}
+                </button>
                 <p className="mt-3 text-xs leading-5 text-black/45">
-                  Phase 1 keeps your current email visible here. A secure change
-                  email flow should verify the new address before replacing it.
+                  We will send a confirmation link to the new address. Your email
+                  changes only after that link is opened.
                 </p>
-              </div>
+              </form>
             </section>
 
             <section className="rounded-[2rem] border border-black/10 bg-white p-6 shadow-xl shadow-black/5">

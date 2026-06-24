@@ -7,8 +7,10 @@ import {
   setSessionCookie,
 } from "@/lib/auth/session";
 import {
+  consumeEmailChangeToken,
   consumeEmailVerificationToken,
   consumePasswordResetToken,
+  createEmailChangeToken,
   createEmailVerificationToken,
   createPasswordResetToken,
   createTwoFactorChallenge,
@@ -25,13 +27,15 @@ import {
 } from "@/lib/auth/twoFactor";
 import { getDb, schema } from "@/lib/db";
 import {
+  sendEmailChangedEmail,
+  sendEmailChangeVerificationEmail,
   sendPasswordChangedEmail,
   sendPasswordResetEmail,
   sendVerificationEmail,
   sendWelcomeEmail,
 } from "@/lib/email/service";
 
-const { users } = schema;
+const { emailChangeTokens, users } = schema;
 
 export interface AuthUserResponse {
   id: string;
@@ -282,6 +286,101 @@ export async function updateAccount(params: {
     .returning();
 
   return user;
+}
+
+export async function requestEmailChange(params: {
+  userId: string;
+  newEmail: string;
+  currentPassword: string;
+}) {
+  const newEmail = normalizeEmail(params.newEmail);
+
+  if (!newEmail.includes("@")) {
+    throw new Error("Enter a valid email address");
+  }
+
+  const db = getDb();
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, params.userId))
+    .limit(1);
+
+  if (!user || !(await verifyPassword(params.currentPassword, user.passwordHash))) {
+    throw new Error("Current password is incorrect");
+  }
+
+  if (newEmail === user.email) {
+    throw new Error("Enter a different email address");
+  }
+
+  const [existing] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.email, newEmail))
+    .limit(1);
+
+  if (existing) {
+    throw new Error("An account already exists for this email");
+  }
+
+  await db
+    .update(emailChangeTokens)
+    .set({ usedAt: new Date() })
+    .where(eq(emailChangeTokens.userId, user.id));
+
+  const token = await createEmailChangeToken({
+    userId: user.id,
+    newEmail,
+  });
+
+  await sendEmailChangeVerificationEmail({ to: newEmail, token });
+
+  return { newEmail };
+}
+
+export async function verifyEmailChange(token: string) {
+  const consumed = await consumeEmailChangeToken(token);
+
+  if (!consumed) {
+    throw new Error("Email change link is invalid or has expired");
+  }
+
+  const db = getDb();
+  const [currentUser] = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, consumed.userId))
+    .limit(1);
+
+  if (!currentUser) {
+    throw new Error("User not found");
+  }
+
+  const [existing] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.email, consumed.newEmail))
+    .limit(1);
+
+  if (existing && existing.id !== currentUser.id) {
+    throw new Error("An account already exists for this email");
+  }
+
+  const previousEmail = currentUser.email;
+  const [updated] = await db
+    .update(users)
+    .set({
+      email: consumed.newEmail,
+      emailVerifiedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, currentUser.id))
+    .returning();
+
+  await sendEmailChangedEmail({ to: previousEmail });
+
+  return updated;
 }
 
 export async function changePassword(params: {

@@ -118,6 +118,37 @@ export async function sendVerificationEmail(params: {
   });
 }
 
+export async function sendEmailChangeVerificationEmail(params: {
+  to: string;
+  token: string;
+}) {
+  const url = buildAppUrl(`/change-email?token=${encodeURIComponent(params.token)}`);
+
+  await sendEmail({
+    to: params.to,
+    subject: "Confirm your new Refresh Kiwi email",
+    text: `Use this link to confirm this as your new Refresh Kiwi email address:\n\n${url}\n\nThis link expires in 24 hours. If you did not request it, you can ignore this email.`,
+    html: shell(`
+      <p>Use the button below to confirm this as your new Refresh Kiwi email address.</p>
+      <p>${button(url, "Confirm new email")}</p>
+      <p style="color:#666">This link expires in 24 hours. If you did not request it, you can ignore this email.</p>
+    `),
+  });
+}
+
+export async function sendEmailChangedEmail(params: { to: string }) {
+  await sendEmail({
+    to: params.to,
+    subject: "Your Refresh Kiwi email was changed",
+    text: `Your Refresh Kiwi account email was changed. If this was not you, reset your password now:\n\n${buildAppUrl("/forgot-password")}`,
+    html: shell(`
+      <p>Your Refresh Kiwi account email was changed.</p>
+      <p>If this was not you, reset your password now.</p>
+      <p>${button(buildAppUrl("/forgot-password"), "Reset password")}</p>
+    `),
+  });
+}
+
 export async function sendPasswordResetEmail(params: {
   to: string;
   token: string;

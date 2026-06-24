@@ -8,7 +8,12 @@ const VERIFICATION_TOKEN_HOURS = 24;
 const PASSWORD_RESET_TOKEN_MINUTES = 30;
 const TWO_FACTOR_CHALLENGE_MINUTES = 10;
 
-const { emailVerificationTokens, passwordResetTokens, twoFactorChallenges } = schema;
+const {
+  emailChangeTokens,
+  emailVerificationTokens,
+  passwordResetTokens,
+  twoFactorChallenges,
+} = schema;
 
 export function createRawToken(): string {
   return randomBytes(32).toString("base64url");
@@ -33,6 +38,22 @@ export async function createEmailVerificationToken(
 
   await getDb().insert(emailVerificationTokens).values({
     userId,
+    tokenHash: hashToken(token),
+    expiresAt: hoursFromNow(VERIFICATION_TOKEN_HOURS),
+  });
+
+  return token;
+}
+
+export async function createEmailChangeToken(params: {
+  userId: string;
+  newEmail: string;
+}): Promise<string> {
+  const token = createRawToken();
+
+  await getDb().insert(emailChangeTokens).values({
+    userId: params.userId,
+    newEmail: params.newEmail,
     tokenHash: hashToken(token),
     expiresAt: hoursFromNow(VERIFICATION_TOKEN_HOURS),
   });
@@ -86,6 +107,32 @@ export async function consumeEmailVerificationToken(token: string) {
     .update(emailVerificationTokens)
     .set({ usedAt: new Date() })
     .where(eq(emailVerificationTokens.id, storedToken.id));
+
+  return storedToken;
+}
+
+export async function consumeEmailChangeToken(token: string) {
+  const db = getDb();
+  const [storedToken] = await db
+    .select()
+    .from(emailChangeTokens)
+    .where(
+      and(
+        eq(emailChangeTokens.tokenHash, hashToken(token)),
+        gt(emailChangeTokens.expiresAt, new Date()),
+        isNull(emailChangeTokens.usedAt),
+      ),
+    )
+    .limit(1);
+
+  if (!storedToken) {
+    return null;
+  }
+
+  await db
+    .update(emailChangeTokens)
+    .set({ usedAt: new Date() })
+    .where(eq(emailChangeTokens.id, storedToken.id));
 
   return storedToken;
 }
