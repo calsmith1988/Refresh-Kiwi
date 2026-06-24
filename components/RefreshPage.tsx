@@ -1632,7 +1632,10 @@ export default function RefreshPage({
               </div>
 
               {flowMode === "fresh" ? (
-                <div className="relative mx-auto w-full max-w-xl lg:max-w-none">
+                <div
+                  key="fresh-hero-form"
+                  className="relative mx-auto w-full max-w-xl lg:max-w-none"
+                >
                   <div className="pointer-events-none absolute -inset-8 rounded-full bg-[radial-gradient(circle_at_58%_30%,rgba(191,226,98,0.32),transparent_58%)] blur-2xl" />
                   <form
                     onSubmit={handleFresh}
@@ -1711,7 +1714,10 @@ export default function RefreshPage({
                   </form>
                 </div>
               ) : (
-                <div className="relative mx-auto min-h-[390px] w-full max-w-xl sm:min-h-[470px] lg:max-w-none">
+                <div
+                  key="refresh-hero-preview"
+                  className="relative mx-auto min-h-[390px] w-full max-w-xl sm:min-h-[470px] lg:max-w-none"
+                >
                   <div className="pointer-events-none absolute -inset-10 rounded-full bg-[radial-gradient(circle_at_62%_42%,rgba(191,226,98,0.36),transparent_58%)] blur-2xl" />
                   <div className="pointer-events-none absolute bottom-8 right-6 h-44 w-44 rounded-full bg-[#BFE262]/35 blur-3xl" />
                   <div className="absolute left-0 top-0 w-[92%] -rotate-2 overflow-hidden rounded-[1.6rem] border border-black/10 bg-white opacity-90 shadow-xl shadow-black/10">
