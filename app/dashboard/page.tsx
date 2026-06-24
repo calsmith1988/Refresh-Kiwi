@@ -276,6 +276,7 @@ const EDIT_POLL_INTERVAL_MS = 5000;
 const ACTIVE_EDIT_STATUSES = new Set(["queued", "running"]);
 const PRO_SUBSCRIPTION_STATUSES = new Set(["active", "trialing"]);
 const DAY_MS = 24 * 60 * 60 * 1000;
+const DASHBOARD_TOUR_STORAGE_KEY = "refresh-kiwi:dashboard-tour-dismissed";
 
 function formatDate(value: string): string {
   return new Intl.DateTimeFormat("en-GB", {
@@ -491,6 +492,7 @@ export default function DashboardPage() {
   const [celebration, setCelebration] = useState<
     "upgraded" | "cancelled" | null
   >(null);
+  const [showDashboardTour, setShowDashboardTour] = useState(false);
 
   const isPro =
     user?.plan === "pro" && PRO_SUBSCRIPTION_STATUSES.has(user.subscriptionStatus);
@@ -613,7 +615,19 @@ export default function DashboardPage() {
     } else if (params.has("upgrade_cancelled")) {
       setCelebration("cancelled");
     }
-    if (params.has("upgraded") || params.has("upgrade_cancelled")) {
+
+    if (
+      params.has("tour") &&
+      window.localStorage.getItem(DASHBOARD_TOUR_STORAGE_KEY) !== "true"
+    ) {
+      setShowDashboardTour(true);
+    }
+
+    if (
+      params.has("upgraded") ||
+      params.has("upgrade_cancelled") ||
+      params.has("tour")
+    ) {
       window.history.replaceState(null, "", "/dashboard");
     }
 
@@ -701,6 +715,11 @@ export default function DashboardPage() {
   const openProSheet = () => {
     setErrorMessage(null);
     setShowProSheet(true);
+  };
+
+  const dismissDashboardTour = () => {
+    setShowDashboardTour(false);
+    window.localStorage.setItem(DASHBOARD_TOUR_STORAGE_KEY, "true");
   };
 
   const openPageChooser = (website: Website) => {
@@ -1518,6 +1537,69 @@ export default function DashboardPage() {
             </p>
           ) : null}
         </section>
+
+        {showDashboardTour && !isLoading && websites.length > 0 ? (
+          <section className="mt-6 rounded-3xl border-2 border-kiwi-green bg-[#f7fce8] p-5 shadow-xl shadow-[#8bbf4d]/10 sm:p-6">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-black/40">
+                  Quick tour
+                </p>
+                <h2 className="mt-2 font-fraunces text-2xl font-semibold tracking-tight">
+                  Your website is saved. Here&apos;s where to make it yours.
+                </h2>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-black/55">
+                  Everything you need is on this dashboard. Start with your
+                  website card below, then use the buttons on that card when you
+                  want changes, images, or your own web address.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={dismissDashboardTour}
+                className="w-fit rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold text-black/60 transition hover:border-black/25 hover:text-black"
+              >
+                Got it
+              </button>
+            </div>
+
+            <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              {[
+                {
+                  title: "Your website card",
+                  body: "This shows the website you just made, its web address, free changes left, and whether it is live or still a free preview.",
+                },
+                {
+                  title: "Edit website",
+                  body: "Use this when you want wording, layout, colours, sections, or contact details changed. Just type what you want.",
+                },
+                {
+                  title: "Images",
+                  body: "Replace photos with your own, recreate an image, or go back to an earlier version if you change your mind.",
+                },
+                {
+                  title: "Manage",
+                  body: "Rename the site, copy the link, remove it, or connect your own domain when you are ready to put it online.",
+                },
+              ].map((item, index) => (
+                <div
+                  key={item.title}
+                  className="rounded-2xl border border-black/10 bg-white p-4"
+                >
+                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-kiwi-green text-xs font-black text-black">
+                    {index + 1}
+                  </span>
+                  <h3 className="mt-3 text-sm font-bold text-black">
+                    {item.title}
+                  </h3>
+                  <p className="mt-1 text-xs leading-5 text-black/55">
+                    {item.body}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         <section className="mt-6">
           {isLoading ? (

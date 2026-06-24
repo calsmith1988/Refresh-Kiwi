@@ -714,11 +714,12 @@ export default function RefreshPage({
         await claimCurrentWebsite().catch((error) => {
           console.warn("[refresh-kiwi] login claim skipped", error);
         });
-        window.location.href = "/dashboard";
+        window.location.href = "/dashboard?tour=1";
         return;
       }
 
       await claimCurrentWebsite();
+      window.location.href = "/dashboard?tour=1";
     } catch (error) {
       setAuthErrorMessage(
         error instanceof Error ? error.message : "Account request failed",
@@ -767,7 +768,7 @@ export default function RefreshPage({
       await claimCurrentWebsite().catch((error) => {
         console.warn("[refresh-kiwi] 2FA login claim skipped", error);
       });
-      window.location.href = "/dashboard";
+      window.location.href = "/dashboard?tour=1";
     } catch (error) {
       setAuthErrorMessage(
         error instanceof Error ? error.message : "Invalid two-factor code",
@@ -781,11 +782,15 @@ export default function RefreshPage({
     setAuthErrorMessage(null);
 
     if (user) {
-      void claimCurrentWebsite().catch((error) => {
-        setErrorMessage(
-          error instanceof Error ? error.message : "Failed to save website",
-        );
-      });
+      void claimCurrentWebsite()
+        .then(() => {
+          window.location.href = "/dashboard?tour=1";
+        })
+        .catch((error) => {
+          setErrorMessage(
+            error instanceof Error ? error.message : "Failed to save website",
+          );
+        });
       return;
     }
 
