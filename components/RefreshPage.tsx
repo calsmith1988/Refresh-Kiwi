@@ -223,7 +223,10 @@ type PromptStarter = {
   label: string;
   description: string;
   servicesHint: string;
+  customersHint: string;
+  differenceHint: string;
   styleHint: string;
+  sectionsHint: string;
 };
 
 const PROMPT_STARTERS: PromptStarter[] = [
@@ -231,109 +234,163 @@ const PROMPT_STARTERS: PromptStarter[] = [
     label: "Plumber",
     description: "plumbing",
     servicesHint: "Boiler repairs, bathroom plumbing, leaks, emergency call-outs",
+    customersHint: "Homeowners, landlords, and small businesses nearby",
+    differenceHint: "Fast response times, tidy work, clear pricing",
     styleHint: "Trustworthy, local, practical",
+    sectionsHint: "Emergency help, services, reviews, service areas, contact form",
   },
   {
     label: "Electrician",
     description: "electrical",
     servicesHint: "Rewires, fuse boards, lighting, inspections, emergency jobs",
+    customersHint: "Homeowners, landlords, letting agents, and local businesses",
+    differenceHint: "Qualified, safety-focused, reliable, neat work",
     styleHint: "Safe, certified, professional",
+    sectionsHint: "Services, certifications, reviews, emergency call-outs, contact",
   },
   {
     label: "Salon",
     description: "hair or beauty salon",
     servicesHint: "Cuts, colour, styling, treatments, bookings",
+    customersHint: "Local people looking for regular appointments and special occasions",
+    differenceHint: "Friendly stylists, great results, relaxing experience",
     styleHint: "Stylish, friendly, premium",
+    sectionsHint: "Services, prices, gallery, team, booking button, reviews",
   },
   {
     label: "Landscaper",
     description: "landscaping",
     servicesHint: "Garden design, patios, fencing, turfing, maintenance",
+    customersHint: "Homeowners who want better outdoor spaces",
+    differenceHint: "Strong workmanship, clear plans, before-and-after results",
     styleHint: "Natural, clean, outdoorsy",
+    sectionsHint: "Services, project gallery, process, reviews, quote request",
   },
   {
     label: "Cafe",
     description: "cafe",
     servicesHint: "Coffee, breakfast, lunch, cakes, private events",
+    customersHint: "Local regulars, families, remote workers, and visitors",
+    differenceHint: "Independent feel, fresh food, friendly service",
     styleHint: "Warm, welcoming, independent",
+    sectionsHint: "Menu, opening hours, location, gallery, events, contact",
   },
   {
     label: "Builder",
     description: "building",
     servicesHint: "Extensions, renovations, kitchens, bathrooms, repairs",
+    customersHint: "Homeowners planning improvements or repairs",
+    differenceHint: "Reliable team, quality finish, clear communication",
     styleHint: "Reliable, experienced, straightforward",
+    sectionsHint: "Services, recent projects, process, reviews, quote request",
   },
   {
     label: "Cleaner",
     description: "cleaning",
     servicesHint: "Domestic cleaning, office cleaning, end-of-tenancy cleans",
+    customersHint: "Busy households, offices, landlords, and tenants",
+    differenceHint: "Consistent standards, flexible slots, trusted cleaners",
     styleHint: "Fresh, dependable, easy to book",
+    sectionsHint: "Services, prices or packages, reviews, FAQs, booking form",
   },
   {
     label: "Roofer",
     description: "roofing",
     servicesHint: "Roof repairs, flat roofs, guttering, inspections, emergencies",
+    customersHint: "Homeowners, landlords, and property managers",
+    differenceHint: "Honest assessments, durable repairs, weather-ready workmanship",
     styleHint: "Tough, honest, weatherproof",
+    sectionsHint: "Repair services, roof types, recent work, reviews, emergency contact",
   },
   {
     label: "Mechanic",
     description: "garage or mechanic",
     servicesHint: "MOTs, servicing, diagnostics, repairs, tyres",
+    customersHint: "Local drivers and small business fleets",
+    differenceHint: "Straight advice, fair pricing, skilled diagnostics",
     styleHint: "Straight-talking, skilled, trustworthy",
+    sectionsHint: "Services, MOTs, diagnostics, reviews, booking form",
   },
   {
     label: "Dog groomer",
     description: "dog grooming",
     servicesHint: "Full grooms, baths, nail trims, puppy grooms",
+    customersHint: "Dog owners who want gentle, reliable grooming",
+    differenceHint: "Calm handling, happy dogs, careful finishes",
     styleHint: "Friendly, caring, bright",
+    sectionsHint: "Services, prices, gallery, first visit info, booking form",
   },
   {
     label: "Florist",
     description: "florist",
     servicesHint: "Bouquets, weddings, funerals, local delivery",
+    customersHint: "Gift buyers, couples, families, and local businesses",
+    differenceHint: "Beautiful arrangements, personal service, reliable delivery",
     styleHint: "Elegant, colourful, personal",
+    sectionsHint: "Occasions, delivery, weddings, gallery, order enquiry",
   },
   {
     label: "Gym",
     description: "gym or fitness studio",
     servicesHint: "Memberships, classes, personal training, transformation plans",
+    customersHint: "Beginners, regular gym-goers, and people wanting more confidence",
+    differenceHint: "Supportive coaching, clear plans, welcoming community",
     styleHint: "Energetic, motivating, clean",
+    sectionsHint: "Memberships, classes, trainers, timetable, trial sign-up",
   },
   {
     label: "Tutor",
     description: "tutoring",
     servicesHint: "One-to-one lessons, exam prep, online sessions, homework support",
+    customersHint: "Parents, students, adult learners, and exam candidates",
+    differenceHint: "Patient teaching, clear progress, tailored support",
     styleHint: "Calm, encouraging, credible",
+    sectionsHint: "Subjects, levels, testimonials, lesson options, enquiry form",
   },
   {
     label: "Takeaway",
     description: "takeaway restaurant",
     servicesHint: "Menu, online orders, delivery areas, collection times",
+    customersHint: "Hungry locals, families, office lunches, and weekend customers",
+    differenceHint: "Fresh food, fast service, good value",
     styleHint: "Appetising, fast, local",
+    sectionsHint: "Menu, deals, delivery areas, opening times, order button",
   },
   {
     label: "Estate agent",
     description: "estate agency",
     servicesHint: "Sales, lettings, valuations, property management",
+    customersHint: "Sellers, landlords, buyers, and tenants",
+    differenceHint: "Local knowledge, strong marketing, helpful communication",
     styleHint: "Polished, local, confident",
+    sectionsHint: "Valuations, sales, lettings, featured properties, contact form",
   },
   {
     label: "Photographer",
     description: "photography",
     servicesHint: "Weddings, portraits, events, brand photography",
+    customersHint: "Couples, families, businesses, and event organisers",
+    differenceHint: "Natural images, relaxed experience, polished delivery",
     styleHint: "Creative, polished, personal",
+    sectionsHint: "Portfolio, packages, process, testimonials, enquiry form",
   },
   {
     label: "Shop",
     description: "local shop",
     servicesHint: "Products, opening hours, delivery, special offers",
+    customersHint: "Local shoppers and people looking for easy gift or product ideas",
+    differenceHint: "Helpful service, curated products, independent character",
     styleHint: "Independent, friendly, easy to browse",
+    sectionsHint: "Products, offers, opening hours, location, contact",
   },
   {
     label: "Not sure",
     description: "small business",
     servicesHint: "What I sell or provide, who I help, and where I work",
+    customersHint: "The type of people or businesses I want to attract",
+    differenceHint: "The main reason customers should choose me",
     styleHint: "Clear, friendly, professional",
+    sectionsHint: "Services, about, reviews, FAQs, contact form",
   },
 ];
 
@@ -343,11 +400,11 @@ function promptFromStarter(starter: PromptStarter): string {
 Business name:
 Location:
 Main services: ${starter.servicesHint}
-Best customers:
-What makes us different:
+Best customers: ${starter.customersHint}
+What makes us different: ${starter.differenceHint}
 Style I like: ${starter.styleHint}
 Contact details:
-Must-have sections:`;
+Must-have sections: ${starter.sectionsHint}`;
 }
 
 function isPromptStarter(value: string): boolean {
@@ -569,7 +626,7 @@ function PromptStarterCarousel({
   const starterSets = [PROMPT_STARTERS, PROMPT_STARTERS, PROMPT_STARTERS];
 
   return (
-    <div className="mt-4">
+    <div className="mt-4 min-w-0 max-w-full">
       <div className="mb-2 flex items-center justify-between gap-3">
         <p className="text-xs font-semibold text-black/50">
           Not sure what to write? Start with a business type.
@@ -580,7 +637,7 @@ function PromptStarterCarousel({
       </div>
       <div
         ref={scrollRef}
-        className={`prompt-starter-scroll cursor-grab overflow-x-auto overscroll-x-contain rounded-2xl border border-black/10 bg-[#faf8f1] py-2 active:cursor-grabbing [mask-image:linear-gradient(to_right,transparent,black_9%,black_91%,transparent)] ${
+        className={`prompt-starter-scroll w-full max-w-full cursor-grab overflow-x-auto overscroll-x-contain rounded-2xl border border-black/10 bg-[#faf8f1] py-2 active:cursor-grabbing [mask-image:linear-gradient(to_right,transparent,black_9%,black_91%,transparent)] ${
           isDraggingRef.current ? "select-none" : ""
         }`}
         aria-label="Business type prompt starters"
@@ -1871,8 +1928,8 @@ export default function RefreshPage({
               </div>
             </div>
           ) : (
-            <div className="grid items-center gap-14 lg:grid-cols-[1.05fr_0.95fr]">
-              <div>
+            <div className="grid min-w-0 items-center gap-14 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+              <div className="min-w-0">
                 <p className="inline-flex items-center gap-2 rounded-full border border-black/5 bg-white/50 px-4 py-1.5 text-xs font-semibold text-black/45">
                   <span className="h-1.5 w-1.5 rounded-full bg-kiwi-green" />
                   {flowMode === "fresh"
@@ -1981,12 +2038,12 @@ export default function RefreshPage({
               {flowMode === "fresh" ? (
                 <div
                   key="fresh-hero-form"
-                  className="relative mx-auto w-full max-w-xl lg:max-w-none"
+                  className="relative mx-auto w-full max-w-xl min-w-0 lg:max-w-none"
                 >
                   <div className="pointer-events-none absolute -inset-8 rounded-full bg-[radial-gradient(circle_at_58%_30%,rgba(191,226,98,0.32),transparent_58%)] blur-2xl" />
                   <form
                     onSubmit={handleFresh}
-                    className="relative rounded-[2rem] border-2 border-black/20 bg-white p-4 shadow-2xl shadow-black/10 transition focus-within:border-black/40 sm:p-5"
+                    className="relative min-w-0 overflow-hidden rounded-[2rem] border-2 border-black/20 bg-white p-4 shadow-2xl shadow-black/10 transition focus-within:border-black/40 sm:p-5"
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div>
