@@ -219,6 +219,143 @@ const BUSINESS_TYPES: Array<{ label: string; icon: BusinessIconName }> = [
   { label: "Cleaners", icon: "cleaners" },
 ];
 
+type PromptStarter = {
+  label: string;
+  description: string;
+  servicesHint: string;
+  styleHint: string;
+};
+
+const PROMPT_STARTERS: PromptStarter[] = [
+  {
+    label: "Plumber",
+    description: "plumbing",
+    servicesHint: "Boiler repairs, bathroom plumbing, leaks, emergency call-outs",
+    styleHint: "Trustworthy, local, practical",
+  },
+  {
+    label: "Electrician",
+    description: "electrical",
+    servicesHint: "Rewires, fuse boards, lighting, inspections, emergency jobs",
+    styleHint: "Safe, certified, professional",
+  },
+  {
+    label: "Salon",
+    description: "hair or beauty salon",
+    servicesHint: "Cuts, colour, styling, treatments, bookings",
+    styleHint: "Stylish, friendly, premium",
+  },
+  {
+    label: "Landscaper",
+    description: "landscaping",
+    servicesHint: "Garden design, patios, fencing, turfing, maintenance",
+    styleHint: "Natural, clean, outdoorsy",
+  },
+  {
+    label: "Cafe",
+    description: "cafe",
+    servicesHint: "Coffee, breakfast, lunch, cakes, private events",
+    styleHint: "Warm, welcoming, independent",
+  },
+  {
+    label: "Builder",
+    description: "building",
+    servicesHint: "Extensions, renovations, kitchens, bathrooms, repairs",
+    styleHint: "Reliable, experienced, straightforward",
+  },
+  {
+    label: "Cleaner",
+    description: "cleaning",
+    servicesHint: "Domestic cleaning, office cleaning, end-of-tenancy cleans",
+    styleHint: "Fresh, dependable, easy to book",
+  },
+  {
+    label: "Roofer",
+    description: "roofing",
+    servicesHint: "Roof repairs, flat roofs, guttering, inspections, emergencies",
+    styleHint: "Tough, honest, weatherproof",
+  },
+  {
+    label: "Mechanic",
+    description: "garage or mechanic",
+    servicesHint: "MOTs, servicing, diagnostics, repairs, tyres",
+    styleHint: "Straight-talking, skilled, trustworthy",
+  },
+  {
+    label: "Dog groomer",
+    description: "dog grooming",
+    servicesHint: "Full grooms, baths, nail trims, puppy grooms",
+    styleHint: "Friendly, caring, bright",
+  },
+  {
+    label: "Florist",
+    description: "florist",
+    servicesHint: "Bouquets, weddings, funerals, local delivery",
+    styleHint: "Elegant, colourful, personal",
+  },
+  {
+    label: "Gym",
+    description: "gym or fitness studio",
+    servicesHint: "Memberships, classes, personal training, transformation plans",
+    styleHint: "Energetic, motivating, clean",
+  },
+  {
+    label: "Tutor",
+    description: "tutoring",
+    servicesHint: "One-to-one lessons, exam prep, online sessions, homework support",
+    styleHint: "Calm, encouraging, credible",
+  },
+  {
+    label: "Takeaway",
+    description: "takeaway restaurant",
+    servicesHint: "Menu, online orders, delivery areas, collection times",
+    styleHint: "Appetising, fast, local",
+  },
+  {
+    label: "Estate agent",
+    description: "estate agency",
+    servicesHint: "Sales, lettings, valuations, property management",
+    styleHint: "Polished, local, confident",
+  },
+  {
+    label: "Photographer",
+    description: "photography",
+    servicesHint: "Weddings, portraits, events, brand photography",
+    styleHint: "Creative, polished, personal",
+  },
+  {
+    label: "Shop",
+    description: "local shop",
+    servicesHint: "Products, opening hours, delivery, special offers",
+    styleHint: "Independent, friendly, easy to browse",
+  },
+  {
+    label: "Not sure",
+    description: "small business",
+    servicesHint: "What I sell or provide, who I help, and where I work",
+    styleHint: "Clear, friendly, professional",
+  },
+];
+
+function promptFromStarter(starter: PromptStarter): string {
+  return `Create a website for my ${starter.description} business.
+
+Business name:
+Location:
+Main services: ${starter.servicesHint}
+Best customers:
+What makes us different:
+Style I like: ${starter.styleHint}
+Contact details:
+Must-have sections:`;
+}
+
+function isPromptStarter(value: string): boolean {
+  const trimmed = value.trim();
+
+  return PROMPT_STARTERS.some((starter) => promptFromStarter(starter) === trimmed);
+}
+
 function BusinessIcon({ name }: { name: BusinessIconName }) {
   const common = {
     fill: "none",
@@ -295,6 +432,191 @@ function BusinessIcon({ name }: { name: BusinessIconName }) {
         </>
       ) : null}
     </svg>
+  );
+}
+
+function PromptStarterCarousel({
+  onSelect,
+}: {
+  onSelect: (starter: PromptStarter) => void;
+}) {
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const dragStartXRef = useRef(0);
+  const dragStartScrollRef = useRef(0);
+  const isDraggingRef = useRef(false);
+  const didDragRef = useRef(false);
+  const resumeTimerRef = useRef<number | null>(null);
+  const [isInteracting, setIsInteracting] = useState(false);
+
+  const pause = useCallback(() => {
+    if (resumeTimerRef.current) {
+      window.clearTimeout(resumeTimerRef.current);
+      resumeTimerRef.current = null;
+    }
+
+    setIsInteracting(true);
+  }, []);
+
+  const resumeSoon = useCallback(() => {
+    if (resumeTimerRef.current) {
+      window.clearTimeout(resumeTimerRef.current);
+    }
+
+    resumeTimerRef.current = window.setTimeout(() => {
+      setIsInteracting(false);
+      resumeTimerRef.current = null;
+    }, 1200);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (resumeTimerRef.current) {
+        window.clearTimeout(resumeTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const scroller = scrollRef.current;
+
+    if (!scroller) {
+      return;
+    }
+
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const segmentWidth = scroller.scrollWidth / 3;
+
+    if (segmentWidth > 0 && scroller.scrollLeft === 0) {
+      scroller.scrollLeft = segmentWidth;
+    }
+
+    if (reducedMotion.matches || isInteracting) {
+      return;
+    }
+
+    let frameId = 0;
+
+    const tick = () => {
+      const width = scroller.scrollWidth / 3;
+
+      if (width > 0) {
+        scroller.scrollLeft -= 0.18;
+
+        if (scroller.scrollLeft <= 0) {
+          scroller.scrollLeft += width;
+        } else if (scroller.scrollLeft >= width * 2) {
+          scroller.scrollLeft -= width;
+        }
+      }
+
+      frameId = window.requestAnimationFrame(tick);
+    };
+
+    frameId = window.requestAnimationFrame(tick);
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [isInteracting]);
+
+  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === "mouse" && event.button !== 0) {
+      return;
+    }
+
+    const scroller = scrollRef.current;
+
+    if (!scroller) {
+      return;
+    }
+
+    pause();
+    isDraggingRef.current = true;
+    didDragRef.current = false;
+    dragStartXRef.current = event.clientX;
+    dragStartScrollRef.current = scroller.scrollLeft;
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const scroller = scrollRef.current;
+
+    if (!isDraggingRef.current || !scroller) {
+      return;
+    }
+
+    const deltaX = event.clientX - dragStartXRef.current;
+
+    if (Math.abs(deltaX) > 5) {
+      didDragRef.current = true;
+    }
+
+    scroller.scrollLeft = dragStartScrollRef.current - deltaX;
+  };
+
+  const finishPointerInteraction = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingRef.current) {
+      return;
+    }
+
+    isDraggingRef.current = false;
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    resumeSoon();
+  };
+
+  const starterSets = [PROMPT_STARTERS, PROMPT_STARTERS, PROMPT_STARTERS];
+
+  return (
+    <div className="mt-4">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <p className="text-xs font-semibold text-black/50">
+          Not sure what to write? Start with a business type.
+        </p>
+        <p className="hidden text-[11px] font-medium text-black/35 sm:block">
+          Drag to browse
+        </p>
+      </div>
+      <div
+        ref={scrollRef}
+        className={`prompt-starter-scroll cursor-grab overflow-x-auto overscroll-x-contain rounded-2xl border border-black/10 bg-[#faf8f1] py-2 active:cursor-grabbing [mask-image:linear-gradient(to_right,transparent,black_9%,black_91%,transparent)] ${
+          isDraggingRef.current ? "select-none" : ""
+        }`}
+        aria-label="Business type prompt starters"
+        onFocus={pause}
+        onBlur={resumeSoon}
+        onMouseEnter={pause}
+        onMouseLeave={resumeSoon}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={finishPointerInteraction}
+        onPointerCancel={finishPointerInteraction}
+      >
+        <div className="flex w-max gap-2 px-3">
+          {starterSets.map((starters, setIndex) =>
+            starters.map((starter) => (
+              <button
+                key={`${setIndex}-${starter.label}`}
+                type="button"
+                className="shrink-0 rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold text-black/65 shadow-sm transition hover:border-black/25 hover:text-black focus:outline-none focus:ring-2 focus:ring-kiwi-green focus:ring-offset-2"
+                onClick={(event) => {
+                  if (didDragRef.current) {
+                    event.preventDefault();
+                    didDragRef.current = false;
+                    return;
+                  }
+
+                  onSelect(starter);
+                }}
+              >
+                {starter.label}
+              </button>
+            )),
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -417,6 +739,7 @@ export default function RefreshPage({
   const elapsedTimerRef = useRef<number | null>(null);
   const statusTimerRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
+  const freshInputRef = useRef<HTMLTextAreaElement | null>(null);
 
   const stopPolling = useCallback(() => {
     if (pollTimerRef.current !== null) {
@@ -1026,6 +1349,26 @@ export default function RefreshPage({
     setEditStatus("idle");
     setActiveEditRequestId(null);
     setIsRefreshing(false);
+  };
+
+  const handleSelectPromptStarter = (starter: PromptStarter) => {
+    const prompt = promptFromStarter(starter);
+
+    setFlowMode("fresh");
+    setErrorMessage(null);
+    setFreshPrompt((current) => {
+      const trimmed = current.trim();
+
+      if (!trimmed || isPromptStarter(trimmed)) {
+        return prompt;
+      }
+
+      return `${trimmed}\n\n${prompt}`;
+    });
+
+    window.requestAnimationFrame(() => {
+      freshInputRef.current?.focus();
+    });
   };
 
   const handleRefresh = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -1661,7 +2004,9 @@ export default function RefreshPage({
                     <label htmlFor="fresh-input" className="sr-only">
                       Describe the website you want
                     </label>
+                    <PromptStarterCarousel onSelect={handleSelectPromptStarter} />
                     <textarea
+                      ref={freshInputRef}
                       id="fresh-input"
                       rows={7}
                       value={freshPrompt}

@@ -143,6 +143,16 @@ body {
   animation: edit-message-in 0.4s ease-out both;
 }
 
+.prompt-starter-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  touch-action: pan-x;
+}
+
+.prompt-starter-scroll::-webkit-scrollbar {
+  display: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .kiwi-bob,
   .kiwi-pop,
