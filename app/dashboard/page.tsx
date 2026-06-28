@@ -324,7 +324,7 @@ function websiteAddress(website: Website): string {
   const origin =
     typeof window !== "undefined" ? window.location.origin : "https://refresh.kiwi";
 
-  return `${origin}/preview/${website.slug}`;
+  return `${origin}/preview/${website.slug}/`;
 }
 
 function sourceHostname(sourceUrl: string | null): string {
@@ -497,6 +497,12 @@ export default function DashboardPage() {
   const [copiedDeleteNameId, setCopiedDeleteNameId] = useState<string | null>(
     null,
   );
+  const [capturingScreenshotWebsiteId, setCapturingScreenshotWebsiteId] = useState<
+    string | null
+  >(null);
+  const [screenshotRefreshTokens, setScreenshotRefreshTokens] = useState<
+    Record<string, number>
+  >({});
   const [progressTick, setProgressTick] = useState(() => Date.now());
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [confirmRegenerateId, setConfirmRegenerateId] = useState<string | null>(
@@ -935,6 +941,33 @@ export default function DashboardPage() {
       );
     } finally {
       setCancellingEditRequestId(null);
+    }
+  };
+
+  const refreshHomepageScreenshot = async (websiteId: string) => {
+    setCapturingScreenshotWebsiteId(websiteId);
+    setErrorMessage(null);
+
+    try {
+      const response = await fetch(`/api/websites/${websiteId}/screenshot`, {
+        method: "POST",
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Failed to refresh screenshot");
+      }
+
+      setScreenshotRefreshTokens((current) => ({
+        ...current,
+        [websiteId]: Date.now(),
+      }));
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Failed to refresh screenshot",
+      );
+    } finally {
+      setCapturingScreenshotWebsiteId(null);
     }
   };
 
@@ -1907,6 +1940,9 @@ export default function DashboardPage() {
               ))}
               {websites.map((website) => {
                 const state = websiteState(website, isPro);
+                const screenshotUrl = screenshotRefreshTokens[website.id]
+                  ? `${website.homepageScreenshotUrl}?v=${screenshotRefreshTokens[website.id]}`
+                  : website.homepageScreenshotUrl;
                 const generatedPages = website.pages.filter(
                   (page) => page.path !== "/",
                 );
@@ -1958,17 +1994,28 @@ export default function DashboardPage() {
                             {state.description}
                           </p>
                           {state.canView ? (
-                            <a
-                              href={websiteAddress(website)}
-                              target="_blank"
+                            <div
                               className="group relative mt-4 block overflow-hidden rounded-2xl border border-black/10 bg-[#f0f4e7]"
                             >
                               <div className="flex aspect-[16/9] items-center justify-center px-5 text-center text-sm font-semibold text-black/35">
                                 Homepage preview
                               </div>
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  void refreshHomepageScreenshot(website.id);
+                                }}
+                                disabled={capturingScreenshotWebsiteId === website.id}
+                                className="absolute bottom-3 right-3 z-10 rounded-full bg-white/90 px-3 py-1.5 text-xs font-semibold text-black shadow-sm transition hover:bg-white disabled:cursor-wait disabled:opacity-70"
+                              >
+                                {capturingScreenshotWebsiteId === website.id
+                                  ? "Capturing..."
+                                  : "Refresh screenshot"}
+                              </button>
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
-                                src={website.homepageScreenshotUrl}
+                                src={screenshotUrl}
                                 alt={`${website.brandName || website.slug} homepage screenshot`}
                                 loading="lazy"
                                 className="absolute inset-0 h-full w-full object-cover object-top transition duration-300 group-hover:scale-[1.02]"
@@ -1976,7 +2023,7 @@ export default function DashboardPage() {
                                   event.currentTarget.style.display = "none";
                                 }}
                               />
-                            </a>
+                            </div>
                           ) : null}
                         {state.canView ? (
                           <div className="mt-3 flex max-w-full flex-wrap items-center gap-2 rounded-2xl bg-[#faf8f1] px-3 py-2">

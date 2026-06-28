@@ -128,11 +128,15 @@ function blockedPreviewResponse(kind: "expired" | "removed") {
   );
 }
 
-export async function GET(_request: Request, context: RouteContext) {
+export async function GET(request: Request, context: RouteContext) {
   const { slug, path: pathSegments } = await context.params;
 
   if (!isValidSlug(slug)) {
     return NextResponse.json({ error: "Invalid preview slug" }, { status: 400 });
+  }
+
+  if (!pathSegments?.length && !new URL(request.url).pathname.endsWith("/")) {
+    return NextResponse.redirect(new URL(`/preview/${slug}/`, request.url));
   }
 
   const websiteAccess = await getWebsiteAccessBySlug(slug);
