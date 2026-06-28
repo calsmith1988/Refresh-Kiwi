@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth/session";
 import { homepageScreenshotPath } from "@/lib/screenshots/paths";
-import { tryCaptureHomepageScreenshot } from "@/lib/screenshots/homepage";
+import { captureAndSaveHomepageScreenshot } from "@/lib/screenshots/homepage";
 import { getOwnedWebsite } from "@/lib/websites/service";
 
 export const runtime = "nodejs";
@@ -29,7 +29,14 @@ export async function POST(_request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Website not found" }, { status: 404 });
   }
 
-  await tryCaptureHomepageScreenshot(website.slug);
+  try {
+    await captureAndSaveHomepageScreenshot(website.slug);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Failed to refresh screenshot";
+
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 
   return NextResponse.json({
     screenshotUrl: homepageScreenshotPath(website.slug),

@@ -16,6 +16,10 @@ const CAPTURE_TIMEOUT_MS = 45_000;
 
 let screenshotQueue: Promise<void> = Promise.resolve();
 
+function screenshotsEnabled(): boolean {
+  return process.env.SCREENSHOTS_ENABLED?.trim() !== "false";
+}
+
 async function captureHomepageScreenshot(slug: string): Promise<Buffer> {
   const browser = await chromium.launch({
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
@@ -61,17 +65,12 @@ async function saveHomepageScreenshot(slug: string, buffer: Buffer) {
     },
   ];
 
-  try {
-    await commitFilesToSitesRepo(repoFiles, `Capture homepage screenshot for ${slug}`);
-  } catch (error) {
-    console.error(
-      `[refresh-kiwi] screenshot: failed to commit screenshot for ${slug}:`,
-      error,
-    );
-  }
+  await commitFilesToSitesRepo(repoFiles, `Capture homepage screenshot for ${slug}`);
 }
 
-async function captureAndSaveHomepageScreenshot(slug: string): Promise<void> {
+export async function captureAndSaveHomepageScreenshot(
+  slug: string,
+): Promise<void> {
   const startedAt = Date.now();
   const screenshot = await captureHomepageScreenshot(slug);
 
@@ -86,6 +85,11 @@ async function captureAndSaveHomepageScreenshot(slug: string): Promise<void> {
 }
 
 export async function tryCaptureHomepageScreenshot(slug: string): Promise<void> {
+  if (!screenshotsEnabled()) {
+    console.info(`[refresh-kiwi] screenshot: skipped for ${slug}; disabled by env`);
+    return;
+  }
+
   screenshotQueue = screenshotQueue
     .catch(() => {
       // Keep the single-process queue alive after failures.
