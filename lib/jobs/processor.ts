@@ -11,6 +11,7 @@ import { getDb, schema } from "@/lib/db";
 import { sendOnce } from "@/lib/email/events";
 import { sendPreviewReadyEmail } from "@/lib/email/service";
 import { syncPreviewFromAgent } from "@/lib/preview/sync";
+import { tryCaptureHomepageScreenshot } from "@/lib/screenshots/homepage";
 import { createWebsiteFromJob } from "@/lib/websites/service";
 import type { JobStatus } from "@/lib/jobs/types";
 
@@ -107,6 +108,7 @@ export async function processRefreshJob(jobId: string): Promise<void> {
     });
 
     const website = await createWebsiteFromJob(jobId);
+    await tryCaptureHomepageScreenshot(job.slug);
 
     console.info(
       `[refresh-kiwi] job ${jobId} homepage ready in ${elapsedSeconds(jobStartedAt)}s slug=${job.slug}`,
@@ -249,6 +251,7 @@ export async function processFreshJob(
     });
 
     const website = await createWebsiteFromJob(jobId);
+    await tryCaptureHomepageScreenshot(job.slug);
 
     console.info(
       `[refresh-kiwi] fresh job ${jobId} homepage ready in ${elapsedSeconds(jobStartedAt)}s slug=${job.slug}`,

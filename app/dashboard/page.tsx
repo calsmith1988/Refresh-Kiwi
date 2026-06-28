@@ -44,6 +44,7 @@ type Website = {
   customDomainVerifiedAt: string | null;
   customDomainLastCheckedAt: string | null;
   customDomainDnsTarget: string;
+  homepageScreenshotUrl: string;
   expiresAt: string;
   publishedAt: string | null;
   updatedAt: string;
@@ -1956,6 +1957,27 @@ export default function DashboardPage() {
                           <p className="mt-2 text-sm font-medium text-black/60">
                             {state.description}
                           </p>
+                          {state.canView ? (
+                            <a
+                              href={websiteAddress(website)}
+                              target="_blank"
+                              className="group relative mt-4 block overflow-hidden rounded-2xl border border-black/10 bg-[#f0f4e7]"
+                            >
+                              <div className="flex aspect-[16/9] items-center justify-center px-5 text-center text-sm font-semibold text-black/35">
+                                Homepage preview
+                              </div>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={website.homepageScreenshotUrl}
+                                alt={`${website.brandName || website.slug} homepage screenshot`}
+                                loading="lazy"
+                                className="absolute inset-0 h-full w-full object-cover object-top transition duration-300 group-hover:scale-[1.02]"
+                                onError={(event) => {
+                                  event.currentTarget.style.display = "none";
+                                }}
+                              />
+                            </a>
+                          ) : null}
                         {state.canView ? (
                           <div className="mt-3 flex max-w-full flex-wrap items-center gap-2 rounded-2xl bg-[#faf8f1] px-3 py-2">
                             <span className="text-[11px] font-semibold uppercase tracking-wide text-black/35">

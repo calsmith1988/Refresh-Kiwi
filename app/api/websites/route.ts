@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { getDb, schema } from "@/lib/db";
 import { STATUS_MESSAGES, type JobStatus } from "@/lib/jobs/types";
 import { getRenderDnsTarget } from "@/lib/render/domains";
+import { homepageScreenshotPath } from "@/lib/screenshots/paths";
 import {
   getLatestEditRequestsForUser,
   listPagesForJob,
@@ -98,6 +99,7 @@ export async function GET() {
       return {
         ...toWebsiteResponse(website),
         jobStatus: statusByJob.get(website.jobId),
+        homepageScreenshotUrl: homepageScreenshotPath(website.slug),
         customDomainDnsTarget: getRenderDnsTarget(),
         pages: pages.map(toPageResponse),
         latestEditRequest: latestEditRequest
