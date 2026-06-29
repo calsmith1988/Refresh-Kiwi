@@ -184,8 +184,12 @@ export async function sendPreviewReadyEmail(params: {
   to: string;
   brandName?: string | null;
   previewUrl: string;
+  screenshotUrl?: string | null;
 }) {
   const url = buildAppUrl(params.previewUrl);
+  const screenshotUrl = params.screenshotUrl
+    ? buildAppUrl(params.screenshotUrl)
+    : null;
   const copy = previewReadyCopy(params.brandName);
   const htmlHeadline = escapeHtml(copy.headline);
 
@@ -195,6 +199,11 @@ export async function sendPreviewReadyEmail(params: {
     text: `${copy.text}\n\n${url}`,
     html: shell(`
       <p><strong>${htmlHeadline}</strong></p>
+      ${
+        screenshotUrl
+          ? `<p><img src="${escapeHtml(screenshotUrl)}" alt="" style="display:block;width:100%;max-width:512px;border-radius:18px;border:1px solid #e5e5e5;margin:18px 0" /></p>`
+          : ""
+      }
       <p>${button(url, "View your preview")}</p>
       <p style="color:#666">You can save it, ask for changes, or go Pro when you are ready.</p>
     `),

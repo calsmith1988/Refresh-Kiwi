@@ -12,6 +12,7 @@ import { sendOnce } from "@/lib/email/events";
 import { sendPreviewReadyEmail } from "@/lib/email/service";
 import { syncPreviewFromAgent } from "@/lib/preview/sync";
 import { tryCaptureHomepageScreenshot } from "@/lib/screenshots/homepage";
+import { homepageScreenshotPath } from "@/lib/screenshots/paths";
 import { createWebsiteFromJob } from "@/lib/websites/service";
 import type { JobStatus } from "@/lib/jobs/types";
 
@@ -137,6 +138,7 @@ export async function processRefreshJob(jobId: string): Promise<void> {
               to: user.email,
               brandName: website.brandName,
               previewUrl: `/preview/${website.slug}/index.html`,
+              screenshotUrl: homepageScreenshotPath(website.slug),
             }),
         );
       }
@@ -277,6 +279,7 @@ export async function processFreshJob(
               to: user.email,
               brandName: website.brandName,
               previewUrl: `/preview/${website.slug}/index.html`,
+              screenshotUrl: homepageScreenshotPath(website.slug),
             }),
         );
       }
