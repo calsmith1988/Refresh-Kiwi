@@ -88,8 +88,16 @@ function localAssetUrl(slug: string, fileName: string): string {
   return `/preview/${slug}/assets/${fileName}`;
 }
 
+function decodeHtmlUrl(value: string): string {
+  return value
+    .replaceAll("&amp;", "&")
+    .replaceAll("&#38;", "&")
+    .replaceAll("&quot;", "\"")
+    .replaceAll("&#39;", "'");
+}
+
 function normalizeCandidateUrl(rawUrl: string): string | null {
-  const trimmed = rawUrl.trim();
+  const trimmed = decodeHtmlUrl(rawUrl).trim();
 
   if (trimmed.startsWith("//")) {
     return `https:${trimmed}`;
@@ -199,6 +207,34 @@ function inferImageContentType(buffer: Buffer): string | null {
   return null;
 }
 
+function redactedImageUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    return `${parsed.origin}${parsed.pathname}`;
+  } catch {
+    return url.split("?")[0] ?? url;
+  }
+}
+
+function imageDownloadUrls(url: string): string[] {
+  const urls = [url];
+
+  try {
+    const parsed = new URL(url);
+
+    // GoDaddy Website Builder's nebula image CDN is often embedded as
+    // protocol-relative HTTP on source sites. Try both schemes before giving up.
+    if (parsed.hostname === "nebula.wsimg.com") {
+      parsed.protocol = parsed.protocol === "https:" ? "http:" : "https:";
+      urls.push(parsed.toString());
+    }
+  } catch {
+    // Use the original URL only.
+  }
+
+  return [...new Set(urls)];
+}
+
 function assetFileName(originalUrl: string, contentType: string): string {
   const hash = createHash("sha1").update(originalUrl).digest("hex").slice(0, 10);
   let extension = IMAGE_EXTENSIONS[contentType.split(";")[0].trim()] ?? "";
@@ -216,40 +252,68 @@ function assetFileName(originalUrl: string, contentType: string): string {
 async function downloadImage(
   url: string,
 ): Promise<{ buffer: Buffer; contentType: string } | null> {
-  try {
-    const response = await fetch(url, {
-      signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS),
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (compatible; RefreshKiwi/1.0; +https://refresh.kiwi)",
-        Accept: "image/*,*/*;q=0.8",
-      },
-      redirect: "follow",
-    });
+  const failures: string[] = [];
 
-    if (!response.ok) {
-      return null;
+  for (const downloadUrl of imageDownloadUrls(url)) {
+    try {
+      const response = await fetch(downloadUrl, {
+        signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS),
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+          Accept: "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+          Referer: new URL(downloadUrl).origin,
+        },
+        redirect: "follow",
+      });
+
+      const responseContentType = response.headers.get("content-type") ?? "";
+
+      if (!response.ok) {
+        failures.push(`${new URL(downloadUrl).protocol} ${response.status}`);
+        continue;
+      }
+
+      const buffer = Buffer.from(await response.arrayBuffer());
+
+      if (buffer.byteLength === 0) {
+        failures.push(`${new URL(downloadUrl).protocol} empty response`);
+        continue;
+      }
+
+      if (buffer.byteLength > MAX_IMAGE_BYTES) {
+        failures.push(
+          `${new URL(downloadUrl).protocol} too large (${buffer.byteLength} bytes)`,
+        );
+        continue;
+      }
+
+      const contentType = responseContentType.startsWith("image/")
+        ? responseContentType.split(";")[0].trim()
+        : inferImageContentType(buffer);
+
+      if (!contentType) {
+        failures.push(
+          `${new URL(downloadUrl).protocol} unsupported content-type "${responseContentType || "missing"}" (${buffer.byteLength} bytes)`,
+        );
+        continue;
+      }
+
+      return { buffer, contentType };
+    } catch (error) {
+      failures.push(
+        `${new URL(downloadUrl).protocol} ${
+          error instanceof Error ? error.message : "request failed"
+        }`,
+      );
     }
-
-    const responseContentType = response.headers.get("content-type") ?? "";
-    const buffer = Buffer.from(await response.arrayBuffer());
-
-    if (buffer.byteLength === 0 || buffer.byteLength > MAX_IMAGE_BYTES) {
-      return null;
-    }
-
-    const contentType = responseContentType.startsWith("image/")
-      ? responseContentType.split(";")[0].trim()
-      : inferImageContentType(buffer);
-
-    if (!contentType) {
-      return null;
-    }
-
-    return { buffer, contentType };
-  } catch {
-    return null;
   }
+
+  console.warn(
+    `[refresh-kiwi] localise: failed to download ${redactedImageUrl(url)}: ${failures.join("; ")}`,
+  );
+
+  return null;
 }
 
 async function listSiteTextFiles(baseDir: string): Promise<string[]> {
