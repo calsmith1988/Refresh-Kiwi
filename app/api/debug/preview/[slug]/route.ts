@@ -7,6 +7,7 @@ import { getSitesRepoUrl } from "@/lib/cursor/config";
 import { isValidSlug } from "@/lib/jobs/slug";
 import { previewDirectory } from "@/lib/preview/paths";
 import { githubHeaders, parseGithubRepo } from "@/lib/preview/sync";
+import { listR2Keys } from "@/lib/storage/r2";
 
 export const runtime = "nodejs";
 
@@ -55,6 +56,16 @@ async function listGithubPreviewFiles(slug: string): Promise<string[]> {
     .map((item) => item.path.slice(prefix.length));
 }
 
+async function listR2PreviewFiles(slug: string): Promise<string[]> {
+  const prefix = `sites/${slug}/`;
+
+  try {
+    return (await listR2Keys(prefix)).map((key) => key.slice(prefix.length));
+  } catch {
+    return [];
+  }
+}
+
 export async function GET(request: Request, context: RouteContext) {
   const { slug } = await context.params;
 
@@ -73,6 +84,7 @@ export async function GET(request: Request, context: RouteContext) {
       exists: dirStat.isDirectory(),
       previewDir,
       files: dirStat.isDirectory() ? await listFiles(previewDir) : [],
+      r2Files: await listR2PreviewFiles(slug),
       githubFiles: await listGithubPreviewFiles(slug),
       request: {
         url: request.url,
@@ -87,6 +99,7 @@ export async function GET(request: Request, context: RouteContext) {
       exists: false,
       previewDir,
       files: [],
+      r2Files: await listR2PreviewFiles(slug),
       githubFiles: await listGithubPreviewFiles(slug),
       error: error instanceof Error ? error.message : "Unable to inspect preview",
       request: {

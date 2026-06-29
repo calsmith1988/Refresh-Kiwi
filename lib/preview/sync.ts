@@ -5,6 +5,7 @@ import { Agent } from "@cursor/sdk";
 
 import { getCursorApiKey, getSitesRepoUrl } from "@/lib/cursor/config";
 import { previewDirectory } from "@/lib/preview/paths";
+import { uploadSiteDirectoryToR2 } from "@/lib/storage/r2";
 
 const GITHUB_SYNC_ATTEMPTS = 8;
 const GITHUB_SYNC_DELAY_MS = 2_000;
@@ -91,6 +92,14 @@ async function syncFromAgentArtifacts(
   return false;
 }
 
+async function uploadSyncedPreview(slug: string, outputDir: string): Promise<void> {
+  try {
+    await uploadSiteDirectoryToR2(slug, outputDir);
+  } catch (error) {
+    console.error(`[refresh-kiwi] R2 sync failed for ${slug}:`, error);
+  }
+}
+
 export async function syncFromGithubMain(slug: string, outputDir: string): Promise<boolean> {
   const parsed = parseGithubRepo(getSitesRepoUrl());
 
@@ -169,6 +178,7 @@ export async function syncPreviewFromAgent(
   );
 
   if (syncedFromArtifacts) {
+    await uploadSyncedPreview(slug, outputDir);
     return;
   }
 
@@ -180,6 +190,7 @@ export async function syncPreviewFromAgent(
     const syncedFromGithub = await syncFromGithubMain(slug, outputDir);
 
     if (syncedFromGithub) {
+      await uploadSyncedPreview(slug, outputDir);
       return;
     }
 

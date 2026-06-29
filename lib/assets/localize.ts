@@ -6,6 +6,10 @@ import { optimizeImage } from "@/lib/assets/optimize";
 import { commitFilesToSitesRepo, type RepoFile } from "@/lib/github/commit";
 import { previewDirectory } from "@/lib/preview/paths";
 import { syncFromGithubMain } from "@/lib/preview/sync";
+import {
+  downloadSiteDirectoryFromR2,
+  uploadSiteDirectoryToR2,
+} from "@/lib/storage/r2";
 
 /**
  * Localise-on-claim: downloads images that generated sites hotlink from the
@@ -13,9 +17,8 @@ import { syncFromGithubMain } from "@/lib/preview/sync";
  * references, and writes assets/manifest.json (the basis for the upcoming
  * image panel). Safe to run repeatedly — already-local sites are a no-op.
  *
- * Asset storage currently writes to the preview directory on disk and the
- * sites repo on GitHub. If we move binaries to R2/S3 later, only saveAsset()
- * and localAssetUrl() need to change.
+ * Asset storage writes to the preview directory on disk and, when configured,
+ * R2. GitHub commits are kept for now so cloud agents still see current assets.
  */
 
 const MAX_IMAGES_PER_SITE = 60;
@@ -217,7 +220,17 @@ async function ensureLocalSiteFiles(slug: string): Promise<string | null> {
       return baseDir;
     }
   } catch {
-    // Fall through to GitHub sync below.
+    // Fall through to R2/GitHub sync below.
+  }
+
+  try {
+    const syncedFromR2 = await downloadSiteDirectoryFromR2(slug, baseDir);
+
+    if (syncedFromR2) {
+      return baseDir;
+    }
+  } catch (error) {
+    console.error(`[refresh-kiwi] failed to restore ${slug} from R2:`, error);
   }
 
   try {
@@ -236,6 +249,14 @@ async function saveAsset(
   const assetsDir = path.join(baseDir, "assets");
   await mkdir(assetsDir, { recursive: true });
   await writeFile(path.join(assetsDir, fileName), buffer);
+}
+
+async function uploadSiteToR2(slug: string, baseDir: string): Promise<void> {
+  try {
+    await uploadSiteDirectoryToR2(slug, baseDir);
+  } catch (error) {
+    console.error(`[refresh-kiwi] failed to upload ${slug} to R2:`, error);
+  }
 }
 
 async function readExistingManifest(
@@ -389,6 +410,7 @@ export async function appendLocalizedImages(params: {
   manifest.localizedAt = now;
   const manifestJson = JSON.stringify(manifest, null, 2);
   await saveAsset(baseDir, "manifest.json", Buffer.from(manifestJson));
+  await uploadSiteToR2(slug, baseDir);
   repoFiles.push({
     path: `sites/${slug}/assets/manifest.json`,
     content: Buffer.from(manifestJson),
@@ -447,6 +469,7 @@ async function persistImageChange(params: {
 
   const manifestJson = JSON.stringify(manifest, null, 2);
   await saveAsset(baseDir, "manifest.json", Buffer.from(manifestJson));
+  await uploadSiteToR2(slug, baseDir);
 
   try {
     const repoFiles: RepoFile[] = [
@@ -751,6 +774,7 @@ export async function localizeWebsiteImages(
 
     const manifestJson = JSON.stringify(manifest, null, 2);
     await saveAsset(baseDir, "manifest.json", Buffer.from(manifestJson));
+    await uploadSiteToR2(slug, baseDir);
 
     result.localized = localized.length;
 

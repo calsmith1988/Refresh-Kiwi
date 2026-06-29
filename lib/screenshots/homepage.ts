@@ -10,6 +10,7 @@ import {
   HOMEPAGE_SCREENSHOT_FILE,
   HOMEPAGE_SCREENSHOT_PATH,
 } from "@/lib/screenshots/paths";
+import { putSiteFile } from "@/lib/storage/r2";
 
 const VIEWPORT = { width: 1440, height: 1100 };
 const CAPTURE_TIMEOUT_MS = 45_000;
@@ -57,6 +58,17 @@ async function saveHomepageScreenshot(slug: string, buffer: Buffer) {
 
   await mkdir(assetsDir, { recursive: true });
   await writeFile(destination, buffer);
+
+  try {
+    await putSiteFile({
+      slug,
+      file: HOMEPAGE_SCREENSHOT_PATH,
+      body: buffer,
+      contentType: "image/jpeg",
+    });
+  } catch (error) {
+    console.error(`[refresh-kiwi] screenshot: failed to upload ${slug} to R2:`, error);
+  }
 
   const repoFiles: RepoFile[] = [
     {

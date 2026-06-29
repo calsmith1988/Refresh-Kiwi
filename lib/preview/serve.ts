@@ -4,6 +4,7 @@ import path from "node:path";
 import { getSitesRepoUrl } from "@/lib/cursor/config";
 import { previewDirectory } from "@/lib/preview/paths";
 import { githubHeaders, parseGithubRepo } from "@/lib/preview/sync";
+import { getR2Object } from "@/lib/storage/r2";
 
 const MIME_TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -157,17 +158,55 @@ async function readGithubPreviewFile(slug: string, segments: string[]) {
   return null;
 }
 
+async function readR2PreviewFile(slug: string, segments: string[]) {
+  const relativePath = segments.length > 0 ? segments.join("/") : "index.html";
+  const candidates = [
+    relativePath,
+    `dist/${relativePath}`,
+    `${relativePath}/index.html`,
+    `dist/${relativePath}/index.html`,
+    `${relativePath}.html`,
+    `dist/${relativePath}.html`,
+  ];
+
+  if (segments.length === 0) {
+    candidates.unshift("index.html", "dist/index.html");
+  }
+
+  for (const candidate of candidates) {
+    const object = await getR2Object(`sites/${slug}/${candidate}`);
+
+    if (object) {
+      return {
+        body: object.body,
+        contentType:
+          object.contentType === "application/octet-stream"
+            ? contentType(candidate)
+            : object.contentType,
+      };
+    }
+  }
+
+  return null;
+}
+
 export async function readPreviewFile(slug: string, segments: string[]) {
   const filePath = await resolveFile(slug, segments);
 
-  if (!filePath) {
-    return readGithubPreviewFile(slug, segments);
+  if (filePath) {
+    const body = await readFile(filePath.path);
+
+    return {
+      body,
+      contentType: contentType(filePath.contentTypePath),
+    };
   }
 
-  const body = await readFile(filePath.path);
+  const r2File = await readR2PreviewFile(slug, segments);
 
-  return {
-    body,
-    contentType: contentType(filePath.contentTypePath),
-  };
+  if (r2File) {
+    return r2File;
+  }
+
+  return readGithubPreviewFile(slug, segments);
 }

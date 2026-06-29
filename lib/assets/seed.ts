@@ -5,6 +5,7 @@ import path from "node:path";
 import { commitFilesToSitesRepo, type RepoFile } from "@/lib/github/commit";
 import { previewDirectory } from "@/lib/preview/paths";
 import type { ImageManifest, LocalizedImage } from "@/lib/assets/localize";
+import { uploadSiteDirectoryToR2 } from "@/lib/storage/r2";
 
 const IMAGE_EXTENSIONS: Record<string, string> = {
   "image/png": ".png",
@@ -94,6 +95,12 @@ export async function seedWebsiteAssets(
     path: `sites/${slug}/assets/manifest.json`,
     content: Buffer.from(manifestJson),
   });
+
+  try {
+    await uploadSiteDirectoryToR2(slug, baseDir);
+  } catch (error) {
+    console.error(`[refresh-kiwi] failed to upload seed assets for ${slug} to R2:`, error);
+  }
 
   try {
     await commitFilesToSitesRepo(repoFiles, `Seed uploaded assets for ${slug}`);
