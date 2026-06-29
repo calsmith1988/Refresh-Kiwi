@@ -428,6 +428,57 @@ export async function appendLocalizedImages(params: {
   return added;
 }
 
+export async function updateLocalizedImageRole(params: {
+  slug: string;
+  imageId: string;
+  role: "logo" | "image";
+}): Promise<LocalizedImage> {
+  const baseDir = await ensureLocalSiteFiles(params.slug);
+
+  if (!baseDir) {
+    throw new Error("Website files not found");
+  }
+
+  const manifest = await readExistingManifest(baseDir);
+  const image = manifest?.images.find((entry) => entry.id === params.imageId);
+
+  if (!manifest || !image) {
+    throw new Error("Image not found in this website");
+  }
+
+  const updated: LocalizedImage = {
+    ...image,
+    role: params.role,
+  };
+
+  manifest.images = manifest.images.map((entry) =>
+    entry.id === updated.id ? updated : entry,
+  );
+
+  const manifestJson = JSON.stringify(manifest, null, 2);
+  await saveAsset(baseDir, "manifest.json", Buffer.from(manifestJson));
+  await uploadSiteToR2(params.slug, baseDir);
+
+  try {
+    await commitFilesToSitesRepo(
+      [
+        {
+          path: `sites/${params.slug}/assets/manifest.json`,
+          content: Buffer.from(manifestJson),
+        },
+      ],
+      `Mark image ${params.imageId} as ${params.role} for ${params.slug}`,
+    );
+  } catch (error) {
+    console.error(
+      `[refresh-kiwi] image role: failed to commit ${params.slug} to sites repo:`,
+      error,
+    );
+  }
+
+  return updated;
+}
+
 /** Rewrites every HTML/CSS reference from one asset URL to another. Returns
  * the rewritten file contents keyed by absolute path. */
 async function rewriteAssetReferences(

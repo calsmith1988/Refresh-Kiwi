@@ -86,7 +86,7 @@ export async function seedWebsiteAssets(
     version: 1,
     slug,
     localizedAt: now,
-    images: assets.map(({ role: _role, ...asset }) => asset),
+    images: assets,
   };
   const manifestJson = JSON.stringify(manifest, null, 2);
 
