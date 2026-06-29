@@ -88,19 +88,35 @@ function localAssetUrl(slug: string, fileName: string): string {
   return `/preview/${slug}/assets/${fileName}`;
 }
 
-function isLocalizableUrl(url: string): boolean {
-  if (!/^https:\/\//i.test(url)) {
-    return false;
+function normalizeCandidateUrl(rawUrl: string): string | null {
+  const trimmed = rawUrl.trim();
+
+  if (trimmed.startsWith("//")) {
+    return `https:${trimmed}`;
   }
 
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+
+  return null;
+}
+
+function isLocalizableUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
+
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+      return false;
+    }
 
     // Never re-download things we already host.
     if (
       parsed.hostname === "refresh.kiwi" ||
       parsed.hostname.endsWith(".refresh.kiwi") ||
-      parsed.hostname === "localhost"
+      parsed.hostname === "localhost" ||
+      parsed.hostname === "127.0.0.1" ||
+      parsed.hostname === "::1"
     ) {
       return false;
     }
@@ -120,17 +136,21 @@ function extractCandidateUrls(content: string): Set<string> {
 
   // src / poster attributes
   for (const match of content.matchAll(
-    /(?:src|poster)\s*=\s*["'](https:\/\/[^"']+)["']/gi,
+    /(?:src|poster)\s*=\s*["']((?:https?:)?\/\/[^"']+)["']/gi,
   )) {
-    urls.add(match[1]);
+    const url = normalizeCandidateUrl(match[1]);
+
+    if (url) {
+      urls.add(url);
+    }
   }
 
   // srcset attributes — comma-separated "url descriptor" pairs
   for (const match of content.matchAll(/srcset\s*=\s*["']([^"']+)["']/gi)) {
     for (const entry of match[1].split(",")) {
-      const url = entry.trim().split(/\s+/)[0];
+      const url = normalizeCandidateUrl(entry.trim().split(/\s+/)[0] ?? "");
 
-      if (url?.startsWith("https://")) {
+      if (url) {
         urls.add(url);
       }
     }
@@ -138,12 +158,45 @@ function extractCandidateUrls(content: string): Set<string> {
 
   // CSS url(...) — covers stylesheets and inline style attributes
   for (const match of content.matchAll(
-    /url\(\s*["']?(https:\/\/[^"')\s]+)["']?\s*\)/gi,
+    /url\(\s*["']?((?:https?:)?\/\/[^"')\s]+)["']?\s*\)/gi,
   )) {
-    urls.add(match[1]);
+    const url = normalizeCandidateUrl(match[1]);
+
+    if (url) {
+      urls.add(url);
+    }
   }
 
   return urls;
+}
+
+function inferImageContentType(buffer: Buffer): string | null {
+  if (buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
+    return "image/png";
+  }
+
+  if (buffer.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff]))) {
+    return "image/jpeg";
+  }
+
+  if (buffer.subarray(0, 4).toString("ascii") === "GIF8") {
+    return "image/gif";
+  }
+
+  if (
+    buffer.subarray(0, 4).toString("ascii") === "RIFF" &&
+    buffer.subarray(8, 12).toString("ascii") === "WEBP"
+  ) {
+    return "image/webp";
+  }
+
+  const start = buffer.subarray(0, 512).toString("utf8").trimStart().toLowerCase();
+
+  if (start.startsWith("<svg") || start.startsWith("<?xml")) {
+    return "image/svg+xml";
+  }
+
+  return null;
 }
 
 function assetFileName(originalUrl: string, contentType: string): string {
@@ -178,19 +231,22 @@ async function downloadImage(
       return null;
     }
 
-    const contentType = response.headers.get("content-type") ?? "";
-
-    if (!contentType.startsWith("image/")) {
-      return null;
-    }
-
+    const responseContentType = response.headers.get("content-type") ?? "";
     const buffer = Buffer.from(await response.arrayBuffer());
 
     if (buffer.byteLength === 0 || buffer.byteLength > MAX_IMAGE_BYTES) {
       return null;
     }
 
-    return { buffer, contentType: contentType.split(";")[0].trim() };
+    const contentType = responseContentType.startsWith("image/")
+      ? responseContentType.split(";")[0].trim()
+      : inferImageContentType(buffer);
+
+    if (!contentType) {
+      return null;
+    }
+
+    return { buffer, contentType };
   } catch {
     return null;
   }
