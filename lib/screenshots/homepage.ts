@@ -77,7 +77,14 @@ async function saveHomepageScreenshot(slug: string, buffer: Buffer) {
     },
   ];
 
-  await commitFilesToSitesRepo(repoFiles, `Capture homepage screenshot for ${slug}`);
+  try {
+    await commitFilesToSitesRepo(repoFiles, `Capture homepage screenshot for ${slug}`);
+  } catch (error) {
+    console.error(
+      `[refresh-kiwi] screenshot: failed to commit ${slug} to sites repo:`,
+      error,
+    );
+  }
 }
 
 export async function captureAndSaveHomepageScreenshot(

@@ -14,6 +14,7 @@ import { draftLegalPages, type LegalAnswers } from "@/lib/legal/draft";
 import { discoverLegalPagesFromSource } from "@/lib/legal/source";
 import { previewDirectory } from "@/lib/preview/paths";
 import { syncPreviewFromAgent } from "@/lib/preview/sync";
+import { tryCaptureHomepageScreenshot } from "@/lib/screenshots/homepage";
 import { listPagesForJob, upsertPagesForJob } from "@/lib/websites/service";
 
 const { jobs, websites } = schema;
@@ -204,6 +205,10 @@ export async function processAdditionalPages(
       .update(websites)
       .set({ updatedAt: new Date() })
       .where(eq(websites.id, website.id));
+
+    if (generationType === "business") {
+      await tryCaptureHomepageScreenshot(website.slug);
+    }
   } catch (error) {
     const message = isCursorStartupError(error)
       ? `Cursor agent failed to start: ${error.message}`

@@ -1,18 +1,13 @@
 import { NextResponse } from "next/server";
 
 import { readPreviewFile } from "@/lib/preview/serve";
+import {
+  canRewritePreviewContent,
+  rewriteLocalPreviewOriginsText,
+} from "@/lib/preview/rewrite";
 import { getWebsiteAccessByCustomDomain } from "@/lib/websites/service";
 
 export const runtime = "nodejs";
-
-const LOCAL_PREVIEW_ORIGIN_PATTERN =
-  /(?:https?:)?\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?/gi;
-const REWRITABLE_CONTENT_TYPES = [
-  "text/html",
-  "text/css",
-  "text/javascript",
-  "application/json",
-];
 
 interface RouteContext {
   params: Promise<{ path?: string[] }>;
@@ -22,11 +17,7 @@ function rewriteLocalPreviewOrigins(
   body: Buffer,
   contentType: string,
 ): Blob | string {
-  const canRewrite = REWRITABLE_CONTENT_TYPES.some((rewritableType) =>
-    contentType.startsWith(rewritableType),
-  );
-
-  if (!canRewrite) {
+  if (!canRewritePreviewContent(contentType)) {
     const arrayBuffer = body.buffer.slice(
       body.byteOffset,
       body.byteOffset + body.byteLength,
@@ -35,7 +26,7 @@ function rewriteLocalPreviewOrigins(
     return new Blob([arrayBuffer]);
   }
 
-  return body.toString("utf8").replace(LOCAL_PREVIEW_ORIGIN_PATTERN, "");
+  return rewriteLocalPreviewOriginsText(body.toString("utf8"));
 }
 
 export async function GET(request: Request, context: RouteContext) {

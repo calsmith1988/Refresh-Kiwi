@@ -89,6 +89,7 @@ Avoid:
 - A generic Tailwind/AI landing page look.
 - Recreating the old site structure section-for-section.
 - Broken image references — every image URL must come from the source site.
+- Never use localhost, 127.0.0.1, or port-based preview origins in links, scripts, forms, canonical tags, Open Graph URLs, or base tags. Use root-relative paths such as /preview/${slug}/ and /preview/${slug}/page-path.
 
 Do not build secondary pages in this phase. Do not spend time on a multi-page plan. The first preview is artifact-first, so the generated files are the deliverable even if no git commit is created.`;
 }
@@ -157,6 +158,7 @@ Avoid:
 - A generic Tailwind/AI landing page look.
 - Fake factual claims.
 - Broken image references.
+- Never use localhost, 127.0.0.1, or port-based preview origins in links, scripts, forms, canonical tags, Open Graph URLs, or base tags. Use root-relative paths such as /preview/${slug}/ and /preview/${slug}/page-path.
 
 Do not build secondary pages in this phase. The first preview is artifact-first, so the generated files are the deliverable even if no git commit is created.`;
 }
@@ -198,6 +200,7 @@ The homepage already exists. Your job is to expand it into a small multi-page we
 - These should be real pages, not lock placeholders.
 - Keep factual claims grounded in the brief and existing homepage. Do not invent addresses, phone numbers, awards, testimonials, or compliance claims.
 - Every generated page must load shared CSS and assets correctly from preview subpaths. Prefer root-relative preview paths like /preview/${slug}/styles.css, /preview/${slug}/script.js, /preview/${slug}/assets/file.png, and /preview/${slug}/page-path for navigation links.
+- Never use localhost, 127.0.0.1, or port-based preview origins anywhere in links, scripts, forms, canonical tags, Open Graph URLs, or base tags.
 - Avoid rebuilding the homepage from scratch unless a small nav/footer update is needed.
 
 Stop when the generated pages and updated site.json are complete.`;
@@ -235,6 +238,7 @@ The homepage already exists. Your job is to crawl the source website for importa
 - Avoid broken links and broken asset paths.
 - Every generated page must load the shared CSS and any local assets correctly from preview subpaths. Prefer root-relative preview paths like /preview/${slug}/styles.css, /preview/${slug}/script.js, /preview/${slug}/assets/file.png, and /preview/${slug}/page-path for navigation links. Hotlinked source images are absolute https URLs and need no path handling.
 - Do not use href="styles.css" or src="assets/..." on additional pages, because nested preview paths will resolve those relative to the page path and break styling.
+- Never use localhost, 127.0.0.1, or port-based preview origins anywhere in links, scripts, forms, canonical tags, Open Graph URLs, or base tags.
 - Avoid rebuilding the homepage from scratch unless a small nav/footer update is needed.
 
 Stop when the generated pages and updated site.json are complete.`;
@@ -281,6 +285,7 @@ ${legalDraft}
 - Keep the copy clear, structured, and readable with headings and short sections.
 - Do not claim legal compliance or that the pages are lawyer-approved.
 - Every generated page must load shared CSS and assets correctly from preview subpaths. Prefer root-relative preview paths like /preview/${slug}/styles.css and /preview/${slug}/page-path.
+- Never use localhost, 127.0.0.1, or port-based preview origins anywhere in links, scripts, forms, canonical tags, Open Graph URLs, or base tags.
 - Avoid rebuilding the homepage from scratch unless a small footer/navigation update is needed.
 - Prioritise finishing over exploration. Use the drafted legal copy as the content source.
 
@@ -323,5 +328,6 @@ USER REQUEST: ${editPrompt}
 
 - Make the smallest high-quality change that satisfies the request.
 - Avoid breaking existing sections, forms, navigation, or mobile layout.
+- Never introduce localhost, 127.0.0.1, or port-based preview origins anywhere in links, scripts, forms, canonical tags, Open Graph URLs, or base tags. Use root-relative paths such as /preview/${slug}/ and /preview/${slug}/page-path.
 - If the request is ambiguous, make the most reasonable interpretation and keep the result polished.`;
 }

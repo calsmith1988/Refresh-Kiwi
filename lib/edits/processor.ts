@@ -4,6 +4,7 @@ import { localizeWebsiteImages } from "@/lib/assets/localize";
 import { isCursorStartupError, runEditPhase } from "@/lib/cursor/agent";
 import { getDb, schema } from "@/lib/db";
 import { syncPreviewFromAgent } from "@/lib/preview/sync";
+import { tryCaptureHomepageScreenshot } from "@/lib/screenshots/homepage";
 
 const { editRequests, websites } = schema;
 
@@ -93,6 +94,8 @@ export async function processEditRequest(editRequestId: string): Promise<void> {
       .update(websites)
       .set({ updatedAt: new Date() })
       .where(eq(websites.id, editRequest.website.id));
+
+    await tryCaptureHomepageScreenshot(editRequest.website.slug);
   } catch (error) {
     const message = isCursorStartupError(error)
       ? `Cursor edit agent failed to start: ${error.message}`
