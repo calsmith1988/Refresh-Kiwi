@@ -34,6 +34,7 @@ import {
   sendVerificationEmail,
   sendWelcomeEmail,
 } from "@/lib/email/service";
+import { deleteSiteDirectoryFromR2 } from "@/lib/storage/r2";
 
 const { emailChangeTokens, users, websites } = schema;
 
@@ -445,6 +446,15 @@ export async function deleteAccount(params: {
       "Cancel your subscription from billing before deleting your account",
     );
   }
+
+  const ownedWebsites = await db
+    .select({ slug: websites.slug })
+    .from(websites)
+    .where(eq(websites.userId, user.id));
+
+  await Promise.all(
+    ownedWebsites.map((website) => deleteSiteDirectoryFromR2(website.slug)),
+  );
 
   await db
     .update(websites)

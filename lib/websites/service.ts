@@ -1,6 +1,7 @@
 import { and, desc, eq, ne } from "drizzle-orm";
 
 import { getDb, schema } from "@/lib/db";
+import { deleteSiteDirectoryFromR2 } from "@/lib/storage/r2";
 
 const { editRequests, jobs, users, websites } = schema;
 const { jobPages } = schema;
@@ -410,6 +411,8 @@ export async function archiveOwnedWebsite(params: {
   if (params.confirmation.trim() !== expectedConfirmation) {
     throw new Error(`Type "${expectedConfirmation}" to delete this website.`);
   }
+
+  await deleteSiteDirectoryFromR2(website.slug);
 
   const [updated] = await getDb()
     .update(websites)

@@ -92,7 +92,7 @@ function signingKey(secretAccessKey: string, date: string): Buffer {
 }
 
 function signedRequest(params: {
-  method: "GET" | "HEAD" | "PUT";
+  method: "DELETE" | "GET" | "HEAD" | "PUT";
   key?: string;
   query?: URLSearchParams;
   body?: Buffer;
@@ -226,6 +226,25 @@ export async function getR2Object(key: string): Promise<R2Object | null> {
   };
 }
 
+export async function deleteR2Object(key: string): Promise<boolean> {
+  const request = signedRequest({ method: "DELETE", key });
+
+  if (!request) {
+    return false;
+  }
+
+  const response = await fetch(request);
+
+  if (!response.ok && response.status !== 404) {
+    const body = await response.text().catch(() => "");
+    throw new Error(
+      `R2 DELETE ${key} failed (${response.status}): ${body.slice(0, 300)}`,
+    );
+  }
+
+  return true;
+}
+
 export async function listR2Keys(prefix: string): Promise<string[]> {
   const query = new URLSearchParams({
     "list-type": "2",
@@ -338,4 +357,15 @@ export async function downloadSiteDirectoryFromR2(
   }
 
   return true;
+}
+
+export async function deleteSiteDirectoryFromR2(slug: string): Promise<void> {
+  if (!isR2Configured()) {
+    return;
+  }
+
+  const prefix = `sites/${slug}/`;
+  const keys = await listR2Keys(prefix);
+
+  await Promise.all(keys.map((key) => deleteR2Object(key)));
 }
