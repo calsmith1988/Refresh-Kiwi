@@ -126,6 +126,10 @@ function signedRequest(params: {
     "x-amz-date": amzDate,
   };
 
+  if (params.body) {
+    headers["content-length"] = String(params.body.byteLength);
+  }
+
   if (params.contentType) {
     headers["content-type"] = params.contentType;
   }
