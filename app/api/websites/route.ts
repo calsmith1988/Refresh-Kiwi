@@ -16,7 +16,7 @@ import { eq } from "drizzle-orm";
 
 export const runtime = "nodejs";
 
-const { jobs } = schema;
+const { jobs, websites: websiteRecords } = schema;
 const ACTIVE_REFRESH_STATUSES = new Set<JobStatus>([
   "queued",
   "analyzing",
@@ -31,11 +31,15 @@ export async function GET() {
     return NextResponse.json({ error: "Sign in to view websites" }, { status: 401 });
   }
 
-  const [websites, latestEditRequests] = await Promise.all([
+  const [websites, latestEditRequests, userWebsiteJobs] = await Promise.all([
     listOwnedWebsites(user.id),
     getLatestEditRequestsForUser(user.id),
+    getDb()
+      .select({ jobId: websiteRecords.jobId })
+      .from(websiteRecords)
+      .where(eq(websiteRecords.userId, user.id)),
   ]);
-  const websiteJobIds = new Set(websites.map((website) => website.jobId));
+  const websiteJobIds = new Set(userWebsiteJobs.map((website) => website.jobId));
 
   const [pagesEntries, jobEntries, userJobs] = await Promise.all([
     Promise.all(
