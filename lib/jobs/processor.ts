@@ -10,6 +10,7 @@ import {
 import { getDb, schema } from "@/lib/db";
 import { sendOnce } from "@/lib/email/events";
 import { sendPreviewReadyEmail } from "@/lib/email/service";
+import { logMemoryUsage } from "@/lib/observability/memory";
 import { syncPreviewFromAgent } from "@/lib/preview/sync";
 import { tryCaptureHomepageScreenshot } from "@/lib/screenshots/homepage";
 import { homepageScreenshotPath } from "@/lib/screenshots/paths";
@@ -64,12 +65,21 @@ export async function processRefreshJob(jobId: string): Promise<void> {
 
   try {
     const jobStartedAt = Date.now();
+    const memoryContext = {
+      jobId,
+      slug: job.slug,
+      mode: "refresh",
+      userOwned: Boolean(job.userId),
+    };
+
+    logMemoryUsage("refresh:start", memoryContext);
     await updateJob(jobId, { status: "analyzing" });
     await updateJob(jobId, { status: "building_homepage" });
 
     console.info(`[refresh-kiwi] job ${jobId} starting homepage phase slug=${job.slug}`);
 
     const homepageStartedAt = Date.now();
+    logMemoryUsage("refresh:before-homepage-agent", memoryContext);
     const homepage = await runHomepagePhase(
       {
         sourceUrl: job.sourceUrl ?? "",
@@ -82,6 +92,7 @@ export async function processRefreshJob(jobId: string): Promise<void> {
         });
       },
     );
+    logMemoryUsage("refresh:after-homepage-agent", memoryContext);
 
     console.info(
       `[refresh-kiwi] job ${jobId} homepage phase finished in ${elapsedSeconds(homepageStartedAt)}s slug=${job.slug}`,
@@ -93,7 +104,9 @@ export async function processRefreshJob(jobId: string): Promise<void> {
     }
 
     const syncStartedAt = Date.now();
+    logMemoryUsage("refresh:before-preview-sync", memoryContext);
     await syncPreviewFromAgent(homepage.agentId, job.slug);
+    logMemoryUsage("refresh:after-preview-sync", memoryContext);
 
     console.info(
       `[refresh-kiwi] job ${jobId} preview sync finished in ${elapsedSeconds(syncStartedAt)}s slug=${job.slug}`,
@@ -108,8 +121,24 @@ export async function processRefreshJob(jobId: string): Promise<void> {
       status: "homepage_ready",
     });
 
+    logMemoryUsage("refresh:before-website-create", memoryContext);
     const website = await createWebsiteFromJob(jobId);
+    logMemoryUsage("refresh:after-website-create", {
+      ...memoryContext,
+      websiteId: website.id,
+      userOwned: Boolean(website.userId),
+    });
+    logMemoryUsage("refresh:before-screenshot", {
+      ...memoryContext,
+      websiteId: website.id,
+      userOwned: Boolean(website.userId),
+    });
     await tryCaptureHomepageScreenshot(job.slug);
+    logMemoryUsage("refresh:after-screenshot", {
+      ...memoryContext,
+      websiteId: website.id,
+      userOwned: Boolean(website.userId),
+    });
 
     console.info(
       `[refresh-kiwi] job ${jobId} homepage ready in ${elapsedSeconds(jobStartedAt)}s slug=${job.slug}`,
@@ -119,7 +148,15 @@ export async function processRefreshJob(jobId: string): Promise<void> {
     // bring hotlinked images in-house now. Anonymous previews are localised
     // later, when the visitor signs up and claims the site.
     if (website.userId) {
+      logMemoryUsage("refresh:before-image-localize", {
+        ...memoryContext,
+        websiteId: website.id,
+      });
       await localizeWebsiteImages(job.slug);
+      logMemoryUsage("refresh:after-image-localize", {
+        ...memoryContext,
+        websiteId: website.id,
+      });
       const [user] = await db
         .select({ email: users.email })
         .from(users)
@@ -151,6 +188,7 @@ export async function processRefreshJob(jobId: string): Promise<void> {
         : "Unknown error";
 
     console.error(`[refresh-kiwi] job ${jobId} failed: ${technicalMessage}`);
+    logMemoryUsage("refresh:failed", { jobId });
 
     // Users only ever see this friendly message; the technical detail above
     // stays in the server logs.
@@ -193,9 +231,25 @@ export async function processFreshJob(
 
   try {
     const jobStartedAt = Date.now();
+    const memoryContext = {
+      jobId,
+      slug: job.slug,
+      mode: "fresh",
+      userOwned: Boolean(job.userId),
+    };
+
+    logMemoryUsage("fresh:start", memoryContext);
     await updateJob(jobId, { status: "analyzing" });
 
+    logMemoryUsage("fresh:before-seed-assets", {
+      ...memoryContext,
+      seedAssetInputs: seedAssetInputs.length,
+    });
     const seedAssets = await seedWebsiteAssets(job.slug, seedAssetInputs);
+    logMemoryUsage("fresh:after-seed-assets", {
+      ...memoryContext,
+      seedAssets: seedAssets.length,
+    });
 
     if (!(await isJobStillActive(jobId))) {
       console.info(`[refresh-kiwi] fresh job ${jobId} stopped before homepage`);
@@ -207,6 +261,7 @@ export async function processFreshJob(
     console.info(`[refresh-kiwi] fresh job ${jobId} starting homepage phase slug=${job.slug}`);
 
     const homepageStartedAt = Date.now();
+    logMemoryUsage("fresh:before-homepage-agent", memoryContext);
     const homepage = await runFreshHomepagePhase(
       {
         creationPrompt: job.creationPrompt ?? "",
@@ -226,6 +281,7 @@ export async function processFreshJob(
         });
       },
     );
+    logMemoryUsage("fresh:after-homepage-agent", memoryContext);
 
     console.info(
       `[refresh-kiwi] fresh job ${jobId} homepage phase finished in ${elapsedSeconds(homepageStartedAt)}s slug=${job.slug}`,
@@ -237,7 +293,9 @@ export async function processFreshJob(
     }
 
     const syncStartedAt = Date.now();
+    logMemoryUsage("fresh:before-preview-sync", memoryContext);
     await syncPreviewFromAgent(homepage.agentId, job.slug);
+    logMemoryUsage("fresh:after-preview-sync", memoryContext);
 
     console.info(
       `[refresh-kiwi] fresh job ${jobId} preview sync finished in ${elapsedSeconds(syncStartedAt)}s slug=${job.slug}`,
@@ -252,15 +310,39 @@ export async function processFreshJob(
       status: "homepage_ready",
     });
 
+    logMemoryUsage("fresh:before-website-create", memoryContext);
     const website = await createWebsiteFromJob(jobId);
+    logMemoryUsage("fresh:after-website-create", {
+      ...memoryContext,
+      websiteId: website.id,
+      userOwned: Boolean(website.userId),
+    });
+    logMemoryUsage("fresh:before-screenshot", {
+      ...memoryContext,
+      websiteId: website.id,
+      userOwned: Boolean(website.userId),
+    });
     await tryCaptureHomepageScreenshot(job.slug);
+    logMemoryUsage("fresh:after-screenshot", {
+      ...memoryContext,
+      websiteId: website.id,
+      userOwned: Boolean(website.userId),
+    });
 
     console.info(
       `[refresh-kiwi] fresh job ${jobId} homepage ready in ${elapsedSeconds(jobStartedAt)}s slug=${job.slug}`,
     );
 
     if (website.userId) {
+      logMemoryUsage("fresh:before-image-localize", {
+        ...memoryContext,
+        websiteId: website.id,
+      });
       await localizeWebsiteImages(job.slug);
+      logMemoryUsage("fresh:after-image-localize", {
+        ...memoryContext,
+        websiteId: website.id,
+      });
       const [user] = await db
         .select({ email: users.email })
         .from(users)
@@ -292,6 +374,7 @@ export async function processFreshJob(
         : "Unknown error";
 
     console.error(`[refresh-kiwi] fresh job ${jobId} failed: ${technicalMessage}`);
+    logMemoryUsage("fresh:failed", { jobId });
 
     await updateJob(jobId, {
       status: "failed" as JobStatus,

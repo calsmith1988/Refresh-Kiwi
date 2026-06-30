@@ -4,6 +4,7 @@ import path from "node:path";
 
 import { optimizeImage } from "@/lib/assets/optimize";
 import { commitFilesToSitesRepo, type RepoFile } from "@/lib/github/commit";
+import { logMemoryUsage } from "@/lib/observability/memory";
 import { previewDirectory } from "@/lib/preview/paths";
 import { syncFromGithubMain } from "@/lib/preview/sync";
 import {
@@ -818,7 +819,9 @@ export async function localizeWebsiteImages(
   const result: LocalizeResult = { slug, localized: 0, failed: 0, skipped: false };
 
   try {
+    logMemoryUsage("image-localize:start", { slug });
     const baseDir = await ensureLocalSiteFiles(slug);
+    logMemoryUsage("image-localize:after-ensure-files", { slug });
 
     if (!baseDir) {
       console.warn(`[refresh-kiwi] localise: no site files found for ${slug}`);
@@ -827,6 +830,10 @@ export async function localizeWebsiteImages(
     }
 
     const filePaths = await listSiteTextFiles(baseDir);
+    logMemoryUsage("image-localize:text-files-listed", {
+      slug,
+      files: filePaths.length,
+    });
 
     if (filePaths.length === 0) {
       result.skipped = true;
@@ -853,6 +860,11 @@ export async function localizeWebsiteImages(
     }
 
     const urls = [...candidateUrls].slice(0, MAX_IMAGES_PER_SITE);
+    logMemoryUsage("image-localize:candidates-collected", {
+      slug,
+      candidates: candidateUrls.size,
+      capped: urls.length,
+    });
     const existingManifest = await readExistingManifest(baseDir);
     const previousImages = new Map(
       (existingManifest?.images ?? []).map((image) => [image.originalUrl, image]),
@@ -875,17 +887,33 @@ export async function localizeWebsiteImages(
             return;
           }
 
+          logMemoryUsage("image-localize:before-download", { slug });
           const downloaded = await downloadImage(url);
 
           if (!downloaded) {
             result.failed += 1;
             continue;
           }
+          logMemoryUsage("image-localize:after-download", {
+            slug,
+            bytes: downloaded.buffer.byteLength,
+            contentType: downloaded.contentType,
+          });
 
+          logMemoryUsage("image-localize:before-optimize", {
+            slug,
+            bytes: downloaded.buffer.byteLength,
+            contentType: downloaded.contentType,
+          });
           const optimized = await optimizeImage(
             downloaded.buffer,
             downloaded.contentType,
           );
+          logMemoryUsage("image-localize:after-optimize", {
+            slug,
+            bytes: optimized.buffer.byteLength,
+            contentType: optimized.contentType,
+          });
           const fileName = assetFileName(url, optimized.contentType);
           await saveAsset(baseDir, fileName, optimized.buffer);
 
@@ -945,7 +973,17 @@ export async function localizeWebsiteImages(
 
     const manifestJson = JSON.stringify(manifest, null, 2);
     await saveAsset(baseDir, "manifest.json", Buffer.from(manifestJson));
+    logMemoryUsage("image-localize:before-r2-upload", {
+      slug,
+      localized: localized.length,
+      failed: result.failed,
+    });
     await uploadSiteToR2(slug, baseDir);
+    logMemoryUsage("image-localize:after-r2-upload", {
+      slug,
+      localized: localized.length,
+      failed: result.failed,
+    });
 
     result.localized = localized.length;
 
@@ -956,6 +994,10 @@ export async function localizeWebsiteImages(
     // Push the localised site to the sites repo so future agent runs (edits,
     // extra pages) build on local assets instead of resurrecting hotlinks.
     try {
+      logMemoryUsage("image-localize:before-repo-files", {
+        slug,
+        localized: localized.length,
+      });
       const repoFiles: RepoFile[] = [];
 
       for (const [filePath, content] of fileContents) {
@@ -976,6 +1018,10 @@ export async function localizeWebsiteImages(
         path: `sites/${slug}/assets/manifest.json`,
         content: Buffer.from(manifestJson),
       });
+      logMemoryUsage("image-localize:after-repo-files", {
+        slug,
+        files: repoFiles.length,
+      });
 
       const commitSha = await commitFilesToSitesRepo(
         repoFiles,
@@ -985,6 +1031,10 @@ export async function localizeWebsiteImages(
       console.info(
         `[refresh-kiwi] localise: ${slug} committed to sites repo (${commitSha.slice(0, 7)})`,
       );
+      logMemoryUsage("image-localize:after-commit", {
+        slug,
+        files: repoFiles.length,
+      });
     } catch (error) {
       // The local preview already has the localised files, so this is
       // recoverable — the next run will retry the commit.
@@ -997,6 +1047,7 @@ export async function localizeWebsiteImages(
     return result;
   } catch (error) {
     console.error(`[refresh-kiwi] localise: unexpected failure for ${slug}:`, error);
+    logMemoryUsage("image-localize:failed", { slug });
     return result;
   }
 }

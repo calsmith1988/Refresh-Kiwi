@@ -2,6 +2,8 @@ import { createHash, createHmac } from "node:crypto";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { logMemoryUsage } from "@/lib/observability/memory";
+
 const REGION = "auto";
 const SERVICE = "s3";
 const REQUEST_TYPE = "aws4_request";
@@ -314,17 +316,26 @@ export async function uploadSiteDirectoryToR2(
   }
 
   const files = await listLocalFiles(baseDir);
+  logMemoryUsage("r2-upload:files-listed", { slug, files: files.length });
 
   await Promise.all(
     files.map(async (file) => {
+      logMemoryUsage("r2-upload:before-read-file", { slug, file });
+      const body = await readFile(path.join(baseDir, file));
+      logMemoryUsage("r2-upload:after-read-file", {
+        slug,
+        file,
+        bytes: body.byteLength,
+      });
       await putSiteFile({
         slug,
         file,
-        body: await readFile(path.join(baseDir, file)),
+        body,
         contentType: contentTypeForPath(file),
       });
     }),
   );
+  logMemoryUsage("r2-upload:complete", { slug, files: files.length });
 }
 
 export async function downloadSiteDirectoryFromR2(

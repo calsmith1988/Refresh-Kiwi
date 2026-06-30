@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { getAppUrl } from "@/lib/stripe/config";
 import { commitFilesToSitesRepo, type RepoFile } from "@/lib/github/commit";
+import { logMemoryUsage } from "@/lib/observability/memory";
 import { previewDirectory } from "@/lib/preview/paths";
 import {
   HOMEPAGE_SCREENSHOT_FILE,
@@ -91,7 +92,9 @@ async function loadChromium(): Promise<PlaywrightChromium> {
 }
 
 async function captureHomepageScreenshot(slug: string): Promise<Buffer> {
+  logMemoryUsage("screenshot:before-load-chromium", { slug });
   const chromium = await loadChromium();
+  logMemoryUsage("screenshot:before-launch-browser", { slug });
   const browser = await chromium.launch({
     args: [
       "--no-sandbox",
@@ -101,12 +104,14 @@ async function captureHomepageScreenshot(slug: string): Promise<Buffer> {
       "--mute-audio",
     ],
   });
+  logMemoryUsage("screenshot:after-launch-browser", { slug });
 
   try {
     const page = await browser.newPage({
       viewport: VIEWPORT,
       deviceScaleFactor: 1,
     });
+    logMemoryUsage("screenshot:after-new-page", { slug });
     const url = `${getAppUrl()}/preview/${encodeURIComponent(slug)}/index.html`;
 
     await page.route("**/*", async (route) => {
@@ -129,8 +134,9 @@ async function captureHomepageScreenshot(slug: string): Promise<Buffer> {
       waitUntil: "load",
       timeout: CAPTURE_TIMEOUT_MS,
     });
+    logMemoryUsage("screenshot:after-page-load", { slug });
 
-    return Buffer.from(
+    const screenshot = Buffer.from(
       await page.screenshot({
         type: "jpeg",
         quality: 78,
@@ -138,12 +144,23 @@ async function captureHomepageScreenshot(slug: string): Promise<Buffer> {
         timeout: CAPTURE_TIMEOUT_MS,
       }),
     );
+    logMemoryUsage("screenshot:after-capture", {
+      slug,
+      bytes: screenshot.byteLength,
+    });
+
+    return screenshot;
   } finally {
     await browser.close();
+    logMemoryUsage("screenshot:after-close-browser", { slug });
   }
 }
 
 async function saveHomepageScreenshot(slug: string, buffer: Buffer) {
+  logMemoryUsage("screenshot:before-save", {
+    slug,
+    bytes: buffer.byteLength,
+  });
   const baseDir = previewDirectory(slug);
   const assetsDir = path.join(baseDir, "assets");
   const destination = path.join(assetsDir, HOMEPAGE_SCREENSHOT_FILE);
@@ -177,12 +194,18 @@ async function saveHomepageScreenshot(slug: string, buffer: Buffer) {
       error,
     );
   }
+
+  logMemoryUsage("screenshot:after-save", {
+    slug,
+    bytes: buffer.byteLength,
+  });
 }
 
 export async function captureAndSaveHomepageScreenshot(
   slug: string,
 ): Promise<void> {
   const startedAt = Date.now();
+  logMemoryUsage("screenshot:start", { slug });
   const screenshot = await captureHomepageScreenshot(slug);
 
   await saveHomepageScreenshot(slug, screenshot);
