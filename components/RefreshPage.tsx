@@ -2102,7 +2102,11 @@ export default function RefreshPage({
               </div>
             </div>
           ) : (
-            <div className="relative min-h-[585px]">
+            <div
+              className={`relative ${
+                hasChosenHeroMode ? "min-h-0" : "min-h-[585px]"
+              } sm:min-h-[585px]`}
+            >
               <div
                 className={`relative z-10 min-w-0 items-center gap-14 transition duration-300 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] ${
                   hasChosenHeroMode
@@ -2297,7 +2301,7 @@ export default function RefreshPage({
                 ) : (
                   <div
                     key="refresh-hero-background-space"
-                    className="pointer-events-none min-h-[260px] sm:min-h-[360px] lg:min-h-[470px]"
+                    className="pointer-events-none hidden min-h-[360px] sm:block lg:min-h-[470px]"
                     aria-hidden
                   />
                 )}
