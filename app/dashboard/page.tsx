@@ -520,6 +520,7 @@ export default function DashboardPage() {
     "upgraded" | "cancelled" | null
   >(null);
   const [showDashboardTour, setShowDashboardTour] = useState(false);
+  const [showDashboardMenu, setShowDashboardMenu] = useState(false);
 
   const isPro =
     user?.plan === "pro" && PRO_SUBSCRIPTION_STATUSES.has(user.subscriptionStatus);
@@ -1553,21 +1554,21 @@ export default function DashboardPage() {
   return (
     <main className="min-h-screen bg-[#faf8f1] px-5 py-5 text-[#141811] sm:px-8 lg:px-10">
       <div className="mx-auto w-full max-w-6xl">
-        <header className="flex items-center justify-between gap-4">
-          <Link href="/" className="flex items-center gap-2.5">
+        <header className="relative flex items-center justify-between gap-4">
+          <Link href="/" className="flex min-w-0 items-center gap-2.5">
             <Image
               src="/refresh-kiwi-favicon-v2.png"
               alt=""
               width={34}
               height={34}
               aria-hidden
-              className="rounded-full"
+              className="shrink-0 rounded-full"
             />
-            <span className="font-montserrat text-xl font-bold">
+            <span className="hidden truncate font-montserrat text-xl font-bold min-[380px]:inline">
               Refresh Kiwi
             </span>
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="hidden items-center gap-2 md:flex">
             {isPro ? (
               <button
                 type="button"
@@ -1609,6 +1610,80 @@ export default function DashboardPage() {
               Log out
             </button>
           </div>
+          <button
+            type="button"
+            onClick={() => setShowDashboardMenu((open) => !open)}
+            aria-expanded={showDashboardMenu}
+            aria-controls="dashboard-mobile-menu"
+            className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-4 py-2.5 text-sm font-semibold text-black transition hover:border-black/25 md:hidden"
+          >
+            <span className="flex h-4 w-4 flex-col justify-center gap-1" aria-hidden>
+              <span className="block h-0.5 rounded-full bg-current" />
+              <span className="block h-0.5 rounded-full bg-current" />
+              <span className="block h-0.5 rounded-full bg-current" />
+            </span>
+            Menu
+          </button>
+          {showDashboardMenu ? (
+            <div
+              id="dashboard-mobile-menu"
+              className="absolute right-0 top-full z-30 mt-3 w-full rounded-3xl border border-black/10 bg-white p-3 shadow-2xl shadow-black/10 md:hidden"
+            >
+              <div className="grid gap-2">
+                {isPro ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowDashboardMenu(false);
+                      void startBillingFlow("portal");
+                    }}
+                    disabled={billingAction !== null}
+                    className="rounded-2xl border border-black/10 bg-white px-4 py-3 text-left text-sm font-semibold text-black transition hover:border-black/25 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {billingAction === "portal" ? "Opening..." : "Manage billing"}
+                  </button>
+                ) : null}
+                {canAddWebsite ? (
+                  <Link
+                    href="/?new=1"
+                    onClick={() => setShowDashboardMenu(false)}
+                    className="rounded-2xl bg-kiwi-green px-4 py-3 text-sm font-semibold text-black shadow-sm transition hover:bg-kiwi-green-hover"
+                  >
+                    Add website
+                  </Link>
+                ) : !isPro ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowDashboardMenu(false);
+                      openProSheet();
+                    }}
+                    disabled={billingAction !== null}
+                    className="rounded-2xl bg-kiwi-green px-4 py-3 text-left text-sm font-semibold text-black shadow-sm transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Upgrade to add more
+                  </button>
+                ) : null}
+                <Link
+                  href="/account"
+                  onClick={() => setShowDashboardMenu(false)}
+                  className="rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm font-semibold text-black/70 transition hover:border-black/25 hover:text-black"
+                >
+                  Account
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDashboardMenu(false);
+                    void logout();
+                  }}
+                  className="rounded-2xl border border-black/10 bg-white px-4 py-3 text-left text-sm font-semibold text-black/70 transition hover:border-black/25 hover:text-black"
+                >
+                  Log out
+                </button>
+              </div>
+            </div>
+          ) : null}
         </header>
 
         {celebration === "upgraded" ? (
