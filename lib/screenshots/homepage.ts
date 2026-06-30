@@ -1,8 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { chromium } from "playwright";
-
 import { getAppUrl } from "@/lib/stripe/config";
 import { commitFilesToSitesRepo, type RepoFile } from "@/lib/github/commit";
 import { previewDirectory } from "@/lib/preview/paths";
@@ -17,11 +15,51 @@ const CAPTURE_TIMEOUT_MS = 45_000;
 
 let screenshotQueue: Promise<void> = Promise.resolve();
 
+type PlaywrightChromium = {
+  launch(options: {
+    args: string[];
+  }): Promise<{
+    newPage(options: {
+      viewport: typeof VIEWPORT;
+      deviceScaleFactor: number;
+    }): Promise<{
+      goto(url: string, options: {
+        waitUntil: "networkidle";
+        timeout: number;
+      }): Promise<unknown>;
+      screenshot(options: {
+        type: "jpeg";
+        quality: number;
+        fullPage: boolean;
+        timeout: number;
+      }): Promise<Buffer | Uint8Array>;
+    }>;
+    close(): Promise<void>;
+  }>;
+};
+
 function screenshotsEnabled(): boolean {
   return process.env.SCREENSHOTS_ENABLED?.trim() !== "false";
 }
 
+async function loadChromium(): Promise<PlaywrightChromium> {
+  const importModule = new Function("specifier", "return import(specifier)") as (
+    specifier: string,
+  ) => Promise<{ chromium: PlaywrightChromium }>;
+
+  try {
+    const { chromium } = await importModule("playwright");
+    return chromium;
+  } catch (error) {
+    throw new Error(
+      "Playwright is not installed. Run npm install, or set SCREENSHOTS_ENABLED=false to skip homepage screenshots.",
+      { cause: error },
+    );
+  }
+}
+
 async function captureHomepageScreenshot(slug: string): Promise<Buffer> {
+  const chromium = await loadChromium();
   const browser = await chromium.launch({
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
   });

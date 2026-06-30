@@ -1,11 +1,24 @@
 import { NextResponse } from "next/server";
-import { chromium } from "playwright";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
+type PlaywrightChromium = {
+  launch(options: { args: string[] }): Promise<{ close(): Promise<void> }>;
+};
+
+async function loadChromium(): Promise<PlaywrightChromium> {
+  const importModule = new Function("specifier", "return import(specifier)") as (
+    specifier: string,
+  ) => Promise<{ chromium: PlaywrightChromium }>;
+  const { chromium } = await importModule("playwright");
+
+  return chromium;
+}
+
 export async function GET() {
   try {
+    const chromium = await loadChromium();
     const browser = await chromium.launch({
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
