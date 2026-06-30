@@ -66,6 +66,13 @@ const HERO_KIWI_MARKS = [
   { left: "99%", top: "83%", size: "128px", opacity: 0.14, rotate: "-14deg" },
 ] as const;
 
+const MOBILE_HERO_KIWI_MARKS = [
+  { left: "78%", top: "5%", size: "78px", opacity: 0.1, rotate: "8deg" },
+  { left: "94%", top: "23%", size: "102px", opacity: 0.12, rotate: "-12deg" },
+  { left: "76%", top: "62%", size: "86px", opacity: 0.09, rotate: "16deg" },
+  { left: "96%", top: "82%", size: "96px", opacity: 0.1, rotate: "-6deg" },
+] as const;
+
 const LOADING_STAGES = [
   "Reading your old website",
   "Designing your new look",
@@ -232,7 +239,8 @@ type BusinessIconName =
   | "cafes"
   | "clinics"
   | "builders"
-  | "cleaners";
+  | "cleaners"
+  | "more";
 
 const BUSINESS_TYPES: Array<{ label: string; icon: BusinessIconName }> = [
   { label: "Plumbers", icon: "plumbers" },
@@ -241,6 +249,19 @@ const BUSINESS_TYPES: Array<{ label: string; icon: BusinessIconName }> = [
   { label: "Clinics", icon: "clinics" },
   { label: "Builders", icon: "builders" },
   { label: "Cleaners", icon: "cleaners" },
+];
+
+const BUSINESS_STRIP_TYPES: Array<{
+  label: string;
+  icon: BusinessIconName;
+  mobile: boolean;
+}> = [
+  { label: "Plumbers", icon: "plumbers", mobile: true },
+  { label: "Salons", icon: "salons", mobile: true },
+  { label: "Cafés", icon: "cafes", mobile: false },
+  { label: "Clinics", icon: "clinics", mobile: false },
+  { label: "Builders", icon: "builders", mobile: true },
+  { label: "More", icon: "more", mobile: true },
 ];
 
 type PromptStarter = {
@@ -489,6 +510,13 @@ function BusinessIcon({ name }: { name: BusinessIconName }) {
         </>
       ) : null}
       {name === "clinics" ? (
+        <>
+          <circle {...common} cx="12" cy="12" r="8" />
+          <path {...common} d="M12 8v8" />
+          <path {...common} d="M8 12h8" />
+        </>
+      ) : null}
+      {name === "more" ? (
         <>
           <circle {...common} cx="12" cy="12" r="8" />
           <path {...common} d="M12 8v8" />
@@ -1653,6 +1681,34 @@ export default function RefreshPage({
           aria-hidden
           className="pointer-events-none absolute left-1/2 top-0 z-0 min-h-[680px] w-screen -translate-x-1/2 overflow-hidden sm:min-h-[720px] lg:min-h-[760px]"
         >
+          {MOBILE_HERO_KIWI_MARKS.map((mark, index) => (
+            <div
+              key={`mobile-${index}`}
+              className="hero-kiwi-drift absolute rounded-full mix-blend-multiply blur-[0.2px] sm:hidden"
+              style={{
+                left: mark.left,
+                top: mark.top,
+                width: mark.size,
+                height: mark.size,
+                opacity: mark.opacity,
+                "--hero-kiwi-rotate": mark.rotate,
+                "--hero-kiwi-drift-x": `${index % 2 === 0 ? 6 : -5}px`,
+                "--hero-kiwi-drift-y": `${index % 2 === 0 ? -7 : 6}px`,
+                "--hero-kiwi-drift-rotate": `${index % 2 === 0 ? 3 : -4}deg`,
+                "--hero-kiwi-duration": `${20 + index * 3}s`,
+                "--hero-kiwi-delay": `${index * -1.4}s`,
+              } as CSSProperties}
+            >
+              <Image
+                src="/refresh-kiwi-favicon-v2.png"
+                alt=""
+                aria-hidden
+                fill
+                sizes="112px"
+                className="object-contain"
+              />
+            </div>
+          ))}
           {HERO_KIWI_MARKS.map((mark, index) => (
             <div
               key={index}
@@ -2250,8 +2306,8 @@ export default function RefreshPage({
               {!hasChosenHeroMode ? (
                 <>
                   <div className="absolute -bottom-10 top-0 left-1/2 z-20 w-screen -translate-x-1/2 bg-[#faf8f1]/45 backdrop-blur-[1px]" />
-                <div className="absolute inset-0 z-30 flex items-center justify-center px-0 py-8 sm:px-6">
-                  <div className="relative w-full max-w-2xl overflow-hidden rounded-[2rem] border border-black/10 bg-white/85 p-4 shadow-2xl shadow-black/15 backdrop-blur-xl sm:p-6">
+                <div className="absolute inset-0 z-30 flex items-start justify-center px-3 pb-8 pt-6 sm:items-center sm:px-6 sm:py-8">
+                  <div className="relative w-full max-w-2xl overflow-hidden rounded-[1.75rem] border border-black/10 bg-white/85 p-3 shadow-2xl shadow-black/15 backdrop-blur-xl sm:rounded-[2rem] sm:p-6">
                     <Image
                       src={kiwiGroupBackground}
                       alt=""
@@ -2265,27 +2321,27 @@ export default function RefreshPage({
                     <div className="absolute inset-0 bg-[radial-gradient(ellipse_48%_54%_at_50%_47%,rgba(255,255,255,0.74)_0%,rgba(255,255,255,0.48)_36%,rgba(255,255,255,0)_72%)]" />
                     <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.22),transparent_28%,transparent_72%,rgba(20,24,17,0.06))]" />
                     <div className="relative text-center">
-                      <h2 className="font-fraunces text-3xl font-semibold tracking-tight sm:text-4xl">
+                      <h2 className="font-fraunces text-[1.7rem] font-semibold leading-none tracking-tight sm:text-4xl">
                         What do you want to do?
                       </h2>
                     </div>
 
-                    <div className="relative mt-6 grid gap-3 sm:grid-cols-2">
+                    <div className="relative mt-4 grid gap-2.5 sm:mt-6 sm:grid-cols-2 sm:gap-3">
                       <button
                         type="button"
                         onClick={() => chooseHeroMode("refresh")}
-                        className="group rounded-[1.5rem] border-2 border-black/10 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-black/30 hover:shadow-xl hover:shadow-black/10"
+                        className="group rounded-[1.35rem] border-2 border-black/10 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-black/30 hover:shadow-xl hover:shadow-black/10 sm:rounded-[1.5rem] sm:p-5"
                       >
-                        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-kiwi-green text-lg font-black text-black">
+                        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-kiwi-green text-base font-black text-black sm:h-10 sm:w-10 sm:text-lg">
                           ↻
                         </span>
-                        <span className="mt-4 block font-fraunces text-2xl font-semibold leading-tight tracking-tight">
+                        <span className="mt-3 block font-fraunces text-[1.55rem] font-semibold leading-tight tracking-tight sm:mt-4 sm:text-2xl">
                           I want to refresh my website
                         </span>
-                        <span className="mt-2 block text-sm leading-6 text-black/55">
+                        <span className="mt-1.5 block text-sm leading-6 text-black/55 sm:mt-2">
                           I already have a website and want a better version.
                         </span>
-                        <span className="mt-4 inline-flex text-sm font-bold text-black transition group-hover:translate-x-1">
+                        <span className="mt-3 inline-flex text-sm font-bold text-black transition group-hover:translate-x-1 sm:mt-4">
                           Refresh my site →
                         </span>
                       </button>
@@ -2293,18 +2349,18 @@ export default function RefreshPage({
                       <button
                         type="button"
                         onClick={() => chooseHeroMode("fresh")}
-                        className="group rounded-[1.5rem] border-2 border-black/10 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-black/30 hover:shadow-xl hover:shadow-black/10"
+                        className="group rounded-[1.35rem] border-2 border-black/10 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-black/30 hover:shadow-xl hover:shadow-black/10 sm:rounded-[1.5rem] sm:p-5"
                       >
-                        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#141811] text-lg font-black text-white">
+                        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#141811] text-base font-black text-white sm:h-10 sm:w-10 sm:text-lg">
                           +
                         </span>
-                        <span className="mt-4 block font-fraunces text-2xl font-semibold leading-tight tracking-tight">
+                        <span className="mt-3 block font-fraunces text-[1.55rem] font-semibold leading-tight tracking-tight sm:mt-4 sm:text-2xl">
                           I want to create a fresh website
                         </span>
-                        <span className="mt-2 block text-sm leading-6 text-black/55">
+                        <span className="mt-1.5 block text-sm leading-6 text-black/55 sm:mt-2">
                           I&apos;m starting from scratch and need a new website.
                         </span>
-                        <span className="mt-4 inline-flex text-sm font-bold text-black transition group-hover:translate-x-1">
+                        <span className="mt-3 inline-flex text-sm font-bold text-black transition group-hover:translate-x-1 sm:mt-4">
                           Create my site →
                         </span>
                       </button>
@@ -2322,14 +2378,16 @@ export default function RefreshPage({
         <>
           {/* ───────────────────────── Social strip ───────────────────────── */}
           <section className="relative z-10 border-y border-black/5 bg-white px-5 py-6 sm:px-8">
-            <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm font-medium text-black/40">
+            <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-center gap-x-5 gap-y-3 text-sm font-medium text-black/40 sm:gap-x-8">
               <span className="font-semibold text-black/55">
-                Built for businesses like yours:
+                Built for:
               </span>
-              {BUSINESS_TYPES.map((business) => (
+              {BUSINESS_STRIP_TYPES.map((business) => (
                 <span
                   key={business.label}
-                  className="inline-flex items-center gap-2 text-black/45"
+                  className={`items-center gap-2 text-black/45 ${
+                    business.mobile ? "inline-flex" : "hidden sm:inline-flex"
+                  }`}
                 >
                   <BusinessIcon name={business.icon} />
                   {business.label}
