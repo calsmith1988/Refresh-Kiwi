@@ -840,6 +840,7 @@ export default function RefreshPage({
   const [isStartingCheckout, setIsStartingCheckout] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [statusMessageIndex, setStatusMessageIndex] = useState(0);
+  const [isPreviewMenuOpen, setIsPreviewMenuOpen] = useState(false);
   const editPollTimerRef = useRef<number | null>(null);
   const pollTimerRef = useRef<number | null>(null);
   const pollFailuresRef = useRef(0);
@@ -1670,6 +1671,12 @@ export default function RefreshPage({
     }%, rgba(191, 226, 98, 0.18), transparent 70%)`,
   };
 
+  useEffect(() => {
+    if (!showReveal) {
+      setIsPreviewMenuOpen(false);
+    }
+  }, [showReveal]);
+
   return (
     <main
       className="relative isolate min-h-screen overflow-x-clip bg-[#faf8f1] text-[#141811]"
@@ -1780,7 +1787,9 @@ export default function RefreshPage({
               Questions
             </a>
           </nav>
-          <div className="flex items-center gap-2">
+          <div
+            className={`items-center gap-2 ${showReveal ? "hidden md:flex" : "flex"}`}
+          >
             {user ? (
               <Link
                 href="/dashboard"
@@ -1815,6 +1824,73 @@ export default function RefreshPage({
               </a>
             )}
           </div>
+          {showReveal ? (
+            <div className="relative md:hidden">
+              <button
+                type="button"
+                onClick={() => setIsPreviewMenuOpen((open) => !open)}
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-black/10 bg-white text-black shadow-sm transition hover:border-black/25"
+                aria-label="Open menu"
+                aria-expanded={isPreviewMenuOpen}
+                aria-controls="preview-mobile-menu"
+              >
+                <span className="sr-only">Menu</span>
+                <span className="flex flex-col gap-1.5" aria-hidden>
+                  <span className="block h-0.5 w-5 rounded-full bg-current" />
+                  <span className="block h-0.5 w-5 rounded-full bg-current" />
+                  <span className="block h-0.5 w-5 rounded-full bg-current" />
+                </span>
+              </button>
+              {isPreviewMenuOpen ? (
+                <div
+                  id="preview-mobile-menu"
+                  className="absolute right-0 top-[3.25rem] z-50 w-56 rounded-3xl border border-black/10 bg-white p-2 shadow-2xl shadow-black/15"
+                >
+                  {user ? (
+                    <Link
+                      href="/dashboard"
+                      onClick={() => setIsPreviewMenuOpen(false)}
+                      className="block rounded-2xl px-4 py-3 text-sm font-semibold text-black transition hover:bg-black/5"
+                    >
+                      My websites
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsPreviewMenuOpen(false);
+                        setAccountMode("login");
+                      }}
+                      className="block w-full rounded-2xl px-4 py-3 text-left text-sm font-semibold text-black transition hover:bg-black/5"
+                    >
+                      Log in
+                    </button>
+                  )}
+                  {previewHref ? (
+                    <Link
+                      href={previewHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => setIsPreviewMenuOpen(false)}
+                      className="block rounded-2xl px-4 py-3 text-sm font-semibold text-black transition hover:bg-black/5"
+                    >
+                      Open preview
+                    </Link>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsPreviewMenuOpen(false);
+                      startFresh();
+                    }}
+                    className="mt-1 block w-full rounded-2xl bg-[#141811] px-4 py-3 text-left text-sm font-semibold text-white transition hover:bg-black"
+                  >
+                    Start another
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </header>
 
