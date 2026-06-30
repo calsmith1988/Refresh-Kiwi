@@ -1829,17 +1829,17 @@ export default function RefreshPage({
               <button
                 type="button"
                 onClick={() => setIsPreviewMenuOpen((open) => !open)}
-                className="flex h-11 w-11 items-center justify-center rounded-full border border-black/10 bg-white text-black shadow-sm transition hover:border-black/25"
+                className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-4 py-2.5 text-sm font-semibold text-black shadow-sm transition hover:border-black/25"
                 aria-label="Open menu"
                 aria-expanded={isPreviewMenuOpen}
                 aria-controls="preview-mobile-menu"
               >
-                <span className="sr-only">Menu</span>
-                <span className="flex flex-col gap-1.5" aria-hidden>
-                  <span className="block h-0.5 w-5 rounded-full bg-current" />
-                  <span className="block h-0.5 w-5 rounded-full bg-current" />
-                  <span className="block h-0.5 w-5 rounded-full bg-current" />
+                <span className="flex h-4 w-4 flex-col justify-center gap-1" aria-hidden>
+                  <span className="block h-0.5 rounded-full bg-current" />
+                  <span className="block h-0.5 rounded-full bg-current" />
+                  <span className="block h-0.5 rounded-full bg-current" />
                 </span>
+                Menu
               </button>
               {isPreviewMenuOpen ? (
                 <div
