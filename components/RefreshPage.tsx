@@ -49,6 +49,23 @@ const STAGE_2_AT_MS = 25 * 1000;
 const STAGE_3_AT_MS = 95 * 1000;
 const ACTIVE_JOB_STORAGE_KEY = "refresh-kiwi:active-job";
 
+const HERO_KIWI_MARKS = [
+  { left: "52%", top: "-2%", size: "116px", opacity: 0.13, rotate: "-12deg" },
+  { left: "68%", top: "-5%", size: "158px", opacity: 0.18, rotate: "8deg" },
+  { left: "88%", top: "1%", size: "124px", opacity: 0.16, rotate: "-6deg" },
+  { left: "57%", top: "16%", size: "72px", opacity: 0.1, rotate: "-24deg" },
+  { left: "47%", top: "28%", size: "96px", opacity: 0.12, rotate: "15deg" },
+  { left: "64%", top: "24%", size: "132px", opacity: 0.18, rotate: "-18deg" },
+  { left: "82%", top: "21%", size: "104px", opacity: 0.15, rotate: "10deg" },
+  { left: "97%", top: "20%", size: "172px", opacity: 0.19, rotate: "-8deg" },
+  { left: "55%", top: "53%", size: "144px", opacity: 0.14, rotate: "7deg" },
+  { left: "72%", top: "49%", size: "190px", opacity: 0.21, rotate: "-10deg" },
+  { left: "91%", top: "52%", size: "112px", opacity: 0.15, rotate: "18deg" },
+  { left: "61%", top: "78%", size: "116px", opacity: 0.12, rotate: "-4deg" },
+  { left: "81%", top: "78%", size: "150px", opacity: 0.16, rotate: "12deg" },
+  { left: "99%", top: "83%", size: "128px", opacity: 0.14, rotate: "-14deg" },
+] as const;
+
 const LOADING_STAGES = [
   "Reading your old website",
   "Designing your new look",
@@ -812,16 +829,15 @@ export default function RefreshPage({
         window.cancelAnimationFrame(heroPointerFrameRef.current);
       }
 
-      const currentTarget = event.currentTarget;
       const clientX = event.clientX;
       const clientY = event.clientY;
 
       heroPointerFrameRef.current = window.requestAnimationFrame(() => {
-        const rect = currentTarget.getBoundingClientRect();
+        const heroHeight = Math.min(window.innerHeight, 760);
 
         setHeroPointer({
-          x: (clientX - rect.left) / rect.width,
-          y: (clientY - rect.top) / rect.height,
+          x: Math.min(1, Math.max(0, clientX / window.innerWidth)),
+          y: Math.min(1, Math.max(0, clientY / heroHeight)),
         });
       });
     },
@@ -1610,14 +1626,6 @@ export default function RefreshPage({
       }).format(new Date(job.expiresAt))
     : null;
   const freeEditsRemaining = job?.freeEditsRemaining ?? 0;
-  const heroKiwiShiftX = (heroPointer.x - 0.5) * -34;
-  const heroKiwiShiftY = (heroPointer.y - 0.5) * -34;
-  const heroKiwiTiltX = (heroPointer.y - 0.5) * -7;
-  const heroKiwiTiltY = (heroPointer.x - 0.5) * 7;
-  const heroKiwiStyle: CSSProperties = {
-    transform: `translate3d(${heroKiwiShiftX}px, ${heroKiwiShiftY}px, 0) rotateX(${heroKiwiTiltX}deg) rotateY(${heroKiwiTiltY}deg)`,
-    transition: "transform 0.45s cubic-bezier(0.22, 1, 0.36, 1)",
-  };
   const heroSpotlightStyle: CSSProperties = {
     background: `radial-gradient(420px circle at ${heroPointer.x * 100}% ${
       heroPointer.y * 100
@@ -1633,31 +1641,42 @@ export default function RefreshPage({
       {!showReveal && !isRefreshing ? (
         <div
           aria-hidden
-          className="pointer-events-none absolute left-1/2 top-0 z-0 min-h-[680px] w-screen -translate-x-1/2 overflow-hidden [perspective:1200px] sm:min-h-[720px] lg:min-h-[760px]"
+          className="pointer-events-none absolute left-1/2 top-0 z-0 min-h-[680px] w-screen -translate-x-1/2 overflow-hidden sm:min-h-[720px] lg:min-h-[760px]"
         >
-          <div
-            className="absolute inset-0 transition-opacity duration-500"
-            style={heroSpotlightStyle}
-          />
-          <div
-            className="absolute right-[-34vw] top-[50%] h-[min(108vh,940px)] w-[min(108vh,940px)] -translate-y-1/2 will-change-transform sm:right-[-24vw] lg:right-[1vw]"
-            style={heroKiwiStyle}
-          >
-            <div className="hero-kiwi-spin relative h-full w-full opacity-[0.075] [mask-image:radial-gradient(circle_at_center,black_0%,black_58%,transparent_78%)]">
+          {HERO_KIWI_MARKS.map((mark, index) => (
+            <div
+              key={index}
+              className="hero-kiwi-drift absolute hidden rounded-full mix-blend-multiply blur-[0.2px] sm:block"
+              style={{
+                left: mark.left,
+                top: mark.top,
+                width: mark.size,
+                height: mark.size,
+                opacity: mark.opacity,
+                "--hero-kiwi-rotate": mark.rotate,
+                "--hero-kiwi-drift-x": `${index % 2 === 0 ? 10 : -8}px`,
+                "--hero-kiwi-drift-y": `${index % 3 === 0 ? -12 : 9}px`,
+                "--hero-kiwi-drift-rotate": `${index % 2 === 0 ? 4 : -5}deg`,
+                "--hero-kiwi-duration": `${18 + (index % 5) * 3}s`,
+                "--hero-kiwi-delay": `${index * -1.7}s`,
+              } as CSSProperties}
+            >
               <Image
                 src="/refresh-kiwi-favicon-v2.png"
                 alt=""
                 aria-hidden
                 fill
-                priority
-                sizes="(min-width: 1024px) 1040px, 100vw"
+                sizes="220px"
                 className="object-contain"
               />
             </div>
-          </div>
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,#faf8f1_0%,#faf8f1_18%,rgba(250,248,241,0.74)_42%,rgba(250,248,241,0.16)_66%,transparent_84%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_74%_46%,transparent_0%,rgba(250,248,241,0.20)_60%,#faf8f1_94%)]" />
-          <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-[#faf8f1]" />
+          ))}
+          <div
+            className="absolute inset-0 transition-opacity duration-500"
+            style={heroSpotlightStyle}
+          />
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,#faf8f1_0%,rgba(250,248,241,0.96)_28%,rgba(250,248,241,0.72)_44%,rgba(250,248,241,0.18)_58%,transparent_72%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_42%_58%_at_25%_43%,rgba(250,248,241,0.92)_0%,rgba(250,248,241,0.62)_46%,transparent_76%)]" />
         </div>
       ) : null}
 
@@ -1733,7 +1752,7 @@ export default function RefreshPage({
       </header>
 
       {/* ───────────────────────── Hero / Theatre / Reveal ───────────────────────── */}
-      <section className="relative z-10 px-5 pb-20 pt-14 sm:px-8 sm:pt-20">
+      <section className="relative z-10 px-5 pb-8 pt-14 sm:px-8 sm:pb-10 sm:pt-20">
         <div className="mx-auto w-full max-w-6xl">
           {isRefreshing ? (
             <div className="flex min-h-[60vh] items-center justify-center">
@@ -2232,7 +2251,7 @@ export default function RefreshPage({
                   </div>
                 ) : (
                   <div
-                    key="refresh-hero-kiwi-space"
+                    key="refresh-hero-background-space"
                     className="pointer-events-none min-h-[260px] sm:min-h-[360px] lg:min-h-[470px]"
                     aria-hidden
                   />

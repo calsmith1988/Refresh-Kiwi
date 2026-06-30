@@ -98,12 +98,14 @@ body {
   }
 }
 
-@keyframes hero-kiwi-spin {
-  from {
-    transform: rotate(0deg);
+@keyframes hero-kiwi-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(var(--hero-kiwi-rotate));
   }
-  to {
-    transform: rotate(360deg);
+  50% {
+    transform: translate3d(var(--hero-kiwi-drift-x), var(--hero-kiwi-drift-y), 0)
+      rotate(calc(var(--hero-kiwi-rotate) + var(--hero-kiwi-drift-rotate)));
   }
 }
 
@@ -121,15 +123,17 @@ body {
   animation-duration: 4.8s;
 }
 
-.hero-kiwi-spin {
-  animation: hero-kiwi-spin 140s linear infinite;
+.hero-kiwi-drift {
+  animation: hero-kiwi-drift var(--hero-kiwi-duration, 18s) ease-in-out infinite;
+  animation-delay: var(--hero-kiwi-delay, 0s);
+  will-change: transform;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .preview-pop,
   .before-after-reveal-clip,
   .before-after-reveal-handle,
-  .hero-kiwi-spin {
+  .hero-kiwi-drift {
     animation: none;
   }
 
