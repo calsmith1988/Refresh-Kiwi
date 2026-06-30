@@ -1,13 +1,13 @@
-@import "tailwindcss";
 @import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap");
 @import "@fontsource/fraunces/500.css";
 @import "@fontsource/fraunces/600.css";
+@import "tailwindcss";
 
 :root {
   --color-white: #ffffff;
   --color-black: #0a0a0a;
-  --color-kiwi-green: #c0ea70;
-  --color-kiwi-green-hover: #aed960;
+  --color-kiwi-green: #c5e66a;
+  --color-kiwi-green-hover: #c5e66a;
 }
 
 @theme inline {
@@ -30,12 +30,9 @@ body {
   position: relative;
   overflow: hidden;
   border-color: rgba(28, 86, 12, 0.42);
-  color: #ffffff;
-  text-shadow: 0 1px 1px rgba(14, 51, 9, 0.45);
-  background:
-    radial-gradient(circle at 22% 18%, rgba(129, 190, 65, 0.55) 0 18%, transparent 40%),
-    radial-gradient(circle at 82% 76%, rgba(38, 103, 20, 0.42) 0 24%, transparent 46%),
-    linear-gradient(180deg, #5fa72a 0%, #3f861c 52%, #2f7015 100%);
+  color: #141811;
+  text-shadow: none;
+  background: #c5e66a;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.24),
     inset 0 -1px 0 rgba(11, 48, 7, 0.32),
@@ -44,11 +41,8 @@ body {
 }
 
 :is(a, button).bg-kiwi-green:hover {
-  color: #ffffff;
-  background:
-    radial-gradient(circle at 22% 18%, rgba(142, 205, 72, 0.58) 0 18%, transparent 40%),
-    radial-gradient(circle at 82% 76%, rgba(34, 92, 18, 0.45) 0 24%, transparent 46%),
-    linear-gradient(180deg, #66b02f 0%, #438d20 52%, #337817 100%);
+  color: #141811;
+  background: #c5e66a;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.28),
     inset 0 -1px 0 rgba(11, 48, 7, 0.34),
@@ -63,7 +57,7 @@ body {
 }
 
 :is(a, button).bg-kiwi-green:disabled {
-  color: rgba(255, 255, 255, 0.78);
+  color: rgba(20, 24, 17, 0.62);
   text-shadow: none;
 }
 
@@ -104,6 +98,15 @@ body {
   }
 }
 
+@keyframes hero-kiwi-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .before-after-reveal-clip {
   clip-path: inset(0 100% 0 0);
   animation: before-after-reveal 8s ease-in-out infinite;
@@ -118,10 +121,15 @@ body {
   animation-duration: 4.8s;
 }
 
+.hero-kiwi-spin {
+  animation: hero-kiwi-spin 140s linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .preview-pop,
   .before-after-reveal-clip,
-  .before-after-reveal-handle {
+  .before-after-reveal-handle,
+  .hero-kiwi-spin {
     animation: none;
   }
 

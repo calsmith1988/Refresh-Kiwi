@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
+import kiwiGroupBackground from "../../kiwi-group-background.png";
 import {
   createMetaEventId,
   trackMetaBrowserEvent,
@@ -1757,8 +1758,18 @@ export default function DashboardPage() {
         </section>
 
         {showDashboardTour && !isLoading && websites.length > 0 ? (
-          <section className="mt-6 rounded-3xl border-2 border-kiwi-green bg-[#f7fce8] p-5 shadow-xl shadow-[#8bbf4d]/10 sm:p-6">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <section className="relative mt-6 overflow-hidden rounded-3xl border-2 border-kiwi-green bg-[#C5E66A] p-5 shadow-xl shadow-[#8bbf4d]/10 sm:p-6">
+            <Image
+              src={kiwiGroupBackground}
+              alt=""
+              aria-hidden
+              fill
+              sizes="(min-width: 1024px) 1152px, 100vw"
+              className="object-cover opacity-30 mix-blend-multiply"
+            />
+            <div className="absolute inset-0 bg-[#C5E66A]/82" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_70%_at_38%_25%,rgba(255,255,255,0.68)_0%,rgba(255,255,255,0.36)_38%,rgba(255,255,255,0)_76%)]" />
+            <div className="relative flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-black/40">
                   Quick tour
@@ -1775,13 +1786,14 @@ export default function DashboardPage() {
               <button
                 type="button"
                 onClick={dismissDashboardTour}
-                className="w-fit rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold text-black/60 transition hover:border-black/25 hover:text-black"
+                aria-label="Dismiss quick tour"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/10 bg-white/90 text-xl leading-none text-black/45 shadow-sm backdrop-blur transition hover:border-black/25 hover:text-black"
               >
-                Got it
+                ×
               </button>
             </div>
 
-            <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <div className="relative mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               {[
                 {
                   title: "Your website card",
@@ -1802,7 +1814,7 @@ export default function DashboardPage() {
               ].map((item, index) => (
                 <div
                   key={item.title}
-                  className="rounded-2xl border border-black/10 bg-white p-4"
+                  className="rounded-2xl border border-black/10 bg-white/88 p-4 shadow-sm backdrop-blur"
                 >
                   <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-kiwi-green text-xs font-black text-black">
                     {index + 1}
@@ -3231,7 +3243,7 @@ export default function DashboardPage() {
                         onChange={(event) =>
                           updateLegalAnswer(field.key, event.target.checked)
                         }
-                        className="h-4 w-4 accent-[#BFE262]"
+                        className="h-4 w-4 accent-[#C5E66A]"
                       />
                       <span>
                         {field.label}

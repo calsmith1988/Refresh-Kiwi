@@ -59,7 +59,7 @@ function escapeHtml(value: string): string {
 }
 
 function button(url: string, label: string): string {
-  return `<a href="${escapeHtml(url)}" style="display:inline-block;background:#c0ea70;color:#111;padding:12px 18px;border-radius:999px;text-decoration:none;font-weight:700">${escapeHtml(label)}</a>`;
+  return `<a href="${escapeHtml(url)}" style="display:inline-block;background:#c5e66a;color:#111;padding:12px 18px;border-radius:999px;text-decoration:none;font-weight:700">${escapeHtml(label)}</a>`;
 }
 
 function previewReadyCopy(brandName?: string | null) {

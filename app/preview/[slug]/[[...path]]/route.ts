@@ -89,7 +89,7 @@ function blockedPreviewResponse(kind: "expired" | "removed") {
         margin: 18px 0 0;
       }
       a {
-        background: #c0ea70;
+        background: #c5e66a;
         border-radius: 999px;
         color: #0a0a0a;
         display: inline-flex;

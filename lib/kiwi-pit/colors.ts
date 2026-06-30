@@ -1,4 +1,4 @@
-export const KIWI_PRIMARY_GREEN = "#C0EA70";
+export const KIWI_PRIMARY_GREEN = "#C5E66A";
 
 // HSL approximates of the brand green — used to generate landing shades
 const BRAND_HUE = 78;

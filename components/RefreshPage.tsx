@@ -4,12 +4,20 @@ import dynamic from "next/dynamic";
 import Image from "next/image";
 import type { StaticImageData } from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 
 import accountantAfterPreview from "../after-preview.png";
 import engineerAfterPreview from "../after-preview2.png";
 import accountantBeforePreview from "../before-preview.png";
 import engineerBeforePreview from "../before-preview2.png";
+import kiwiGroupBackground from "../kiwi-group-background.png";
 import ActivityToast from "@/components/ActivityToast";
 import CookieSettingsButton from "@/components/CookieSettingsButton";
 import type { JobResponse } from "@/lib/jobs/types";
@@ -211,7 +219,6 @@ type BusinessIconName =
 
 const BUSINESS_TYPES: Array<{ label: string; icon: BusinessIconName }> = [
   { label: "Plumbers", icon: "plumbers" },
-  { label: "Garages", icon: "garages" },
   { label: "Salons", icon: "salons" },
   { label: "Cafés", icon: "cafes" },
   { label: "Clinics", icon: "clinics" },
@@ -796,6 +803,38 @@ export default function RefreshPage({
   const statusTimerRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const freshInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const heroPointerFrameRef = useRef<number | null>(null);
+  const [heroPointer, setHeroPointer] = useState({ x: 0.58, y: 0.46 });
+
+  const handleHeroPointerMove = useCallback(
+    (event: ReactPointerEvent<HTMLElement>) => {
+      if (heroPointerFrameRef.current !== null) {
+        window.cancelAnimationFrame(heroPointerFrameRef.current);
+      }
+
+      const currentTarget = event.currentTarget;
+      const clientX = event.clientX;
+      const clientY = event.clientY;
+
+      heroPointerFrameRef.current = window.requestAnimationFrame(() => {
+        const rect = currentTarget.getBoundingClientRect();
+
+        setHeroPointer({
+          x: (clientX - rect.left) / rect.width,
+          y: (clientY - rect.top) / rect.height,
+        });
+      });
+    },
+    [],
+  );
+
+  useEffect(() => {
+    return () => {
+      if (heroPointerFrameRef.current !== null) {
+        window.cancelAnimationFrame(heroPointerFrameRef.current);
+      }
+    };
+  }, []);
 
   const stopPolling = useCallback(() => {
     if (pollTimerRef.current !== null) {
@@ -1571,10 +1610,56 @@ export default function RefreshPage({
       }).format(new Date(job.expiresAt))
     : null;
   const freeEditsRemaining = job?.freeEditsRemaining ?? 0;
+  const heroKiwiShiftX = (heroPointer.x - 0.5) * -34;
+  const heroKiwiShiftY = (heroPointer.y - 0.5) * -34;
+  const heroKiwiTiltX = (heroPointer.y - 0.5) * -7;
+  const heroKiwiTiltY = (heroPointer.x - 0.5) * 7;
+  const heroKiwiStyle: CSSProperties = {
+    transform: `translate3d(${heroKiwiShiftX}px, ${heroKiwiShiftY}px, 0) rotateX(${heroKiwiTiltX}deg) rotateY(${heroKiwiTiltY}deg)`,
+    transition: "transform 0.45s cubic-bezier(0.22, 1, 0.36, 1)",
+  };
+  const heroSpotlightStyle: CSSProperties = {
+    background: `radial-gradient(420px circle at ${heroPointer.x * 100}% ${
+      heroPointer.y * 100
+    }%, rgba(191, 226, 98, 0.18), transparent 70%)`,
+  };
 
   return (
-    <main className="relative isolate min-h-screen overflow-x-clip bg-[#faf8f1] text-[#141811]">
+    <main
+      className="relative isolate min-h-screen overflow-x-clip bg-[#faf8f1] text-[#141811]"
+      onPointerMove={handleHeroPointerMove}
+    >
       <KiwiPitCanvas active={isRefreshing} />
+      {!showReveal && !isRefreshing ? (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute left-1/2 top-0 z-0 min-h-[680px] w-screen -translate-x-1/2 overflow-hidden [perspective:1200px] sm:min-h-[720px] lg:min-h-[760px]"
+        >
+          <div
+            className="absolute inset-0 transition-opacity duration-500"
+            style={heroSpotlightStyle}
+          />
+          <div
+            className="absolute right-[-34vw] top-[50%] h-[min(108vh,940px)] w-[min(108vh,940px)] -translate-y-1/2 will-change-transform sm:right-[-24vw] lg:right-[1vw]"
+            style={heroKiwiStyle}
+          >
+            <div className="hero-kiwi-spin relative h-full w-full opacity-[0.075] [mask-image:radial-gradient(circle_at_center,black_0%,black_58%,transparent_78%)]">
+              <Image
+                src="/refresh-kiwi-favicon-v2.png"
+                alt=""
+                aria-hidden
+                fill
+                priority
+                sizes="(min-width: 1024px) 1040px, 100vw"
+                className="object-contain"
+              />
+            </div>
+          </div>
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,#faf8f1_0%,#faf8f1_18%,rgba(250,248,241,0.74)_42%,rgba(250,248,241,0.16)_66%,transparent_84%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_74%_46%,transparent_0%,rgba(250,248,241,0.20)_60%,#faf8f1_94%)]" />
+          <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-[#faf8f1]" />
+        </div>
+      ) : null}
 
       {/* ───────────────────────── Header ───────────────────────── */}
       <header className="sticky top-0 z-40 border-b border-black/5 bg-[#faf8f1]/85 backdrop-blur-md">
@@ -1931,8 +2016,9 @@ export default function RefreshPage({
               </div>
             </div>
           ) : (
-            <div className="grid min-w-0 items-center gap-14 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
-              <div className="min-w-0">
+            <div className="relative min-h-[560px]">
+              <div className="relative z-10 grid min-w-0 items-center gap-14 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+                <div className="min-w-0">
                 <p className="inline-flex items-center gap-2 rounded-full border border-black/5 bg-white/50 px-4 py-1.5 text-xs font-semibold text-black/45">
                   <span className="h-1.5 w-1.5 rounded-full bg-kiwi-green" />
                   {flowMode === "fresh"
@@ -2029,20 +2115,20 @@ export default function RefreshPage({
                     "No changes to your live site",
                   ].map((item) => (
                     <span key={item} className="inline-flex items-center gap-1.5">
-                      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#BFE262] text-[10px] font-black leading-none text-black">
+                      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#C5E66A] text-[10px] font-black leading-none text-black">
                         ✓
                       </span>
                       {item}
                     </span>
                   ))}
                 </div>
-              </div>
+                </div>
 
-              {flowMode === "fresh" ? (
-                <div
-                  key="fresh-hero-form"
-                  className="relative mx-auto w-full max-w-xl min-w-0 lg:max-w-none"
-                >
+                {flowMode === "fresh" ? (
+                  <div
+                    key="fresh-hero-form"
+                    className="relative mx-auto w-full max-w-xl min-w-0 lg:max-w-none"
+                  >
                   <div className="pointer-events-none absolute -inset-8 rounded-full bg-[radial-gradient(circle_at_58%_30%,rgba(191,226,98,0.32),transparent_58%)] blur-2xl" />
                   <form
                     onSubmit={handleFresh}
@@ -2142,50 +2228,16 @@ export default function RefreshPage({
                       Tip: include your audience, services, location, tone, and any
                       must-have sections.
                     </p>
-                  </form>
-                </div>
-              ) : (
-                <div
-                  key="refresh-hero-preview"
-                  className="relative mx-auto min-h-[390px] w-full max-w-xl sm:min-h-[470px] lg:max-w-none"
-                >
-                  <div className="pointer-events-none absolute -inset-10 rounded-full bg-[radial-gradient(circle_at_62%_42%,rgba(191,226,98,0.36),transparent_58%)] blur-2xl" />
-                  <div className="pointer-events-none absolute bottom-8 right-6 h-44 w-44 rounded-full bg-[#BFE262]/35 blur-3xl" />
-                  <div className="absolute left-0 top-0 w-[92%] -rotate-2 overflow-hidden rounded-[1.6rem] border border-black/10 bg-white opacity-90 shadow-xl shadow-black/10">
-                    <div className="relative h-[294px] overflow-hidden bg-white sm:h-[364px]">
-                      <Image
-                        src={engineerBeforePreview}
-                        alt="Original engineering website before Refresh Kiwi"
-                        fill
-                        priority
-                        sizes="(min-width: 1024px) 520px, 92vw"
-                        className="object-cover object-left-top"
-                      />
-                      <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/35 to-transparent" />
-                      <span className="absolute left-3 top-3 rounded-full bg-black/70 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-white backdrop-blur">
-                        Before
-                      </span>
-                    </div>
+                    </form>
                   </div>
-
-                  <div className="before-after-reveal-clip before-after-reveal-fast absolute bottom-0 right-0 w-[92%] rotate-2 overflow-hidden rounded-[1.8rem] border-2 border-kiwi-green bg-white shadow-2xl shadow-[#8bbf4d]/25">
-                    <div className="relative h-[294px] overflow-hidden bg-white sm:h-[364px]">
-                      <Image
-                        src={engineerAfterPreview}
-                        alt="Refreshed engineering website generated by Refresh Kiwi"
-                        fill
-                        priority
-                        sizes="(min-width: 1024px) 560px, 92vw"
-                        className="object-cover object-left-top"
-                      />
-                      <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/25 to-transparent" />
-                      <span className="absolute left-3 top-3 rounded-full bg-kiwi-green px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-black shadow-sm">
-                        After Refresh Kiwi
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
+                ) : (
+                  <div
+                    key="refresh-hero-kiwi-space"
+                    className="pointer-events-none min-h-[260px] sm:min-h-[360px] lg:min-h-[470px]"
+                    aria-hidden
+                  />
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -2194,7 +2246,7 @@ export default function RefreshPage({
       {!isRefreshing ? (
         <>
           {/* ───────────────────────── Social strip ───────────────────────── */}
-          <section className="border-y border-black/5 bg-white px-5 py-6 sm:px-8">
+          <section className="relative z-10 border-y border-black/5 bg-white px-5 py-6 sm:px-8">
             <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm font-medium text-black/40">
               <span className="font-semibold text-black/55">
                 Built for businesses like yours:
@@ -2572,20 +2624,31 @@ export default function RefreshPage({
 
           {/* ───────────────────────── Final CTA ───────────────────────── */}
           <section className="px-5 py-20 sm:px-8">
-            <div className="mx-auto w-full max-w-6xl rounded-[2.5rem] bg-kiwi-green px-6 py-16 text-center sm:px-12">
-              <h2 className="mx-auto max-w-2xl font-fraunces text-4xl font-semibold tracking-tight sm:text-5xl">
+            <div className="relative mx-auto w-full max-w-6xl overflow-hidden rounded-[2.5rem] bg-[#C5E66A] px-6 py-16 text-center sm:px-12">
+              <Image
+                src={kiwiGroupBackground}
+                alt=""
+                aria-hidden
+                fill
+                sizes="(min-width: 1024px) 1152px, 100vw"
+                className="object-cover opacity-42 mix-blend-multiply"
+              />
+              <div className="absolute inset-0 bg-[#C5E66A]/80" />
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_48%_54%_at_50%_47%,rgba(255,255,255,0.74)_0%,rgba(255,255,255,0.48)_36%,rgba(255,255,255,0)_72%)]" />
+              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.22),transparent_28%,transparent_72%,rgba(20,24,17,0.06))]" />
+              <h2 className="relative mx-auto max-w-2xl font-fraunces text-4xl font-semibold tracking-tight text-[#11150f] sm:text-5xl">
                 {flowMode === "fresh"
                   ? "Start your website in about 2 minutes."
                   : "Your website called. It wants a redesign."}
               </h2>
-              <p className="mx-auto mt-4 max-w-md text-base leading-7 text-black/60">
+              <p className="relative mx-auto mt-4 max-w-md text-base font-medium leading-7 text-[#11150f]/65">
                 {flowMode === "fresh"
                   ? "Describe your business and get a fresh website you can save, change, and publish when you're ready."
                   : "Revamping website design? Try it for free. It takes about 2 minutes, and nothing changes until you say so."}
               </p>
               <a
                 href={flowMode === "fresh" ? "#fresh-input" : "#refresh-input"}
-                className="mt-8 inline-flex items-center rounded-full bg-[#141811] px-8 py-4 text-sm font-bold text-white transition hover:bg-black"
+                className="relative mt-8 inline-flex items-center rounded-full bg-[#141811] px-8 py-4 text-sm font-bold text-white shadow-xl shadow-black/15 ring-1 ring-white/20 transition hover:bg-black"
               >
                 {flowMode === "fresh"
                   ? "Create my website — free"
