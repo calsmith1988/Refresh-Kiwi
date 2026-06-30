@@ -4,6 +4,7 @@ import path from "node:path";
 import { Agent } from "@cursor/sdk";
 
 import { getCursorApiKey, getSitesRepoUrl } from "@/lib/cursor/config";
+import { logMemoryUsage } from "@/lib/observability/memory";
 import { previewDirectory } from "@/lib/preview/paths";
 import { uploadSiteDirectoryToR2 } from "@/lib/storage/r2";
 
@@ -90,6 +91,11 @@ async function syncFromAgentArtifacts(
 
   for (let attempt = 1; attempt <= ARTIFACT_SYNC_ATTEMPTS; attempt++) {
     const relevant = await listRelevantArtifacts(agent, prefix);
+    logMemoryUsage("preview-sync:artifacts-listed", {
+      slug,
+      attempt,
+      artifacts: relevant.length,
+    });
 
     if (relevant.length > 0) {
       const relativePaths = relevant.map((artifact) =>
@@ -111,7 +117,16 @@ async function syncFromAgentArtifacts(
         const destination = path.join(outputDir, relativePath);
 
         await mkdir(path.dirname(destination), { recursive: true });
+        logMemoryUsage("preview-sync:before-artifact-download", {
+          slug,
+          file: relativePath,
+        });
         const buffer = await agent.downloadArtifact(artifact.path);
+        logMemoryUsage("preview-sync:after-artifact-download", {
+          slug,
+          file: relativePath,
+          bytes: buffer.byteLength,
+        });
         await writeFile(destination, buffer);
       }
 
@@ -131,7 +146,9 @@ async function syncFromAgentArtifacts(
 
 async function uploadSyncedPreview(slug: string, outputDir: string): Promise<void> {
   try {
+    logMemoryUsage("preview-sync:before-r2-upload", { slug });
     await uploadSiteDirectoryToR2(slug, outputDir);
+    logMemoryUsage("preview-sync:after-r2-upload", { slug });
   } catch (error) {
     console.error(`[refresh-kiwi] R2 sync failed for ${slug}:`, error);
   }
@@ -169,6 +186,10 @@ export async function syncFromGithubMain(slug: string, outputDir: string): Promi
   const files = tree.tree.filter(
     (item) => item.type === "blob" && item.path.startsWith(prefix),
   );
+  logMemoryUsage("preview-sync:github-files-listed", {
+    slug,
+    files: files.length,
+  });
 
   if (files.length === 0) {
     return false;
@@ -200,7 +221,17 @@ export async function syncFromGithubMain(slug: string, outputDir: string): Promi
 
     const destination = path.join(outputDir, relativePath);
     await mkdir(path.dirname(destination), { recursive: true });
-    await writeFile(destination, Buffer.from(await fileResponse.arrayBuffer()));
+    logMemoryUsage("preview-sync:before-github-file-download", {
+      slug,
+      file: relativePath,
+    });
+    const buffer = Buffer.from(await fileResponse.arrayBuffer());
+    logMemoryUsage("preview-sync:after-github-file-download", {
+      slug,
+      file: relativePath,
+      bytes: buffer.byteLength,
+    });
+    await writeFile(destination, buffer);
   }
 
   return true;
@@ -216,6 +247,7 @@ export async function syncPreviewFromAgent(
   console.info(
     `[refresh-kiwi] syncing Cursor artifacts for ${prefix} agentId=${agentId}`,
   );
+  logMemoryUsage("preview-sync:start", { slug });
 
   const syncedFromArtifacts = await syncFromAgentArtifacts(
     agentId,
@@ -225,6 +257,7 @@ export async function syncPreviewFromAgent(
 
   if (syncedFromArtifacts) {
     await uploadSyncedPreview(slug, outputDir);
+    logMemoryUsage("preview-sync:complete", { slug, source: "artifacts" });
     return;
   }
 
@@ -237,6 +270,7 @@ export async function syncPreviewFromAgent(
 
     if (syncedFromGithub) {
       await uploadSyncedPreview(slug, outputDir);
+      logMemoryUsage("preview-sync:complete", { slug, source: "github" });
       return;
     }
 
