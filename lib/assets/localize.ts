@@ -25,7 +25,8 @@ import {
 const MAX_IMAGES_PER_SITE = 60;
 const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
 const DOWNLOAD_TIMEOUT_MS = 20_000;
-const DOWNLOAD_CONCURRENCY = 4;
+const DOWNLOAD_CONCURRENCY = 2;
+const SKIPPED_ANIMATED_IMAGE_EXTENSIONS = /\.(gif)(?:[?#]|$)/i;
 
 const IMAGE_EXTENSIONS: Record<string, string> = {
   "image/png": ".png",
@@ -236,6 +237,20 @@ function imageDownloadUrls(url: string): string[] {
   return [...new Set(urls)];
 }
 
+function shouldSkipRemoteImage(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    const pathname = parsed.pathname.toLowerCase();
+
+    return (
+      SKIPPED_ANIMATED_IMAGE_EXTENSIONS.test(pathname) ||
+      pathname.endsWith("/animated.webp")
+    );
+  } catch {
+    return SKIPPED_ANIMATED_IMAGE_EXTENSIONS.test(url);
+  }
+}
+
 function assetFileName(originalUrl: string, contentType: string): string {
   const hash = createHash("sha1").update(originalUrl).digest("hex").slice(0, 10);
   let extension = IMAGE_EXTENSIONS[contentType.split(";")[0].trim()] ?? "";
@@ -257,6 +272,11 @@ async function downloadImage(
 
   for (const downloadUrl of imageDownloadUrls(url)) {
     try {
+      if (shouldSkipRemoteImage(downloadUrl)) {
+        failures.push(`${new URL(downloadUrl).protocol} animated image skipped`);
+        continue;
+      }
+
       const response = await fetch(downloadUrl, {
         signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS),
         headers: {
@@ -272,6 +292,11 @@ async function downloadImage(
 
       if (!response.ok) {
         failures.push(`${new URL(downloadUrl).protocol} ${response.status}`);
+        continue;
+      }
+
+      if (responseContentType.split(";")[0].trim() === "image/gif") {
+        failures.push(`${new URL(downloadUrl).protocol} animated GIF skipped`);
         continue;
       }
 
@@ -297,6 +322,11 @@ async function downloadImage(
         failures.push(
           `${new URL(downloadUrl).protocol} unsupported content-type "${responseContentType || "missing"}" (${buffer.byteLength} bytes)`,
         );
+        continue;
+      }
+
+      if (contentType === "image/gif") {
+        failures.push(`${new URL(downloadUrl).protocol} animated GIF skipped`);
         continue;
       }
 

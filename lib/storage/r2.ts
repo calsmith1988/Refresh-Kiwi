@@ -8,6 +8,7 @@ const REGION = "auto";
 const SERVICE = "s3";
 const REQUEST_TYPE = "aws4_request";
 const EMPTY_PAYLOAD_HASH = createHash("sha256").update("").digest("hex");
+const R2_UPLOAD_CONCURRENCY = 2;
 const CONTENT_TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
@@ -318,23 +319,33 @@ export async function uploadSiteDirectoryToR2(
   const files = await listLocalFiles(baseDir);
   logMemoryUsage("r2-upload:files-listed", { slug, files: files.length });
 
-  await Promise.all(
-    files.map(async (file) => {
-      logMemoryUsage("r2-upload:before-read-file", { slug, file });
-      const body = await readFile(path.join(baseDir, file));
-      logMemoryUsage("r2-upload:after-read-file", {
-        slug,
-        file,
-        bytes: body.byteLength,
-      });
-      await putSiteFile({
-        slug,
-        file,
-        body,
-        contentType: contentTypeForPath(file),
-      });
-    }),
-  );
+  for (let index = 0; index < files.length; index += R2_UPLOAD_CONCURRENCY) {
+    const batch = files.slice(index, index + R2_UPLOAD_CONCURRENCY);
+
+    await Promise.all(
+      batch.map(async (file) => {
+        logMemoryUsage("r2-upload:before-read-file", { slug, file });
+        const body = await readFile(path.join(baseDir, file));
+        logMemoryUsage("r2-upload:after-read-file", {
+          slug,
+          file,
+          bytes: body.byteLength,
+        });
+        await putSiteFile({
+          slug,
+          file,
+          body,
+          contentType: contentTypeForPath(file),
+        });
+      }),
+    );
+
+    logMemoryUsage("r2-upload:batch-complete", {
+      slug,
+      uploaded: Math.min(index + R2_UPLOAD_CONCURRENCY, files.length),
+      files: files.length,
+    });
+  }
   logMemoryUsage("r2-upload:complete", { slug, files: files.length });
 }
 
