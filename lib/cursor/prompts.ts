@@ -32,7 +32,7 @@ export function buildHomepagePrompt({ sourceUrl, slug }: PromptParams): string {
     throw new Error("Refresh homepage prompt requires a source URL");
   }
 
-  return `Rebuild the homepage for Refresh Kiwi. Work fast — target ~2 minutes, but the result must look like a premium designed website, not a text extraction.
+  return `Rebuild the homepage for Refresh Kiwi. The result must look like a premium designed website, not a text extraction.
 
 SOURCE: ${sourceUrl}
 OUTPUT: sites/${slug}/
