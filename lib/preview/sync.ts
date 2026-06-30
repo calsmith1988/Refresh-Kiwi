@@ -7,9 +7,11 @@ import { getCursorApiKey, getSitesRepoUrl } from "@/lib/cursor/config";
 import { previewDirectory } from "@/lib/preview/paths";
 import { uploadSiteDirectoryToR2 } from "@/lib/storage/r2";
 
-const GITHUB_SYNC_ATTEMPTS = 8;
-const GITHUB_SYNC_DELAY_MS = 2_000;
-const ARTIFACT_SYNC_ATTEMPTS = 1;
+const GITHUB_SYNC_ATTEMPTS = 15;
+const GITHUB_SYNC_DELAY_MS = 3_000;
+const ARTIFACT_SYNC_ATTEMPTS = 5;
+const ARTIFACT_SYNC_DELAY_MS = 2_000;
+const REQUIRED_HOMEPAGE_FILES = ["index.html", "site.json"] as const;
 
 export function githubHeaders(): Record<string, string> {
   const token = process.env.GITHUB_TOKEN?.trim() || process.env.GH_TOKEN?.trim();
@@ -56,6 +58,26 @@ async function listRelevantArtifacts(
   );
 }
 
+function relativePathFromPrefix(pathname: string, prefix: string): string {
+  return pathname.slice(prefix.length).replaceAll("\\", "/");
+}
+
+function hasRequiredHomepageFiles(relativePaths: string[]): boolean {
+  const normalized = new Set(
+    relativePaths.map((pathname) => pathname.replaceAll("\\", "/")),
+  );
+
+  return REQUIRED_HOMEPAGE_FILES.every(
+    (file) => normalized.has(file) || normalized.has(`dist/${file}`),
+  );
+}
+
+function logIncompleteSync(source: "Cursor artifacts" | "GitHub main", prefix: string) {
+  console.info(
+    `[refresh-kiwi] ${source} for ${prefix} did not include index.html and site.json yet`,
+  );
+}
+
 async function syncFromAgentArtifacts(
   agentId: string,
   slug: string,
@@ -70,8 +92,22 @@ async function syncFromAgentArtifacts(
     const relevant = await listRelevantArtifacts(agent, prefix);
 
     if (relevant.length > 0) {
+      const relativePaths = relevant.map((artifact) =>
+        relativePathFromPrefix(artifact.path, prefix),
+      );
+
+      if (!hasRequiredHomepageFiles(relativePaths)) {
+        logIncompleteSync("Cursor artifacts", prefix);
+        if (attempt < ARTIFACT_SYNC_ATTEMPTS) {
+          await sleep(ARTIFACT_SYNC_DELAY_MS);
+          continue;
+        }
+
+        return false;
+      }
+
       for (const artifact of relevant) {
-        const relativePath = artifact.path.slice(prefix.length);
+        const relativePath = relativePathFromPrefix(artifact.path, prefix);
         const destination = path.join(outputDir, relativePath);
 
         await mkdir(path.dirname(destination), { recursive: true });
@@ -86,6 +122,7 @@ async function syncFromAgentArtifacts(
       console.info(
         `[refresh-kiwi] no artifacts yet for ${prefix}, retry ${attempt}/${ARTIFACT_SYNC_ATTEMPTS}`,
       );
+      await sleep(ARTIFACT_SYNC_DELAY_MS);
     }
   }
 
@@ -137,8 +174,17 @@ export async function syncFromGithubMain(slug: string, outputDir: string): Promi
     return false;
   }
 
+  const relativePaths = files.map((file) =>
+    relativePathFromPrefix(file.path, prefix),
+  );
+
+  if (!hasRequiredHomepageFiles(relativePaths)) {
+    logIncompleteSync("GitHub main", prefix);
+    return false;
+  }
+
   for (const file of files) {
-    const relativePath = file.path.slice(prefix.length);
+    const relativePath = relativePathFromPrefix(file.path, prefix);
     const encodedPath = file.path.split("/").map(encodeURIComponent).join("/");
     const fileUrl = `https://api.github.com/repos/${parsed.owner}/${parsed.repo}/contents/${encodedPath}?ref=main`;
     const fileResponse = await fetch(fileUrl, {
@@ -202,5 +248,5 @@ export async function syncPreviewFromAgent(
     }
   }
 
-  throw new Error(`No files found under ${prefix}`);
+  throw new Error(`No complete homepage found under ${prefix}`);
 }

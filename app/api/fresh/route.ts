@@ -23,6 +23,23 @@ export const runtime = "nodejs";
 const MIN_PROMPT_LENGTH = 20;
 const MAX_PROMPT_LENGTH = 4_000;
 const MAX_SUPPORTING_IMAGES = 8;
+const STARTER_VISUAL_DIRECTIONS = [
+  {
+    name: "hero",
+    prompt:
+      "Create one focused hero visual for the homepage. Show the business, product, place, or service in a single clear composition with generous negative space for nearby website copy.",
+  },
+  {
+    name: "detail",
+    prompt:
+      "Create one focused supporting detail image for a services or feature section. Emphasize texture, craft, product detail, tools, environment, or customer experience without making a collage.",
+  },
+  {
+    name: "atmosphere",
+    prompt:
+      "Create one focused lifestyle or atmosphere image for a trust, about, or call-to-action section. Keep it natural, premium, and specific to the brief without combining multiple scenes.",
+  },
+] as const;
 
 function wantsStarterVisuals(form: FormData): boolean {
   const value = String(form.get("generateStarterVisuals") ?? "").toLowerCase();
@@ -33,30 +50,42 @@ function wantsStarterVisuals(form: FormData): boolean {
 async function generateStarterSeedAssets(
   prompt: string,
 ): Promise<SeedAssetInput[]> {
-  try {
-    const generated = await generateWebsiteImage({
-      prompt: [
-        "Create a website hero/supporting visual for this new small-business website brief.",
-        "Make it broadly useful for the first homepage version, not too specific, with no readable text.",
-        prompt,
-      ].join(" "),
-      role: "image",
-    });
-    const optimized = await optimizeImage(generated.buffer, generated.contentType);
-
-    return [
-      {
+  const generated = await Promise.allSettled(
+    STARTER_VISUAL_DIRECTIONS.map(async (direction) => {
+      const image = await generateWebsiteImage({
+        prompt: [
+          direction.prompt,
+          "No readable text, logos, UI chrome, watermarks, borders, contact details, or multiple unrelated scenes.",
+          "Brief:",
+          prompt,
+        ].join(" "),
         role: "image",
+      });
+      const optimized = await optimizeImage(image.buffer, image.contentType);
+
+      return {
+        role: "image" as const,
         buffer: optimized.buffer,
         contentType: optimized.contentType,
-        originalName: "ai-starter-visual.png",
-        source: "generated",
-      },
-    ];
-  } catch (error) {
-    console.error("[refresh-kiwi] fresh starter visual generation failed:", error);
+        originalName: `ai-starter-${direction.name}.png`,
+        source: "generated" as const,
+      };
+    }),
+  );
+
+  const assets = generated.flatMap((result) => {
+    if (result.status === "fulfilled") {
+      return [result.value];
+    }
+
+    console.error(
+      "[refresh-kiwi] fresh starter visual generation failed:",
+      result.reason,
+    );
     return [];
-  }
+  });
+
+  return assets;
 }
 
 async function fileToSeedAsset(

@@ -96,7 +96,7 @@ Do not build secondary pages in this phase. Do not spend time on a multi-page pl
 
 function formatSeedAssets(seedAssets: PromptSeedAsset[]): string {
   if (seedAssets.length === 0) {
-    return "No user-uploaded assets were provided. Use tasteful CSS shapes, gradients, layout, and typography instead of inventing image paths.";
+    return "No logo or image assets were provided. Use tasteful CSS shapes, gradients, layout, and typography instead of inventing image paths.";
   }
 
   return seedAssets
@@ -120,25 +120,26 @@ OUTPUT: sites/${slug}/
 
 ${creationPrompt}
 
-## Provided assets
+## Provided starter assets
 
 ${formatSeedAssets(seedAssets)}
 
 ## Speed-first scope (homepage only)
 
-1. Do not crawl the web. The user brief and uploaded assets are the source of truth.
+1. Do not crawl the web. The user brief and provided starter assets are the source of truth.
 2. Build a single static homepage using plain index.html, styles.css, and optional script.js. Avoid build tools unless absolutely necessary.
 3. Infer a clear brand name, audience, offer, services, proof points, tone, and calls to action from the brief. If details are missing, make conservative, useful assumptions and keep copy easy to edit later.
 4. Write sites/${slug}/site.json:
    - brandName, slug ("${slug}"), sourceUrl null
    - pages: [{ "path": "/", "title": "Home", "gated": false }]
    - discoveredPages: []
-5. Stop as soon as index.html, styles.css, and site.json are written under sites/${slug}/ and available as run artifacts. Do not wait to commit before finishing.
+5. Commit the finished homepage files to the repo before finishing. Do not finish until index.html, styles.css, and site.json are written under sites/${slug}/ and available from the run artifacts or the repository.
 
 ## Images and logo
 
 - Use the provided logo in the header if a logo asset is listed above.
 - Use provided image assets as real site imagery where they fit: hero, services, gallery, team, product, or proof sections.
+- If multiple generated image assets are listed, use them as separate focused images in different sections. Do not visually combine them into one collage or describe them as one image.
 - Reference provided assets exactly by the public URLs listed above. Do not invent local image paths.
 - If no suitable image exists for a section, use refined CSS composition instead of stock-photo placeholders.
 - Do not download any images or embed third-party images unless the user explicitly included a URL in the brief.
@@ -160,7 +161,7 @@ Avoid:
 - Broken image references.
 - Never use localhost, 127.0.0.1, or port-based preview origins in links, scripts, forms, canonical tags, Open Graph URLs, or base tags. Use root-relative paths such as /preview/${slug}/ and /preview/${slug}/page-path.
 
-Do not build secondary pages in this phase. The first preview is artifact-first, so the generated files are the deliverable even if no git commit is created.`;
+Do not build secondary pages in this phase. The homepage files are the deliverable, so make sure they are present before finishing.`;
 }
 
 export function buildAdditionalPagesPrompt({
