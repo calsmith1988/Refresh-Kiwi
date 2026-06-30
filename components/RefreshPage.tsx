@@ -777,12 +777,11 @@ export default function RefreshPage({
   blogSnippets?: BlogSnippet[];
 }) {
   const [flowMode, setFlowMode] = useState<FlowMode>("refresh");
+  const [hasChosenHeroMode, setHasChosenHeroMode] = useState(false);
   const [url, setUrl] = useState("");
   const [freshPrompt, setFreshPrompt] = useState("");
   const [freshLogo, setFreshLogo] = useState<File | null>(null);
   const [freshImages, setFreshImages] = useState<File[]>([]);
-  const [freshGenerateStarterVisuals, setFreshGenerateStarterVisuals] =
-    useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [job, setJob] = useState<JobResponse | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -843,6 +842,17 @@ export default function RefreshPage({
     },
     [],
   );
+
+  const chooseHeroMode = useCallback((mode: FlowMode) => {
+    setFlowMode(mode);
+    setHasChosenHeroMode(true);
+
+    window.setTimeout(() => {
+      document
+        .getElementById(mode === "fresh" ? "fresh-input" : "refresh-input")
+        ?.focus();
+    }, 0);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -1565,7 +1575,7 @@ export default function RefreshPage({
         body.append("images", image);
       }
 
-      if (!freshLogo && freshImages.length === 0 && freshGenerateStarterVisuals) {
+      if (!freshLogo && freshImages.length === 0) {
         body.append("generateStarterVisuals", "1");
       }
 
@@ -1742,6 +1752,7 @@ export default function RefreshPage({
             ) : (
               <a
                 href={flowMode === "fresh" ? "#fresh-input" : "#refresh-input"}
+                onClick={() => chooseHeroMode(flowMode)}
                 className="rounded-full bg-[#141811] px-4 py-2 text-sm font-semibold text-white transition hover:bg-black sm:px-5"
               >
                 Try it free
@@ -2035,16 +2046,42 @@ export default function RefreshPage({
               </div>
             </div>
           ) : (
-            <div className="relative min-h-[560px]">
-              <div className="relative z-10 grid min-w-0 items-center gap-14 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+            <div className="relative min-h-[585px]">
+              <div
+                className={`relative z-10 grid min-w-0 items-center gap-14 transition duration-300 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] ${
+                  hasChosenHeroMode
+                    ? ""
+                    : "pointer-events-none select-none opacity-40 blur-[3px]"
+                }`}
+                inert={!hasChosenHeroMode}
+                aria-hidden={!hasChosenHeroMode}
+              >
+                <div className="col-span-full flex justify-center lg:justify-start">
+                  <div className="inline-flex rounded-full border border-black/10 bg-white p-1 shadow-sm">
+                    {(["refresh", "fresh"] as const).map((mode) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => {
+                          chooseHeroMode(mode);
+                          setErrorMessage(null);
+                        }}
+                        className={`rounded-full px-4 py-2 text-sm font-semibold transition sm:px-5 ${
+                          flowMode === mode
+                            ? "bg-[#141811] text-white"
+                            : "text-black/50 hover:text-black"
+                        }`}
+                      >
+                        {mode === "refresh"
+                          ? "Refresh my old website"
+                          : "Create a fresh website"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="min-w-0">
-                <p className="inline-flex items-center gap-2 rounded-full border border-black/5 bg-white/50 px-4 py-1.5 text-xs font-semibold text-black/45">
-                  <span className="h-1.5 w-1.5 rounded-full bg-kiwi-green" />
-                  {flowMode === "fresh"
-                    ? "Affordable small business website design"
-                    : "Affordable website redesign for small business"}
-                </p>
-                <h1 className="mt-6 font-fraunces text-5xl font-semibold leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl">
+                <h1 className="font-fraunces text-5xl font-semibold leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl">
                   {flowMode === "fresh" ? "New website." : "Same website."}
                   <br />
                   <span className="relative inline-block">
@@ -2062,26 +2099,6 @@ export default function RefreshPage({
                 </p>
 
                 <div className="mt-8 max-w-lg">
-                  <div className="inline-flex rounded-full border border-black/10 bg-white p-1 shadow-sm">
-                    {(["refresh", "fresh"] as const).map((mode) => (
-                      <button
-                        key={mode}
-                        type="button"
-                        onClick={() => {
-                          setFlowMode(mode);
-                          setErrorMessage(null);
-                        }}
-                        className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                          flowMode === mode
-                            ? "bg-[#141811] text-white"
-                            : "text-black/50 hover:text-black"
-                        }`}
-                      >
-                        {mode === "refresh" ? "Refresh" : "Fresh"}
-                      </button>
-                    ))}
-                  </div>
-
                   {flowMode === "refresh" ? (
                     <form
                       onSubmit={handleRefresh}
@@ -2155,16 +2172,10 @@ export default function RefreshPage({
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-black/35">
-                          Create from scratch
-                        </p>
-                        <h2 className="mt-1 font-fraunces text-2xl font-semibold tracking-tight">
+                        <h2 className="font-fraunces text-2xl font-semibold tracking-tight">
                           Describe the website you want
                         </h2>
                       </div>
-                      <span className="hidden rounded-full bg-kiwi-green px-3 py-1 text-xs font-bold sm:inline-flex">
-                        About 2 min
-                      </span>
                     </div>
                     <label htmlFor="fresh-input" className="sr-only">
                       Describe the website you want
@@ -2173,7 +2184,7 @@ export default function RefreshPage({
                     <textarea
                       ref={freshInputRef}
                       id="fresh-input"
-                      rows={7}
+                      rows={3}
                       value={freshPrompt}
                       onChange={(event) => setFreshPrompt(event.target.value)}
                       placeholder="Tell us the business name, what you sell, who it is for, the style you like, and any must-have sections..."
@@ -2214,28 +2225,6 @@ export default function RefreshPage({
                         />
                       </label>
                     </div>
-                    {!freshLogo && freshImages.length === 0 ? (
-                      <label className="mt-3 flex cursor-pointer gap-3 rounded-2xl border border-black/10 bg-[#faf8f1] px-4 py-3 text-sm transition hover:border-black/25">
-                        <input
-                          type="checkbox"
-                          checked={freshGenerateStarterVisuals}
-                          onChange={(event) =>
-                            setFreshGenerateStarterVisuals(event.target.checked)
-                          }
-                          className="mt-1 h-4 w-4 shrink-0 accent-[#141811]"
-                        />
-                        <span>
-                          <span className="font-semibold">
-                            Generate starter visuals if I don&apos;t upload any
-                          </span>
-                          <span className="mt-1 block text-xs leading-5 text-black/45">
-                            We&apos;ll create one text-free website visual for
-                            Cursor to use in the first design. You can replace,
-                            remix, or add more images later.
-                          </span>
-                        </span>
-                      </label>
-                    ) : null}
                     <button
                       type="submit"
                       disabled={!freshPrompt.trim()}
@@ -2257,6 +2246,73 @@ export default function RefreshPage({
                   />
                 )}
               </div>
+
+              {!hasChosenHeroMode ? (
+                <>
+                  <div className="absolute -bottom-10 top-0 left-1/2 z-20 w-screen -translate-x-1/2 bg-[#faf8f1]/45 backdrop-blur-[1px]" />
+                <div className="absolute inset-0 z-30 flex items-center justify-center px-0 py-8 sm:px-6">
+                  <div className="relative w-full max-w-2xl overflow-hidden rounded-[2rem] border border-black/10 bg-white/85 p-4 shadow-2xl shadow-black/15 backdrop-blur-xl sm:p-6">
+                    <Image
+                      src={kiwiGroupBackground}
+                      alt=""
+                      aria-hidden
+                      fill
+                      priority
+                      sizes="720px"
+                      className="object-cover opacity-42 mix-blend-multiply"
+                    />
+                    <div className="absolute inset-0 bg-[#C5E66A]/80" />
+                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_48%_54%_at_50%_47%,rgba(255,255,255,0.74)_0%,rgba(255,255,255,0.48)_36%,rgba(255,255,255,0)_72%)]" />
+                    <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.22),transparent_28%,transparent_72%,rgba(20,24,17,0.06))]" />
+                    <div className="relative text-center">
+                      <h2 className="font-fraunces text-3xl font-semibold tracking-tight sm:text-4xl">
+                        What do you want to do?
+                      </h2>
+                    </div>
+
+                    <div className="relative mt-6 grid gap-3 sm:grid-cols-2">
+                      <button
+                        type="button"
+                        onClick={() => chooseHeroMode("refresh")}
+                        className="group rounded-[1.5rem] border-2 border-black/10 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-black/30 hover:shadow-xl hover:shadow-black/10"
+                      >
+                        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-kiwi-green text-lg font-black text-black">
+                          ↻
+                        </span>
+                        <span className="mt-4 block font-fraunces text-2xl font-semibold leading-tight tracking-tight">
+                          I want to refresh my website
+                        </span>
+                        <span className="mt-2 block text-sm leading-6 text-black/55">
+                          I already have a website and want a better version.
+                        </span>
+                        <span className="mt-4 inline-flex text-sm font-bold text-black transition group-hover:translate-x-1">
+                          Refresh my site →
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => chooseHeroMode("fresh")}
+                        className="group rounded-[1.5rem] border-2 border-black/10 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-black/30 hover:shadow-xl hover:shadow-black/10"
+                      >
+                        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#141811] text-lg font-black text-white">
+                          +
+                        </span>
+                        <span className="mt-4 block font-fraunces text-2xl font-semibold leading-tight tracking-tight">
+                          I want to create a fresh website
+                        </span>
+                        <span className="mt-2 block text-sm leading-6 text-black/55">
+                          I&apos;m starting from scratch and need a new website.
+                        </span>
+                        <span className="mt-4 inline-flex text-sm font-bold text-black transition group-hover:translate-x-1">
+                          Create my site →
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                </>
+              ) : null}
             </div>
           )}
         </div>
@@ -2415,6 +2471,7 @@ export default function RefreshPage({
                   : "The best small business website redesign example is your own website — "}
                 <a
                   href={flowMode === "fresh" ? "#fresh-input" : "#refresh-input"}
+                  onClick={() => chooseHeroMode(flowMode)}
                   className="font-semibold text-kiwi-green underline underline-offset-4"
                 >
                   try it free
@@ -2456,6 +2513,7 @@ export default function RefreshPage({
                   </ul>
                   <a
                     href={flowMode === "fresh" ? "#fresh-input" : "#refresh-input"}
+                    onClick={() => chooseHeroMode(flowMode)}
                     className="mt-7 inline-flex h-12 items-center rounded-full border border-black/15 bg-white px-6 text-sm font-semibold transition hover:border-black/30"
                   >
                     Try it free
@@ -2487,6 +2545,7 @@ export default function RefreshPage({
                   </ul>
                   <a
                     href={flowMode === "fresh" ? "#fresh-input" : "#refresh-input"}
+                    onClick={() => chooseHeroMode(flowMode)}
                     className="mt-7 inline-flex h-12 items-center rounded-full bg-kiwi-green px-6 text-sm font-bold text-black transition hover:bg-kiwi-green-hover"
                   >
                     {flowMode === "fresh"
@@ -2667,6 +2726,7 @@ export default function RefreshPage({
               </p>
               <a
                 href={flowMode === "fresh" ? "#fresh-input" : "#refresh-input"}
+                onClick={() => chooseHeroMode(flowMode)}
                 className="relative mt-8 inline-flex items-center rounded-full bg-[#141811] px-8 py-4 text-sm font-bold text-white shadow-xl shadow-black/15 ring-1 ring-white/20 transition hover:bg-black"
               >
                 {flowMode === "fresh"
