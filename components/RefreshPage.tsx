@@ -2104,10 +2104,10 @@ export default function RefreshPage({
           ) : (
             <div className="relative min-h-[585px]">
               <div
-                className={`relative z-10 grid min-w-0 items-center gap-14 transition duration-300 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] ${
+                className={`relative z-10 min-w-0 items-center gap-14 transition duration-300 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] ${
                   hasChosenHeroMode
-                    ? ""
-                    : "pointer-events-none select-none opacity-40 blur-[3px]"
+                    ? "grid"
+                    : "hidden pointer-events-none select-none opacity-40 blur-[3px] sm:grid"
                 }`}
                 inert={!hasChosenHeroMode}
                 aria-hidden={!hasChosenHeroMode}
