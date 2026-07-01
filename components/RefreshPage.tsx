@@ -1138,6 +1138,17 @@ export default function RefreshPage({
     }
   }, [job]);
 
+  const logout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } finally {
+      clearStoredJob();
+      setUser(null);
+      setIsPreviewMenuOpen(false);
+      setAccountMode("closed");
+    }
+  };
+
   const handleAuthSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -1847,13 +1858,22 @@ export default function RefreshPage({
                   className="absolute right-0 top-[3.25rem] z-50 w-56 rounded-3xl border border-black/10 bg-white p-2 shadow-2xl shadow-black/15"
                 >
                   {user ? (
-                    <Link
-                      href="/dashboard"
-                      onClick={() => setIsPreviewMenuOpen(false)}
-                      className="block rounded-2xl px-4 py-3 text-sm font-semibold text-black transition hover:bg-black/5"
-                    >
-                      My websites
-                    </Link>
+                    <>
+                      <Link
+                        href="/dashboard"
+                        onClick={() => setIsPreviewMenuOpen(false)}
+                        className="block rounded-2xl px-4 py-3 text-sm font-semibold text-black transition hover:bg-black/5"
+                      >
+                        My websites
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => void logout()}
+                        className="block w-full rounded-2xl px-4 py-3 text-left text-sm font-semibold text-black/65 transition hover:bg-black/5 hover:text-black"
+                      >
+                        Log out
+                      </button>
+                    </>
                   ) : (
                     <button
                       type="button"
