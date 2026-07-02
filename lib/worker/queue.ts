@@ -2,7 +2,7 @@ import { eq, sql } from "drizzle-orm";
 
 import { getDb, schema } from "@/lib/db";
 
-const { backgroundTasks, editRequests, jobs } = schema;
+const { backgroundTasks } = schema;
 
 export type BackgroundTaskType =
   | "refresh-homepage"

@@ -242,15 +242,6 @@ type BusinessIconName =
   | "cleaners"
   | "more";
 
-const BUSINESS_TYPES: Array<{ label: string; icon: BusinessIconName }> = [
-  { label: "Plumbers", icon: "plumbers" },
-  { label: "Salons", icon: "salons" },
-  { label: "Cafés", icon: "cafes" },
-  { label: "Clinics", icon: "clinics" },
-  { label: "Builders", icon: "builders" },
-  { label: "Cleaners", icon: "cleaners" },
-];
-
 const BUSINESS_STRIP_TYPES: Array<{
   label: string;
   icon: BusinessIconName;
