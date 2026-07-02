@@ -117,6 +117,52 @@ const IMAGE_PLACEMENT_OPTIONS = [
   { value: "header_logo", label: "Header logo / brand mark" },
 ] as const;
 
+type DashboardIconName =
+  | "copy"
+  | "check"
+  | "external"
+  | "edit"
+  | "image"
+  | "pages"
+  | "globe"
+  | "trash"
+  | "rocket"
+  | "calendar"
+  | "changes";
+
+function DashboardIcon({
+  name,
+  className = "h-4 w-4",
+}: {
+  name: DashboardIconName;
+  className?: string;
+}) {
+  const paths: Record<DashboardIconName, string> = {
+    copy: "M8 7a3 3 0 0 1 3-3h6a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3h-1v1a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3h1V7Zm2 1h3a3 3 0 0 1 3 3v3h1a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v1Zm-3 2a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-6a1 1 0 0 0-1-1H7Z",
+    check: "M9.5 16.6 4.9 12l1.4-1.4 3.2 3.2 8.2-8.2L19.1 7 9.5 16.6Z",
+    external: "M6 5a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-5h-2v4H7V7h4V5H6Zm8 0v2h3.6l-7.3 7.3 1.4 1.4L19 8.4V12h2V5h-7Z",
+    edit: "M4 17.5V21h3.5L18.1 10.4l-3.5-3.5L4 17.5Zm12-12 1.2-1.2a1.6 1.6 0 0 1 2.3 0l.2.2a1.6 1.6 0 0 1 0 2.3L18.5 8 16 5.5Z",
+    image: "M5 5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5Zm0 12v-2.6l3.2-3.2 3.1 3.1 1.4-1.4 1.3-1.3L19 16.6v.4H5Zm10.5-6.5a1.8 1.8 0 1 0 0-3.6 1.8 1.8 0 0 0 0 3.6Z",
+    pages: "M6 3h9l4 4v14H6V3Zm8 1.8V8h3.2L14 4.8ZM8 11h8v2H8v-2Zm0 4h8v2H8v-2Z",
+    globe: "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm6.9 9h-3.1a15.8 15.8 0 0 0-1.1-5 8.02 8.02 0 0 1 4.2 5ZM12 4.1c.8 1.2 1.5 3.6 1.7 6.9h-3.4c.2-3.3.9-5.7 1.7-6.9ZM4.2 13h3.9c.1 1.8.4 3.4.9 4.8A8.02 8.02 0 0 1 4.2 13Zm3.9-2H4.2A8.02 8.02 0 0 1 9 6.2 16.9 16.9 0 0 0 8.1 11Zm3.9 8.9c-.8-1.2-1.5-3.6-1.7-6.9h3.4c-.2 3.3-.9 5.7-1.7 6.9Zm3-2.1c.5-1.4.8-3 .9-4.8h3.9a8.02 8.02 0 0 1-4.8 4.8Z",
+    trash: "M8 4V3h8v1h4v2H4V4h4Zm-2 4h12l-.8 12H6.8L6 8Zm4 2v8h2v-8h-2Zm4 0v8h2v-8h-2Z",
+    rocket: "M12.6 3.1c2.5-.5 5.2.1 8.1 1.9.1 3.4-.7 6-2.4 7.9l.5 3.5-3.8 3.8-1-4a13 13 0 0 1-2.1.8l-4.8-4.8c.2-.7.5-1.4.8-2.1l-4-.9 3.8-3.8 3.5.5c.4-1.3.9-2.2 1.4-2.8Zm2.4 6.4A1.5 1.5 0 1 0 15 6.5a1.5 1.5 0 0 0 0 3ZM6.6 15.1c.6.6.6 1.7 0 2.3-.7.7-3.6 1.6-3.6 1.6s.9-2.9 1.6-3.6c.6-.6 1.7-.6 2.3 0Z",
+    calendar: "M7 3h2v2h6V3h2v2h3v16H4V5h3V3Zm11 8H6v8h12v-8Z",
+    changes: "M12 4V2l4 3-4 3V6a5 5 0 0 0-4.6 7h-2A7 7 0 0 1 12 4Zm6.6 7a7 7 0 0 1-6.6 9v2l-4-3 4-3v2a5 5 0 0 0 4.6-7h2Z",
+  };
+
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className={className}
+      fill="currentColor"
+    >
+      <path d={paths[name]} />
+    </svg>
+  );
+}
+
 function imageSourceLabel(source: WebsiteImage["source"]): string {
   if (source === "upload") {
     return "Your upload";
@@ -416,9 +462,7 @@ function websiteState(website: Website, isPro: boolean) {
     return {
       label: "Live",
       badgeClass: "bg-kiwi-green text-black",
-      description: isPro
-        ? "Live while your Pro plan is active."
-        : "This website is currently live.",
+      description: isPro ? "" : "This website is currently live.",
       canView: true,
       canEdit: true,
       showKeepLive: false,
@@ -1589,7 +1633,7 @@ export default function DashboardPage() {
               aria-hidden
               className="shrink-0 rounded-full"
             />
-            <span className="hidden translate-y-[3px] truncate font-marhey text-2xl font-normal leading-none min-[380px]:inline-block">
+            <span className="hidden translate-y-[2px] truncate font-marhey text-xl font-normal leading-tight min-[380px]:inline-block">
               Refresh Kiwi
             </span>
           </Link>
@@ -1599,7 +1643,7 @@ export default function DashboardPage() {
                 type="button"
                 onClick={() => void startBillingFlow("portal")}
                 disabled={billingAction !== null}
-                className="rounded-full border border-black/10 bg-white px-5 py-2.5 text-sm font-semibold text-black transition hover:border-black/25 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-full border border-black/10 bg-white px-5 py-2.5 text-sm font-semibold text-black/60 transition hover:border-black/25 hover:text-black disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {billingAction === "portal" ? "Opening..." : "Manage billing"}
               </button>
@@ -1646,7 +1690,7 @@ export default function DashboardPage() {
                       void startBillingFlow("portal");
                     }}
                     disabled={billingAction !== null}
-                    className="rounded-2xl border border-black/10 bg-white px-4 py-3 text-left text-sm font-semibold text-black transition hover:border-black/25 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded-2xl border border-black/10 bg-white px-4 py-3 text-left text-sm font-semibold text-black/70 transition hover:border-black/25 hover:text-black disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {billingAction === "portal" ? "Opening..." : "Manage billing"}
                   </button>
@@ -1768,7 +1812,9 @@ export default function DashboardPage() {
                   </svg>
                 </span>
                 <div>
-                  <p className="text-sm font-medium text-black/50">Your plan</p>
+                  <p className="text-xs font-normal uppercase text-black/45">
+                    Your plan
+                  </p>
                   <p className="mt-1 text-xl font-bold capitalize">{planTitle}</p>
                 </div>
               </div>
@@ -1780,7 +1826,9 @@ export default function DashboardPage() {
                     disabled={billingAction !== null}
                     className="inline-flex items-center gap-2 text-sm font-semibold text-[#3f8f22] transition hover:text-black disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {billingAction === "portal" ? "Opening..." : "View billing"}
+                    {billingAction === "portal"
+                      ? "Opening..."
+                      : "View billing & plan details"}
                     <span aria-hidden>→</span>
                   </button>
                 ) : (
@@ -1814,7 +1862,9 @@ export default function DashboardPage() {
                   </svg>
                 </span>
                 <div>
-                  <p className="text-sm font-medium text-black/50">Account status</p>
+                  <p className="text-xs font-normal uppercase text-black/45">
+                    Account status
+                  </p>
                   <p className="mt-1 text-xl font-bold capitalize">
                     {accountStatusTitle}
                   </p>
@@ -1842,7 +1892,9 @@ export default function DashboardPage() {
                   </svg>
                 </span>
                 <div>
-                  <p className="text-sm font-medium text-black/50">Websites used</p>
+                  <p className="text-xs font-normal uppercase text-black/45">
+                    Websites used
+                  </p>
                   <p className="mt-1 text-xl font-bold">
                     {activeWebsiteCount} of {websiteLimit}
                   </p>
@@ -2108,27 +2160,33 @@ export default function DashboardPage() {
                     }`}
                   >
                     <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-start sm:p-5">
-                      <div className="relative h-28 w-full shrink-0 overflow-hidden rounded-2xl border border-black/10 bg-[#f0f4e7] sm:h-28 sm:w-44">
+                      <div className="relative h-44 w-full shrink-0 overflow-hidden rounded-2xl border border-black/10 bg-[#f0f4e7] sm:h-44 sm:w-72">
                         <div className="flex h-full w-full items-center justify-center px-4 text-center text-xs font-semibold text-black/35">
                           Homepage preview
                         </div>
                         {state.canView ? (
-                          <>
+                          <a
+                            href={address}
+                            target="_blank"
+                            rel="noreferrer"
+                            aria-label={`Open ${website.brandName || website.slug} homepage`}
+                            className="absolute inset-0 block transition hover:opacity-90"
+                          >
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                               src={screenshotUrl}
                               alt={`${website.brandName || website.slug} homepage screenshot`}
                               loading="lazy"
-                              className="absolute inset-0 h-full w-full object-cover object-top"
+                              className="h-full w-full object-cover object-top"
                               onError={(event) => {
                                 event.currentTarget.style.display = "none";
                               }}
                             />
-                          </>
+                          </a>
                         ) : null}
                       </div>
 
-                      <div className="min-w-0 flex-1">
+                      <div className="flex min-w-0 flex-1 flex-col self-stretch">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <div className="flex min-w-0 items-center gap-2">
@@ -2163,9 +2221,15 @@ export default function DashboardPage() {
                                 <button
                                   type="button"
                                   onClick={() => void copyWebsiteAddress(website)}
-                                  className="shrink-0 text-xs font-semibold text-black/35 transition hover:text-black"
+                                  className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-black/35 transition hover:bg-black/5 hover:text-black"
+                                  aria-label={`Copy ${displayAddress}`}
                                 >
-                                  {copiedWebsiteId === website.id ? "Copied!" : "Copy"}
+                                  <DashboardIcon
+                                    name={
+                                      copiedWebsiteId === website.id ? "check" : "copy"
+                                    }
+                                    className="h-3.5 w-3.5"
+                                  />
                                 </button>
                               </div>
                             ) : (
@@ -2181,27 +2245,160 @@ export default function DashboardPage() {
                           </span>
                         </div>
 
-                        <p className="mt-2 text-sm font-medium text-black/55">
-                          {state.description}
-                        </p>
-                        <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs font-medium text-black/45">
-                          <span>
-                            {isPro
-                              ? "Changes: unlimited"
-                              : `Free changes left: ${website.freeEditsRemaining} of ${website.freeEditsLimit}`}
-                          </span>
-                          {generatedPages.length > 0 ? (
-                            <span>
-                              {generatedPages.length}{" "}
-                              {pluralise(generatedPages.length, "page")}
+                        {state.description ? (
+                          <p className="mt-2 text-sm font-medium text-black/55">
+                            {state.description}
+                          </p>
+                        ) : null}
+                        <div className="mt-auto pt-4">
+                          <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs font-medium text-black/45">
+                            {generatedPages.length > 0 ? (
+                              <span className="inline-flex items-center gap-1.5">
+                                <DashboardIcon
+                                  name="pages"
+                                  className="h-3.5 w-3.5"
+                                />
+                                {generatedPages.length}{" "}
+                                {pluralise(generatedPages.length, "page")}
+                              </span>
+                            ) : null}
+                            {!isPro && website.status !== "live" ? (
+                              <span className="inline-flex items-center gap-1.5">
+                                <DashboardIcon
+                                  name="calendar"
+                                  className="h-3.5 w-3.5"
+                                />
+                                Free preview until {formatDate(website.expiresAt)}
+                              </span>
+                            ) : null}
+                            {website.publishedAt ? (
+                              <span className="inline-flex items-center gap-1.5">
+                                <DashboardIcon
+                                  name="rocket"
+                                  className="h-3.5 w-3.5"
+                                />
+                                Published: {formatDate(website.publishedAt)}
+                              </span>
+                            ) : null}
+                            <span className="inline-flex items-center gap-1.5">
+                              <DashboardIcon
+                                name="changes"
+                                className="h-3.5 w-3.5"
+                              />
+                              {isPro
+                                ? "Changes: unlimited"
+                                : `Free changes left: ${website.freeEditsRemaining} of ${website.freeEditsLimit}`}
                             </span>
-                          ) : null}
-                          {!isPro && website.status !== "live" ? (
-                            <span>Free preview until {formatDate(website.expiresAt)}</span>
-                          ) : null}
-                          {website.publishedAt ? (
-                            <span>Published: {formatDate(website.publishedAt)}</span>
-                          ) : null}
+                          </div>
+
+                          <div className="mt-4 flex flex-wrap gap-2 border-t border-black/10 pt-4">
+                            {state.canView ? (
+                              <Link
+                                href={previewHref(website.slug)}
+                                target="_blank"
+                                className="inline-flex items-center gap-2 rounded-2xl bg-[#141811] px-4 py-2 text-xs font-semibold text-white transition hover:bg-black"
+                              >
+                                <DashboardIcon name="external" />
+                                {website.status === "live"
+                                  ? "View live site"
+                                  : "View preview"}
+                              </Link>
+                            ) : null}
+                            {isPro && state.showKeepLive ? (
+                              <button
+                                type="button"
+                                onClick={() => void publishWebsite(website.id)}
+                                disabled={publishingWebsiteId === website.id}
+                                className="inline-flex items-center gap-2 rounded-2xl bg-kiwi-green px-4 py-2 text-xs font-semibold text-black transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                <DashboardIcon name="rocket" />
+                                {publishingWebsiteId === website.id
+                                  ? "Publishing…"
+                                  : state.label === "Expired preview"
+                                    ? "Restore live"
+                                    : "Publish live"}
+                              </button>
+                            ) : null}
+                            {!isPro && state.showKeepLive ? (
+                              <button
+                                type="button"
+                                onClick={openProSheet}
+                                className="inline-flex items-center gap-2 rounded-2xl bg-kiwi-green px-4 py-2 text-xs font-semibold text-black transition hover:bg-kiwi-green-hover"
+                              >
+                                <DashboardIcon name="rocket" />
+                                {state.label === "Expired preview"
+                                  ? "Go live again — £10/mo"
+                                  : "Put it online — £10/mo"}
+                              </button>
+                            ) : null}
+                            {state.canEdit ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (
+                                    hasActiveEditForWebsite &&
+                                    website.latestEditRequest
+                                  ) {
+                                    setActiveEditModalRequestId(
+                                      website.latestEditRequest.id,
+                                    );
+                                    return;
+                                  }
+
+                                  openWebsiteActionModal(website, "edit");
+                                }}
+                                className="inline-flex items-center gap-2 rounded-2xl border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-black transition hover:border-black/25"
+                              >
+                                <DashboardIcon name="edit" />
+                                {hasActiveEditForWebsite ? "Edit status" : "Edit website"}
+                              </button>
+                            ) : null}
+                            {state.canEdit ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  openWebsiteActionModal(website, "images")
+                                }
+                                className="inline-flex items-center gap-2 rounded-2xl border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-black transition hover:border-black/25"
+                              >
+                                <DashboardIcon name="image" />
+                                Images
+                              </button>
+                            ) : null}
+                            {state.canView ? (
+                              <button
+                                type="button"
+                                onClick={() => openWebsiteActionModal(website, "pages")}
+                                disabled={
+                                  isGeneratingPages ||
+                                  generatingPagesWebsiteId === website.id
+                                }
+                                className="inline-flex items-center gap-2 rounded-2xl border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-black transition hover:border-black/25 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                <DashboardIcon name="pages" />
+                                {isGeneratingPages ||
+                                generatingPagesWebsiteId === website.id
+                                  ? "Generating…"
+                                  : "Pages"}
+                              </button>
+                            ) : null}
+                            <button
+                              type="button"
+                              onClick={() => openWebsiteActionModal(website, "domain")}
+                              className="inline-flex items-center gap-2 rounded-2xl border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-black transition hover:border-black/25"
+                            >
+                              <DashboardIcon name="globe" />
+                              Manage domain
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => openWebsiteActionModal(website, "delete")}
+                              className="inline-flex items-center gap-2 rounded-2xl border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-red-600 transition hover:border-red-200 hover:text-red-700"
+                            >
+                              <DashboardIcon name="trash" />
+                              Delete website
+                            </button>
+                          </div>
                         </div>
 
                         {website.latestEditRequest ? (
@@ -2248,25 +2445,7 @@ export default function DashboardPage() {
                               </button>
                             </div>
                           ) : website.latestEditRequest.status === "complete" ? (
-                            <div className="mt-3 flex items-center gap-2">
-                              <Image
-                                src="/refresh-kiwi-favicon-v2.png"
-                                alt=""
-                                width={18}
-                                height={18}
-                                className="kiwi-pop shrink-0"
-                              />
-                              <span className="text-xs font-semibold text-[#3d7a1f]">
-                                Change made —{" "}
-                                <Link
-                                  href={previewHref(website.slug)}
-                                  target="_blank"
-                                  className="underline underline-offset-2 hover:text-[#2d5c15]"
-                                >
-                                  take a look
-                                </Link>
-                              </span>
-                            </div>
+                            null
                           ) : website.latestEditRequest.errorMessage ===
                             "Edit cancelled." ? (
                             <p className="mt-3 text-xs font-medium text-black/45">
@@ -2311,103 +2490,6 @@ export default function DashboardPage() {
                           </div>
                         ) : null}
                       </div>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2 border-t border-black/5 bg-[#fbfaf6] px-4 py-3 sm:px-5">
-                      {state.canView ? (
-                        <Link
-                          href={previewHref(website.slug)}
-                          target="_blank"
-                          className="rounded-full bg-[#141811] px-4 py-2 text-sm font-semibold text-white transition hover:bg-black"
-                        >
-                          {website.status === "live" ? "View live site" : "View preview"}
-                        </Link>
-                      ) : null}
-                      {isPro && state.showKeepLive ? (
-                        <button
-                          type="button"
-                          onClick={() => void publishWebsite(website.id)}
-                          disabled={publishingWebsiteId === website.id}
-                          className="rounded-full bg-kiwi-green px-4 py-2 text-sm font-semibold text-black transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          {publishingWebsiteId === website.id
-                            ? "Publishing…"
-                            : state.label === "Expired preview"
-                              ? "Restore live"
-                              : "Publish live"}
-                        </button>
-                      ) : null}
-                      {!isPro && state.showKeepLive ? (
-                        <button
-                          type="button"
-                          onClick={openProSheet}
-                          className="rounded-full bg-kiwi-green px-4 py-2 text-sm font-semibold text-black transition hover:bg-kiwi-green-hover"
-                        >
-                          {state.label === "Expired preview"
-                            ? "Go live again — £10/mo"
-                            : "Put it online — £10/mo"}
-                        </button>
-                      ) : null}
-                        {state.canEdit ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (
-                                hasActiveEditForWebsite &&
-                                website.latestEditRequest
-                              ) {
-                                setActiveEditModalRequestId(
-                                  website.latestEditRequest.id,
-                                );
-                                return;
-                              }
-
-                              openWebsiteActionModal(website, "edit");
-                            }}
-                            className="rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold text-black transition hover:border-black/25"
-                          >
-                            {hasActiveEditForWebsite ? "Edit status" : "Edit website"}
-                          </button>
-                        ) : null}
-                        {state.canEdit ? (
-                          <button
-                            type="button"
-                            onClick={() => openWebsiteActionModal(website, "images")}
-                            className="rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold text-black transition hover:border-black/25"
-                          >
-                            Images
-                          </button>
-                        ) : null}
-                        {state.canView ? (
-                          <button
-                            type="button"
-                            onClick={() => openWebsiteActionModal(website, "pages")}
-                            disabled={
-                              isGeneratingPages ||
-                              generatingPagesWebsiteId === website.id
-                            }
-                            className="rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold text-black transition hover:border-black/25 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            {isGeneratingPages ||
-                            generatingPagesWebsiteId === website.id
-                              ? "Generating…"
-                              : "Pages"}
-                          </button>
-                        ) : null}
-                        <button
-                          type="button"
-                          onClick={() => openWebsiteActionModal(website, "domain")}
-                          className="rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold text-black transition hover:border-black/25"
-                        >
-                          Manage domain
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => openWebsiteActionModal(website, "delete")}
-                          className="rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700"
-                        >
-                          Delete website
-                        </button>
                     </div>
 
                     {websiteActionModal?.websiteId === website.id &&

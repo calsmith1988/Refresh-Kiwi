@@ -411,16 +411,16 @@ export default function AccountPage() {
     <main className="min-h-screen bg-[#faf8f1] px-5 py-5 text-[#141811] sm:px-8 lg:px-10">
       <div className="mx-auto w-full max-w-6xl">
         <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <Link href="/" className="flex items-center gap-2.5">
+          <Link href="/" className="flex min-w-0 items-center gap-2.5">
             <Image
               src="/refresh-kiwi-favicon-v2.png"
               alt=""
               width={34}
               height={34}
               aria-hidden
-              className="rounded-full"
+              className="shrink-0 rounded-full"
             />
-            <span className="font-montserrat text-xl font-bold">
+            <span className="translate-y-[2px] truncate font-marhey text-xl font-normal leading-tight">
               Refresh Kiwi
             </span>
           </Link>

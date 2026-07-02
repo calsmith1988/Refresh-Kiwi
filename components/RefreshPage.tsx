@@ -1777,7 +1777,7 @@ export default function RefreshPage({
               aria-hidden
               className="rounded-full"
             />
-            <span className="hidden font-montserrat text-lg font-bold min-[400px]:inline">
+            <span className="hidden translate-y-[2px] font-marhey text-xl font-normal leading-none min-[400px]:inline">
               Refresh Kiwi
             </span>
           </Link>
@@ -2895,42 +2895,132 @@ export default function RefreshPage({
           </section>
 
           {/* ───────────────────────── Footer ───────────────────────── */}
-          <footer className="border-t border-black/5 px-5 py-10 sm:px-8">
-            <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-4 sm:flex-row">
-              <div className="flex items-center gap-2.5">
-                <Image
-                  src="/refresh-kiwi-favicon-v2.png"
-                  alt=""
-                  width={26}
-                  height={26}
-                  aria-hidden
-                  className="rounded-full"
-                />
-                <span className="font-montserrat text-sm font-bold">
-                  Refresh Kiwi
-                </span>
+          <footer className="border-t border-black/5 px-5 py-12 sm:px-8">
+            <div className="mx-auto grid w-full max-w-6xl gap-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,2.2fr)]">
+              <div>
+                <Link href="/" className="inline-flex items-center gap-2.5">
+                  <Image
+                    src="/refresh-kiwi-favicon-v2.png"
+                    alt=""
+                    width={32}
+                    height={32}
+                    aria-hidden
+                    className="rounded-full"
+                  />
+                  <span className="translate-y-[2px] font-marhey text-xl font-normal leading-none">
+                    Refresh Kiwi
+                  </span>
+                </Link>
+                <p className="mt-3 text-xs leading-5 text-black/60">
+                  Create a new website in about two minutes.
+                </p>
+                <div className="mt-6 flex items-center gap-4">
+                  <a
+                    href="https://www.facebook.com/profile.php?id=61590976286585"
+                    aria-label="Refresh Kiwi on Facebook"
+                    className="text-black/80 transition hover:text-black"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                      className="h-5 w-5 fill-current"
+                    >
+                      <path d="M22 12.06C22 6.48 17.52 2 11.94 2S2 6.48 2 12.06c0 5.02 3.66 9.18 8.44 9.94v-7.03H7.9v-2.91h2.54V9.85c0-2.52 1.5-3.91 3.79-3.91 1.1 0 2.25.2 2.25.2v2.47h-1.27c-1.24 0-1.63.77-1.63 1.56v1.89h2.78l-.44 2.91h-2.34V22A10.02 10.02 0 0 0 22 12.06Z" />
+                    </svg>
+                  </a>
+                  <a
+                    href="https://www.instagram.com/refresh.kiwi/"
+                    aria-label="Refresh Kiwi on Instagram"
+                    className="text-black/80 transition hover:text-black"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                      className="h-5 w-5 fill-current"
+                    >
+                      <path d="M7.8 2h8.4A5.8 5.8 0 0 1 22 7.8v8.4a5.8 5.8 0 0 1-5.8 5.8H7.8A5.8 5.8 0 0 1 2 16.2V7.8A5.8 5.8 0 0 1 7.8 2Zm-.2 2A3.6 3.6 0 0 0 4 7.6v8.8A3.6 3.6 0 0 0 7.6 20h8.8a3.6 3.6 0 0 0 3.6-3.6V7.6A3.6 3.6 0 0 0 16.4 4H7.6Zm8.9 1.5a1.25 1.25 0 1 1 0 2.5 1.25 1.25 0 0 1 0-2.5ZM12 7.2a4.8 4.8 0 1 1 0 9.6 4.8 4.8 0 0 1 0-9.6Zm0 2a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6Z" />
+                    </svg>
+                  </a>
+                  <a
+                    href="https://www.tiktok.com/@refresh.kiwi"
+                    aria-label="Refresh Kiwi on TikTok"
+                    className="text-black/80 transition hover:text-black"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                      className="h-5 w-5 fill-current"
+                    >
+                      <path d="M16.6 3c.35 2.57 1.82 4.1 4.4 4.26v2.9a7.52 7.52 0 0 1-4.35-1.34v6.6c0 3.38-2.18 5.58-5.54 5.58-3.02 0-5.11-1.9-5.11-4.66 0-3 2.34-5.1 5.68-5.1.38 0 .74.03 1.08.1v3.05a3.6 3.6 0 0 0-1.18-.2c-1.5 0-2.49.82-2.49 2.05 0 1.12.84 1.86 2.1 1.86 1.37 0 2.18-.88 2.18-2.4V3h3.23Z" />
+                    </svg>
+                  </a>
+                </div>
               </div>
-              <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-black/45 sm:justify-end">
-                <span>Same website, fresher skin.</span>
-                <Link className="hover:text-black" href="/blog">
-                  Blog
-                </Link>
-                <Link className="hover:text-black" href="/privacy-policy">
-                  Privacy
-                </Link>
-                <Link className="hover:text-black" href="/terms-of-service">
-                  Terms
-                </Link>
-                <Link className="hover:text-black" href="/cookie-policy">
-                  Cookies
-                </Link>
-                <CookieSettingsButton />
-                <Link className="hover:text-black" href="/refund-policy">
-                  Refunds
-                </Link>
-                <Link className="hover:text-black" href="/acceptable-use-policy">
-                  Acceptable use
-                </Link>
+
+              <div className="grid gap-6 sm:grid-cols-3">
+                <div>
+                  <h2 className="text-sm font-bold text-black">Product</h2>
+                  <nav
+                    aria-label="Footer product links"
+                    className="mt-3 flex flex-col gap-2 text-sm text-black/55"
+                  >
+                    <Link className="transition hover:text-black" href="/">
+                      Home
+                    </Link>
+                    <a className="transition hover:text-black" href="#how">
+                      How it works
+                    </a>
+                    <a className="transition hover:text-black" href="#examples">
+                      Examples
+                    </a>
+                    <a className="transition hover:text-black" href="#pricing">
+                      Pricing
+                    </a>
+                  </nav>
+                </div>
+
+                <div>
+                  <h2 className="text-sm font-bold text-black">Company</h2>
+                  <nav
+                    aria-label="Footer company links"
+                    className="mt-3 flex flex-col gap-2 text-sm text-black/55"
+                  >
+                    <Link className="transition hover:text-black" href="/about-us">
+                      About us
+                    </Link>
+                    <Link className="transition hover:text-black" href="/contact-us">
+                      Contact us
+                    </Link>
+                  </nav>
+                </div>
+
+                <div>
+                  <h2 className="text-sm font-bold text-black">Legal</h2>
+                  <nav
+                    aria-label="Footer legal links"
+                    className="mt-3 flex flex-col gap-2 text-sm text-black/55"
+                  >
+                    <Link
+                      className="transition hover:text-black"
+                      href="/terms-of-service"
+                    >
+                      Terms
+                    </Link>
+                    <Link
+                      className="transition hover:text-black"
+                      href="/privacy-policy"
+                    >
+                      Privacy
+                    </Link>
+                    <Link
+                      className="transition hover:text-black"
+                      href="/cookie-policy"
+                    >
+                      Cookies
+                    </Link>
+                    <CookieSettingsButton />
+                  </nav>
+                </div>
               </div>
             </div>
           </footer>

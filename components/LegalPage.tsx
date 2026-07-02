@@ -1,4 +1,8 @@
+"use client";
+
+import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
 
 import { legalPageList, type LegalPageContent } from "@/lib/legal/pages";
 
@@ -7,22 +11,50 @@ type LegalPageProps = {
 };
 
 export default function LegalPage({ page }: LegalPageProps) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
   return (
     <main className="min-h-screen bg-[#fbfaf5] text-black">
       <header className="border-b border-black/10 bg-white/80 px-5 py-5 backdrop-blur sm:px-8">
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <Link
-            href="/"
-            className="font-montserrat text-sm font-bold tracking-tight"
+          <div className="flex items-center justify-between gap-4">
+            <Link href="/" className="flex min-w-0 items-center gap-2.5">
+              <Image
+                src="/refresh-kiwi-favicon-v2.png"
+                alt=""
+                width={34}
+                height={34}
+                aria-hidden
+                className="shrink-0 rounded-full"
+              />
+              <span className="translate-y-[2px] truncate font-marhey text-xl font-normal leading-tight">
+                Refresh Kiwi
+              </span>
+            </Link>
+            <button
+              type="button"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-black/10 bg-white text-black transition hover:border-black/20 sm:hidden"
+              aria-label="Toggle legal page menu"
+              aria-expanded={isMenuOpen}
+              onClick={() => setIsMenuOpen((current) => !current)}
+            >
+              <span className="flex flex-col gap-1.5" aria-hidden="true">
+                <span className="block h-0.5 w-4 rounded-full bg-current" />
+                <span className="block h-0.5 w-4 rounded-full bg-current" />
+                <span className="block h-0.5 w-4 rounded-full bg-current" />
+              </span>
+            </button>
+          </div>
+          <nav
+            aria-label="Legal pages"
+            className={`${isMenuOpen ? "flex" : "hidden"} flex-col gap-2 text-xs sm:flex sm:flex-row sm:flex-wrap sm:gap-3`}
           >
-            Refresh Kiwi
-          </Link>
-          <nav aria-label="Legal pages" className="flex flex-wrap gap-3 text-xs">
             {legalPageList.map((item) => (
               <Link
                 key={item.slug}
                 href={`/${item.slug}`}
                 className="rounded-full border border-black/10 bg-white px-3 py-1.5 text-black/60 transition hover:border-black/20 hover:text-black"
+                onClick={() => setIsMenuOpen(false)}
               >
                 {item.title}
               </Link>
@@ -70,11 +102,6 @@ export default function LegalPage({ page }: LegalPageProps) {
           ))}
         </div>
 
-        <p className="mt-8 text-sm leading-6 text-black/45">
-          These pages are intended as practical website terms for Refresh Kiwi
-          and should be reviewed by a qualified lawyer before launch or when
-          your business operations change.
-        </p>
       </article>
     </main>
   );
