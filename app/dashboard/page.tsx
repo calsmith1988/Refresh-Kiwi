@@ -585,10 +585,6 @@ export default function DashboardPage() {
     Math.round((activeWebsiteCount / websiteLimit) * 100),
   );
   const websitesRemaining = Math.max(0, websiteLimit - activeWebsiteCount);
-  const planTitle = isPro ? "Kiwi Pro" : "Free plan";
-  const accountStatusTitle = isPro
-    ? user?.subscriptionStatus?.replaceAll("_", " ") || "active"
-    : "Active";
   const hasActiveRefreshJobs = activeRefreshJobs.length > 0;
   const hasActiveEdit = websites.some(
     (website) =>
@@ -1797,84 +1793,7 @@ export default function DashboardPage() {
             )}
           </div>
 
-          <div className="mt-7 grid gap-4 md:grid-cols-3">
-            <div className="rounded-3xl border border-black/10 bg-white p-5 shadow-sm">
-              <div className="flex items-center gap-4">
-                <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-kiwi-green/25 text-[#3f8f22]">
-                  <svg
-                    aria-hidden
-                    viewBox="0 0 24 24"
-                    className="h-8 w-8"
-                    fill="currentColor"
-                  >
-                    <path d="M5.1 17.5h13.8l1.18-8.23a1 1 0 0 0-1.55-.98l-3.31 2.24-2.32-4.2a1 1 0 0 0-1.75 0l-2.32 4.2-3.36-2.24a1 1 0 0 0-1.54.99L5.1 17.5Z" />
-                    <path d="M5.5 19.25c0-.41.34-.75.75-.75h11.5a.75.75 0 0 1 0 1.5H6.25a.75.75 0 0 1-.75-.75Z" />
-                  </svg>
-                </span>
-                <div>
-                  <p className="text-xs font-normal uppercase text-black/45">
-                    Your plan
-                  </p>
-                  <p className="mt-1 text-xl font-bold capitalize">{planTitle}</p>
-                </div>
-              </div>
-              <div className="ml-[4.5rem] mt-5">
-                {isPro ? (
-                  <button
-                    type="button"
-                    onClick={() => void startBillingFlow("portal")}
-                    disabled={billingAction !== null}
-                    className="inline-flex items-center gap-2 text-sm font-semibold text-[#3f8f22] transition hover:text-black disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {billingAction === "portal"
-                      ? "Opening..."
-                      : "View billing & plan details"}
-                    <span aria-hidden>→</span>
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={openProSheet}
-                    disabled={billingAction !== null}
-                    className="inline-flex items-center gap-2 text-sm font-semibold text-[#3f8f22] transition hover:text-black disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {billingAction === "checkout" ? "Opening..." : "Upgrade plan"}
-                    <span aria-hidden>→</span>
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <div className="rounded-3xl border border-black/10 bg-white p-5 shadow-sm">
-              <div className="flex items-center gap-4">
-                <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-kiwi-green/25 text-[#3f8f22]">
-                  <svg
-                    aria-hidden
-                    viewBox="0 0 24 24"
-                    className="h-8 w-8"
-                    fill="currentColor"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm4.28-10.97a.9.9 0 0 0-1.27-1.27l-4.18 4.18-1.84-1.84a.9.9 0 0 0-1.27 1.27l2.47 2.48a.9.9 0 0 0 1.28 0l4.81-4.82Z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </span>
-                <div>
-                  <p className="text-xs font-normal uppercase text-black/45">
-                    Account status
-                  </p>
-                  <p className="mt-1 text-xl font-bold capitalize">
-                    {accountStatusTitle}
-                  </p>
-                </div>
-              </div>
-              <p className="ml-[4.5rem] mt-4 text-sm text-black/55">
-                {isPro ? "Billing active and your sites can stay live." : "All systems go!"}
-              </p>
-            </div>
-
+          <div className="mt-7 grid gap-4">
             <div className="rounded-3xl border border-black/10 bg-white p-5 shadow-sm">
               <div className="flex items-center gap-4">
                 <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-kiwi-green/25 text-[#3f8f22]">
@@ -2280,15 +2199,16 @@ export default function DashboardPage() {
                                 Published: {formatDate(website.publishedAt)}
                               </span>
                             ) : null}
-                            <span className="inline-flex items-center gap-1.5">
-                              <DashboardIcon
-                                name="changes"
-                                className="h-3.5 w-3.5"
-                              />
-                              {isPro
-                                ? "Changes: unlimited"
-                                : `Free changes left: ${website.freeEditsRemaining} of ${website.freeEditsLimit}`}
-                            </span>
+                            {!isPro ? (
+                              <span className="inline-flex items-center gap-1.5">
+                                <DashboardIcon
+                                  name="changes"
+                                  className="h-3.5 w-3.5"
+                                />
+                                Free changes left: {website.freeEditsRemaining} of{" "}
+                                {website.freeEditsLimit}
+                              </span>
+                            ) : null}
                           </div>
 
                           <div className="mt-4 flex flex-wrap gap-2 border-t border-black/10 pt-4">
@@ -2300,7 +2220,7 @@ export default function DashboardPage() {
                               >
                                 <DashboardIcon name="external" />
                                 {website.status === "live"
-                                  ? "View live site"
+                                  ? "View website"
                                   : "View preview"}
                               </Link>
                             ) : null}
