@@ -1,4 +1,4 @@
-import { after, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
 import { assertRateLimit, rateLimitKey } from "@/lib/auth/rateLimit";
 import { rateLimitResponse } from "@/lib/auth/rateLimitResponse";
@@ -7,8 +7,9 @@ import {
   checkRefreshLimit,
   clientIpFromRequest,
 } from "@/lib/jobs/rate-limit";
-import { createRefreshJob, failJob } from "@/lib/jobs/service";
+import { createRefreshJob } from "@/lib/jobs/service";
 import { metaUserDataFromRequest, sendMetaEvent } from "@/lib/meta/events";
+import { enqueueBackgroundTask } from "@/lib/worker/queue";
 import { userHasProPlan } from "@/lib/websites/service";
 
 export const runtime = "nodejs";
@@ -90,18 +91,9 @@ export async function POST(request: Request) {
       },
     });
 
-    after(async () => {
-      try {
-        const { processRefreshJob } = await import("@/lib/jobs/processor");
-        await processRefreshJob(job.id);
-      } catch (error) {
-        const message =
-          error instanceof Error
-            ? error.message
-            : "Background refresh worker failed to start";
-        console.error(`Refresh job ${job.id} failed`, error);
-        await failJob(job.id, message);
-      }
+    await enqueueBackgroundTask({
+      type: "refresh-homepage",
+      payload: { jobId: job.id },
     });
 
     return NextResponse.json(job, { status: 202 });

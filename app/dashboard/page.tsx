@@ -1623,7 +1623,7 @@ export default function DashboardPage() {
   return (
     <main className="min-h-screen bg-[#faf8f1] px-5 py-5 text-[#141811] sm:px-8 lg:px-10">
       <div className="mx-auto w-full max-w-6xl">
-        <header className="relative flex items-center justify-between gap-4">
+        <header className="relative flex items-center justify-between gap-4 border-b border-black/5 pb-5">
           <Link href="/" className="flex min-w-0 items-center gap-2.5">
             <Image
               src="/refresh-kiwi-favicon-v2.png"
@@ -3599,6 +3599,52 @@ export default function DashboardPage() {
               })}
             </div>
           )}
+        </section>
+
+        <section className="mt-6 rounded-2xl border border-black/10 bg-[#F5F1EA] px-4 py-3 shadow-sm">
+          <div className="flex flex-col gap-3 text-sm text-black/60 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-3">
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-kiwi-green/20 text-[#3f8f22]">
+                <svg
+                  aria-hidden
+                  viewBox="0 0 24 24"
+                  className="h-4 w-4"
+                  fill="currentColor"
+                >
+                  <path d="M5.7 12.7c-1.5-1.5-1.8-3.7-.8-5.5 1.8.4 3.5 1.5 4.4 3.1.7-2.7 2.9-4.9 6-5.8.7 3.2-.2 6.1-2.4 7.9 1.6-.2 3.3.2 4.8 1.1-1 1.8-3 2.8-5.1 2.5l-1.8 3.2a1 1 0 0 1-1.8-.9l1.8-3.3a6.2 6.2 0 0 1-5.1-2.3Z" />
+                </svg>
+              </span>
+              <p>
+                <span className="font-semibold text-black">
+                  Need help or inspiration?
+                </span>{" "}
+                We&apos;re here for you!
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 md:justify-end">
+              <Link
+                href="/help-centre"
+                className="inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-xs font-semibold text-black/70 transition hover:bg-white hover:text-black"
+              >
+                <DashboardIcon name="pages" className="h-3.5 w-3.5" />
+                Visit our help centre
+              </Link>
+              <a
+                href="mailto:info@refresh.kiwi"
+                className="inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-xs font-semibold text-black/70 transition hover:bg-white hover:text-black"
+              >
+                <svg
+                  aria-hidden
+                  viewBox="0 0 24 24"
+                  className="h-3.5 w-3.5"
+                  fill="currentColor"
+                >
+                  <path d="M5 4h14a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3h-5.4l-4.2 3v-3H5a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3Zm1 5h12V7H6v2Zm0 4h8v-2H6v2Z" />
+                </svg>
+                Chat with our team
+              </a>
+            </div>
+          </div>
         </section>
       </div>
 

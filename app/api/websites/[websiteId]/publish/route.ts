@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { after } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth/session";
+import { enqueueBackgroundTask } from "@/lib/worker/queue";
 import {
   publishOwnedWebsite,
   toWebsiteResponse,
@@ -34,11 +34,9 @@ export async function POST(_request: Request, context: RouteContext) {
     const { websiteId } = await context.params;
     const website = await publishOwnedWebsite({ websiteId, userId: user.id });
 
-    // Backfill: sites claimed before the localiser shipped get their images
-    // brought in-house when they go live. No-op if already localised.
-    after(async () => {
-      const { localizeWebsiteImages } = await import("@/lib/assets/localize");
-      await localizeWebsiteImages(website.slug);
+    await enqueueBackgroundTask({
+      type: "localize-images",
+      payload: { slug: website.slug },
     });
 
     return NextResponse.json({ website: toWebsiteResponse(website) });

@@ -1,8 +1,9 @@
-import { after, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth/session";
 import { getDb, schema } from "@/lib/db";
 import { type LegalAnswers, validateLegalAnswers } from "@/lib/legal/draft";
+import { enqueueBackgroundTask } from "@/lib/worker/queue";
 import {
   getOwnedWebsite,
   listPagesForJob,
@@ -104,21 +105,15 @@ export async function POST(request: Request, context: RouteContext) {
     .set({ status: "building_pages", errorMessage: null, updatedAt: new Date() })
     .where(eq(jobs.id, job.id));
 
-  after(async () => {
-    try {
-      const { processAdditionalPages } = await import("@/lib/pages/processor");
-      await processAdditionalPages(
-        website.id,
-        legalAnswers
-          ? { type: "legal", answers: legalAnswers }
-          : { type: "business" },
-      );
-    } catch (error) {
-      console.error(
-        `[refresh-kiwi] failed to start additional pages websiteId=${website.id}`,
-        error,
-      );
-    }
+  await enqueueBackgroundTask({
+    type: "additional-pages",
+    payload: legalAnswers
+      ? {
+          websiteId: website.id,
+          type: "legal",
+          answers: legalAnswers as unknown as Record<string, unknown>,
+        }
+      : { websiteId: website.id, type: "business" },
   });
 
   const pages = await listPagesForJob(job.id);

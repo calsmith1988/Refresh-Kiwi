@@ -17,13 +17,14 @@ The core user journey is:
 
 1. User starts a refresh or fresh-site generation from the landing page.
 2. A job is created in the database.
-3. A Next.js background task starts a Cursor cloud agent.
-4. The Cursor agent writes generated site files under `sites/{slug}/` in the external sites repository.
-5. Refresh Kiwi syncs those files into `/previews/{slug}` and Cloudflare R2.
-6. The preview is served from `/preview/{slug}/...`.
-7. Users can claim the site, request edits, generate pages, upload/remix images, upgrade to Pro, publish, and connect a custom domain.
+3. A durable `background_tasks` row is queued in Postgres.
+4. A Render worker service claims the task and starts a Cursor cloud agent.
+5. The Cursor agent writes generated site files under `sites/{slug}/` in the external sites repository.
+6. Refresh Kiwi syncs those files into `/previews/{slug}` and Cloudflare R2.
+7. The preview is served from `/preview/{slug}/...`.
+8. Users can claim the site, request edits, generate pages, upload/remix images, upgrade to Pro, publish, and connect a custom domain.
 
-There is no separate worker service. Long-running work is started from API routes using Next.js `after()`.
+Long-running work is handled by a separate Render worker process. API routes enqueue durable background tasks and return quickly; the worker runs Cursor agents, syncs previews, captures screenshots, localises images, and handles page/edit/publish follow-up work.
 
 ## Major subsystems
 
@@ -58,6 +59,8 @@ Core files:
 - `lib/jobs/processor.ts` - runs homepage generation and initial preview sync.
 - `lib/pages/processor.ts` - generates additional and legal pages.
 - `lib/edits/processor.ts` - handles user-requested AI edits.
+- `lib/worker/queue.ts` - durable Postgres queue helpers and stale-task recovery.
+- `worker/index.ts` - Render worker process entry point.
 - `lib/cursor/agent.ts` - creates/resumes Cursor cloud agents.
 - `lib/cursor/prompts.ts` - prompts sent to Cursor agents.
 - `lib/cursor/run.ts` - waits for Cursor runs with timeouts.
@@ -104,6 +107,7 @@ Important tables:
 - `jobPages`
 - `editRequests`
 - `emailEvents`
+- `backgroundTasks`
 
 Important statuses:
 
@@ -111,6 +115,7 @@ Important statuses:
 - websites: `preview`, `live`, `expired`, `archived`
 - generation modes: `refresh`, `fresh`
 - plans: `free`, `pro`
+- background tasks: `queued`, `running`, `complete`, `failed`
 
 Be careful with migration edits. Existing migrations may already be applied in production.
 
@@ -227,6 +232,27 @@ Core files:
 
 Render custom domains are managed through the Render API. Middleware decides whether an incoming host is the Refresh Kiwi app or a customer domain.
 
+## Worker service
+
+The web service handles user-facing traffic only: API validation, auth, dashboard rendering, polling, billing, and preview serving.
+
+The worker service runs with:
+
+```bash
+npm run worker
+```
+
+Deploy it as a Render Background Worker with the same environment variables as the web service. It needs access to Postgres, Cursor, the generated-sites GitHub repo, R2, OpenAI, Resend, and `NEXT_PUBLIC_APP_URL` so screenshots can call the live web service.
+
+The worker currently processes one task at a time. Tune these optional variables only after observing production behaviour:
+
+```text
+WORKER_IDLE_SLEEP_MS=5000
+WORKER_RECOVERY_INTERVAL_MS=60000
+```
+
+Do not reintroduce Next.js `after()` for long-running work. Enqueue a `background_tasks` row instead.
+
 ## External services
 
 This app depends on several external systems:
@@ -263,7 +289,7 @@ These are context notes for future agents, not necessarily urgent bugs:
 - No GitHub Actions workflow was found.
 - Drizzle SQL migrations exist through `0005`, while `drizzle/meta/_journal.json` currently lists entries through `0003`; inspect database migration state carefully before changing migration metadata.
 - The landing component imports root-level PNG preview assets such as `../after-preview.png` and `../before-preview.png`. If a build fails around missing image files, verify whether those assets should be restored or moved to a tracked/public location.
-- Background work runs inside the web app process via `after()`. Any change that makes generation slower or less reliable can affect request lifecycle and hosting behavior.
+- Background work runs in the worker process. Any new long-running work should be represented as a durable `background_tasks` row before returning from an API route.
 
 ## Useful commands for agents
 
@@ -272,6 +298,7 @@ These are not onboarding instructions; they are quick checks that are usually re
 ```bash
 npm run build
 npm run lint
+npm run worker
 node scripts/test-db.mjs
 node scripts/test-cloud-agent.mjs
 ```

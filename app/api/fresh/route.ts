@@ -1,12 +1,11 @@
-import { after, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
 import {
   isSupportedImageType,
   MAX_UPLOAD_BYTES,
 } from "@/lib/assets/localize";
-import { generateWebsiteImage } from "@/lib/assets/generate";
 import { optimizeImage } from "@/lib/assets/optimize";
-import type { SeedAssetInput } from "@/lib/assets/seed";
+import { seedWebsiteAssets, type SeedAssetInput } from "@/lib/assets/seed";
 import { assertRateLimit, rateLimitKey } from "@/lib/auth/rateLimit";
 import { rateLimitResponse } from "@/lib/auth/rateLimitResponse";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -14,8 +13,9 @@ import {
   checkRefreshLimit,
   clientIpFromRequest,
 } from "@/lib/jobs/rate-limit";
-import { createFreshJob, failJob } from "@/lib/jobs/service";
+import { createFreshJob } from "@/lib/jobs/service";
 import { metaUserDataFromRequest, sendMetaEvent } from "@/lib/meta/events";
+import { enqueueBackgroundTask } from "@/lib/worker/queue";
 import { userHasProPlan } from "@/lib/websites/service";
 
 export const runtime = "nodejs";
@@ -23,69 +23,10 @@ export const runtime = "nodejs";
 const MIN_PROMPT_LENGTH = 20;
 const MAX_PROMPT_LENGTH = 4_000;
 const MAX_SUPPORTING_IMAGES = 8;
-const STARTER_VISUAL_DIRECTIONS = [
-  {
-    name: "hero",
-    prompt:
-      "Create one focused hero visual for the homepage. Show the business, product, place, or service in a single clear composition with generous negative space for nearby website copy.",
-  },
-  {
-    name: "detail",
-    prompt:
-      "Create one focused supporting detail image for a services or feature section. Emphasize texture, craft, product detail, tools, environment, or customer experience without making a collage.",
-  },
-  {
-    name: "atmosphere",
-    prompt:
-      "Create one focused lifestyle or atmosphere image for a trust, about, or call-to-action section. Keep it natural, premium, and specific to the brief without combining multiple scenes.",
-  },
-] as const;
-
 function wantsStarterVisuals(form: FormData): boolean {
   const value = String(form.get("generateStarterVisuals") ?? "").toLowerCase();
 
   return value === "1" || value === "true" || value === "on";
-}
-
-async function generateStarterSeedAssets(
-  prompt: string,
-): Promise<SeedAssetInput[]> {
-  const generated = await Promise.allSettled(
-    STARTER_VISUAL_DIRECTIONS.map(async (direction) => {
-      const image = await generateWebsiteImage({
-        prompt: [
-          direction.prompt,
-          "No readable text, logos, UI chrome, watermarks, borders, contact details, or multiple unrelated scenes.",
-          "Brief:",
-          prompt,
-        ].join(" "),
-        role: "image",
-      });
-      const optimized = await optimizeImage(image.buffer, image.contentType);
-
-      return {
-        role: "image" as const,
-        buffer: optimized.buffer,
-        contentType: optimized.contentType,
-        originalName: `ai-starter-${direction.name}.png`,
-        source: "generated" as const,
-      };
-    }),
-  );
-
-  const assets = generated.flatMap((result) => {
-    if (result.status === "fulfilled") {
-      return [result.value];
-    }
-
-    console.error(
-      "[refresh-kiwi] fresh starter visual generation failed:",
-      result.reason,
-    );
-    return [];
-  });
-
-  return assets;
 }
 
 async function fileToSeedAsset(
@@ -187,6 +128,10 @@ export async function POST(request: Request) {
     }
 
     const job = await createFreshJob(prompt, currentUser?.id ?? null, clientIp);
+    if (seedAssets.length > 0) {
+      await seedWebsiteAssets(job.slug, seedAssets);
+    }
+
     const metaEventId = String(form.get("metaEventId") ?? "") || `lead.${job.id}`;
 
     await sendMetaEvent({
@@ -199,22 +144,12 @@ export async function POST(request: Request) {
       },
     });
 
-    after(async () => {
-      try {
-        const { processFreshJob } = await import("@/lib/jobs/processor");
-        const starterSeedAssets = shouldGenerateStarterVisuals
-          ? await generateStarterSeedAssets(prompt)
-          : [];
-
-        await processFreshJob(job.id, [...seedAssets, ...starterSeedAssets]);
-      } catch (error) {
-        const message =
-          error instanceof Error
-            ? error.message
-            : "Background fresh website worker failed to start";
-        console.error(`Fresh job ${job.id} failed`, error);
-        await failJob(job.id, message);
-      }
+    await enqueueBackgroundTask({
+      type: "fresh-homepage",
+      payload: {
+        jobId: job.id,
+        generateStarterVisuals: shouldGenerateStarterVisuals,
+      },
     });
 
     return NextResponse.json(job, { status: 202 });

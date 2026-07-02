@@ -1,6 +1,8 @@
 import {
   boolean,
+  index,
   integer,
+  jsonb,
   pgEnum,
   pgTable,
   text,
@@ -51,6 +53,16 @@ export const editRequestStatusEnum = pgEnum("edit_request_status", [
   "complete",
   "failed",
 ]);
+
+export type BackgroundTaskPayload =
+  | { jobId: string; generateStarterVisuals?: boolean }
+  | { editRequestId: string }
+  | {
+      websiteId: string;
+      type?: "business" | "legal";
+      answers?: Record<string, unknown>;
+    }
+  | { slug: string };
 
 export const users = pgTable(
   "users",
@@ -299,3 +311,34 @@ export const editRequests = pgTable("edit_requests", {
     .notNull()
     .defaultNow(),
 });
+
+export const backgroundTasks = pgTable(
+  "background_tasks",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    type: text("type").notNull(),
+    status: text("status").notNull().default("queued"),
+    payload: jsonb("payload").$type<BackgroundTaskPayload>().notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    lockedAt: timestamp("locked_at", { withTimezone: true }),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    errorMessage: text("error_message"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    statusCreatedAtIdx: index("background_tasks_status_created_at_idx").on(
+      table.status,
+      table.createdAt,
+    ),
+    typeStatusIdx: index("background_tasks_type_status_idx").on(
+      table.type,
+      table.status,
+    ),
+  }),
+);

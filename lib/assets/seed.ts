@@ -1,11 +1,11 @@
 import { createHash } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { commitFilesToSitesRepo, type RepoFile } from "@/lib/github/commit";
 import { previewDirectory } from "@/lib/preview/paths";
 import type { ImageManifest, LocalizedImage } from "@/lib/assets/localize";
-import { uploadSiteDirectoryToR2 } from "@/lib/storage/r2";
+import { getR2Object, uploadSiteDirectoryToR2 } from "@/lib/storage/r2";
 
 const IMAGE_EXTENSIONS: Record<string, string> = {
   "image/png": ".png",
@@ -112,4 +112,34 @@ export async function seedWebsiteAssets(
   }
 
   return assets;
+}
+
+export async function readSeedAssets(slug: string): Promise<SeedAsset[]> {
+  const manifestPath = path.join(previewDirectory(slug), "assets", "manifest.json");
+
+  try {
+    await stat(manifestPath);
+  } catch {
+    const object = await getR2Object(`sites/${slug}/assets/manifest.json`);
+
+    if (!object) {
+      return [];
+    }
+
+    await mkdir(path.dirname(manifestPath), { recursive: true });
+    await writeFile(manifestPath, object.body);
+  }
+
+  try {
+    const raw = await readFile(manifestPath, "utf8");
+    const manifest = JSON.parse(raw) as ImageManifest;
+
+    return manifest.images.filter(
+      (image): image is SeedAsset =>
+        image.role === "logo" || image.role === "image",
+    );
+  } catch (error) {
+    console.error(`[refresh-kiwi] failed to read seed assets for ${slug}:`, error);
+    return [];
+  }
 }

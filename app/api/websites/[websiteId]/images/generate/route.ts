@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { after } from "next/server";
 import { and, eq, inArray } from "drizzle-orm";
 
 import { generateWebsiteImage } from "@/lib/assets/generate";
@@ -8,6 +7,7 @@ import { optimizeImage } from "@/lib/assets/optimize";
 import { buildImagePlacementPrompt } from "@/lib/assets/placement";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getDb, schema } from "@/lib/db";
+import { enqueueBackgroundTask } from "@/lib/worker/queue";
 import {
   getOwnedWebsite,
   toWebsiteResponse,
@@ -180,16 +180,9 @@ export async function POST(request: Request, context: RouteContext) {
 
       editRequest = createdEdit;
 
-      after(async () => {
-        try {
-          const { processEditRequest } = await import("@/lib/edits/processor");
-          await processEditRequest(createdEdit.id);
-        } catch (error) {
-          console.error(
-            `[refresh-kiwi] failed to start generated image placement edit ${createdEdit.id}`,
-            error,
-          );
-        }
+      await enqueueBackgroundTask({
+        type: "edit-request",
+        payload: { editRequestId: createdEdit.id },
       });
     }
 

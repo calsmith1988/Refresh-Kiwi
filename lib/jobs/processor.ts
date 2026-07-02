@@ -1,7 +1,11 @@
 import { eq } from "drizzle-orm";
 
 import { localizeWebsiteImages } from "@/lib/assets/localize";
-import { seedWebsiteAssets, type SeedAssetInput } from "@/lib/assets/seed";
+import {
+  readSeedAssets,
+  seedWebsiteAssets,
+  type SeedAssetInput,
+} from "@/lib/assets/seed";
 import {
   isCursorStartupError,
   runFreshHomepagePhase,
@@ -245,7 +249,10 @@ export async function processFreshJob(
       ...memoryContext,
       seedAssetInputs: seedAssetInputs.length,
     });
-    const seedAssets = await seedWebsiteAssets(job.slug, seedAssetInputs);
+    const seedAssets =
+      seedAssetInputs.length > 0
+        ? await seedWebsiteAssets(job.slug, seedAssetInputs)
+        : await readSeedAssets(job.slug);
     logMemoryUsage("fresh:after-seed-assets", {
       ...memoryContext,
       seedAssets: seedAssets.length,

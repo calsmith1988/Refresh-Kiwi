@@ -410,7 +410,7 @@ export default function AccountPage() {
   return (
     <main className="min-h-screen bg-[#faf8f1] px-5 py-5 text-[#141811] sm:px-8 lg:px-10">
       <div className="mx-auto w-full max-w-6xl">
-        <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <header className="flex flex-col gap-4 border-b border-black/5 pb-5 sm:flex-row sm:items-center sm:justify-between">
           <Link href="/" className="flex min-w-0 items-center gap-2.5">
             <Image
               src="/refresh-kiwi-favicon-v2.png"
