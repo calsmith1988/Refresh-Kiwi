@@ -143,6 +143,18 @@ type WebsiteImagesState =
   | { status: "ready"; images: WebsiteImage[] };
 
 type PageGenerationType = "business" | "legal";
+type WebsiteActionModalType =
+  | "edit"
+  | "images"
+  | "pages"
+  | "domain"
+  | "rename"
+  | "delete";
+
+type WebsiteActionModal = {
+  websiteId: string;
+  type: WebsiteActionModalType;
+} | null;
 
 type LegalAnswersState = {
   businessLegalName: string;
@@ -442,10 +454,8 @@ export default function DashboardPage() {
   const [activeRefreshJobs, setActiveRefreshJobs] = useState<ActiveRefreshJob[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [editingWebsiteId, setEditingWebsiteId] = useState<string | null>(null);
   const [editPrompts, setEditPrompts] = useState<Record<string, string>>({});
   const [editTargets, setEditTargets] = useState<Record<string, string>>({});
-  const [managingWebsiteId, setManagingWebsiteId] = useState<string | null>(null);
   const [renameValues, setRenameValues] = useState<Record<string, string>>({});
   const [deleteConfirmations, setDeleteConfirmations] = useState<Record<string, string>>({});
   const [domainValues, setDomainValues] = useState<Record<string, string>>({});
@@ -473,9 +483,6 @@ export default function DashboardPage() {
   const [dismissedPagesJobIds, setDismissedPagesJobIds] = useState<
     Record<string, true>
   >({});
-  const [imagesPanelWebsiteId, setImagesPanelWebsiteId] = useState<string | null>(
-    null,
-  );
   const [websiteImages, setWebsiteImages] = useState<
     Record<string, WebsiteImagesState>
   >({});
@@ -521,16 +528,23 @@ export default function DashboardPage() {
   >(null);
   const [showDashboardTour, setShowDashboardTour] = useState(false);
   const [showDashboardMenu, setShowDashboardMenu] = useState(false);
+  const [websiteActionModal, setWebsiteActionModal] =
+    useState<WebsiteActionModal>(null);
 
   const isPro =
     user?.plan === "pro" && PRO_SUBSCRIPTION_STATUSES.has(user.subscriptionStatus);
   const websiteLimit = isPro ? 3 : 1;
   const activeWebsiteCount = websites.length + activeRefreshJobs.length;
   const canAddWebsite = activeWebsiteCount < websiteLimit;
-  const websiteCountLabel = useMemo(
-    () => `${activeWebsiteCount}/${websiteLimit} websites`,
-    [activeWebsiteCount, websiteLimit],
+  const websiteUsagePercent = Math.min(
+    100,
+    Math.round((activeWebsiteCount / websiteLimit) * 100),
   );
+  const websitesRemaining = Math.max(0, websiteLimit - activeWebsiteCount);
+  const planTitle = isPro ? "Kiwi Pro" : "Free plan";
+  const accountStatusTitle = isPro
+    ? user?.subscriptionStatus?.replaceAll("_", " ") || "active"
+    : "Active";
   const hasActiveRefreshJobs = activeRefreshJobs.length > 0;
   const hasActiveEdit = websites.some(
     (website) =>
@@ -759,6 +773,7 @@ export default function DashboardPage() {
       privacyEmail: user?.email ?? "",
     });
     setPageChooserWebsiteId(website.id);
+    setWebsiteActionModal(null);
     setErrorMessage(null);
   };
 
@@ -853,7 +868,7 @@ export default function DashboardPage() {
       }
 
       setEditPrompts((current) => ({ ...current, [websiteId]: "" }));
-      setEditingWebsiteId(null);
+      closeWebsiteActionModal();
       await loadDashboard();
     } catch (error) {
       setErrorMessage(
@@ -879,6 +894,7 @@ export default function DashboardPage() {
       }
 
       await loadDashboard();
+      closeWebsiteActionModal();
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : "Failed to keep website live",
@@ -976,6 +992,7 @@ export default function DashboardPage() {
 
       await loadDashboard();
       setPageChooserWebsiteId(null);
+      setWebsiteActionModal(null);
     } catch (error) {
       setErrorMessage(
         error instanceof Error
@@ -1013,26 +1030,34 @@ export default function DashboardPage() {
     }
   };
 
-  const openWebsitePanel = (
-    website: Website,
-    panel: "edit" | "images" | "manage",
-  ) => {
-    setEditingWebsiteId(panel === "edit" ? website.id : null);
-    setImagesPanelWebsiteId(panel === "images" ? website.id : null);
-    setManagingWebsiteId(panel === "manage" ? website.id : null);
+  const closeWebsiteActionModal = () => {
+    setWebsiteActionModal(null);
+    setConfirmRegenerateId(null);
+  };
 
-    if (panel === "images" && websiteImages[website.id]?.status !== "ready") {
+  const openWebsiteActionModal = (
+    website: Website,
+    type: WebsiteActionModalType,
+  ) => {
+    setWebsiteActionModal({ websiteId: website.id, type });
+    setConfirmRegenerateId(null);
+    setErrorMessage(null);
+
+    if (type === "images" && websiteImages[website.id]?.status !== "ready") {
       void loadWebsiteImages(website.id);
     }
 
-    if (panel === "manage") {
+    if (type === "domain" || type === "rename" || type === "delete") {
       setRenameValues((current) => ({
         ...current,
         [website.id]:
           current[website.id] ?? website.brandName ?? website.slug,
       }));
+      setDomainValues((current) => ({
+        ...current,
+        [website.id]: current[website.id] ?? website.customDomain ?? "",
+      }));
     }
-
   };
 
   const uploadImages = async (websiteId: string, form: HTMLFormElement) => {
@@ -1083,7 +1108,7 @@ export default function DashboardPage() {
 
       if (payload.queued) {
         await loadDashboard();
-        setImagesPanelWebsiteId(websiteId);
+        setWebsiteActionModal({ websiteId, type: "images" });
       }
     } catch (error) {
       setErrorMessage(
@@ -1158,7 +1183,7 @@ export default function DashboardPage() {
 
       if (payload.queued) {
         await loadDashboard();
-        setImagesPanelWebsiteId(websiteId);
+        setWebsiteActionModal({ websiteId, type: "images" });
       }
     } catch (error) {
       setErrorMessage(
@@ -1360,7 +1385,7 @@ export default function DashboardPage() {
 
       if (payload.queued) {
         await loadDashboard();
-        setImagesPanelWebsiteId(websiteId);
+        setWebsiteActionModal({ websiteId, type: "images" });
       }
     } catch (error) {
       setErrorMessage(
@@ -1464,7 +1489,7 @@ export default function DashboardPage() {
         // Storage unavailable — the landing page will clear it via the API.
       }
 
-      setManagingWebsiteId(null);
+      closeWebsiteActionModal();
       await loadDashboard();
     } catch (error) {
       setErrorMessage(
@@ -1564,7 +1589,7 @@ export default function DashboardPage() {
               aria-hidden
               className="shrink-0 rounded-full"
             />
-            <span className="hidden truncate font-montserrat text-xl font-bold min-[380px]:inline">
+            <span className="hidden translate-y-[3px] truncate font-marhey text-2xl font-normal leading-none min-[380px]:inline-block">
               Refresh Kiwi
             </span>
           </Link>
@@ -1577,23 +1602,6 @@ export default function DashboardPage() {
                 className="rounded-full border border-black/10 bg-white px-5 py-2.5 text-sm font-semibold text-black transition hover:border-black/25 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {billingAction === "portal" ? "Opening..." : "Manage billing"}
-              </button>
-            ) : null}
-            {canAddWebsite ? (
-              <Link
-                href="/?new=1"
-                className="rounded-full bg-kiwi-green px-5 py-2.5 text-sm font-semibold text-black shadow-sm transition hover:bg-kiwi-green-hover"
-              >
-                Add website
-              </Link>
-            ) : !isPro ? (
-              <button
-                type="button"
-                onClick={openProSheet}
-                disabled={billingAction !== null}
-                className="rounded-full bg-kiwi-green px-5 py-2.5 text-sm font-semibold text-black shadow-sm transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Upgrade to add more
               </button>
             ) : null}
             <Link
@@ -1641,27 +1649,6 @@ export default function DashboardPage() {
                     className="rounded-2xl border border-black/10 bg-white px-4 py-3 text-left text-sm font-semibold text-black transition hover:border-black/25 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {billingAction === "portal" ? "Opening..." : "Manage billing"}
-                  </button>
-                ) : null}
-                {canAddWebsite ? (
-                  <Link
-                    href="/?new=1"
-                    onClick={() => setShowDashboardMenu(false)}
-                    className="rounded-2xl bg-kiwi-green px-4 py-3 text-sm font-semibold text-black shadow-sm transition hover:bg-kiwi-green-hover"
-                  >
-                    Add website
-                  </Link>
-                ) : !isPro ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowDashboardMenu(false);
-                      openProSheet();
-                    }}
-                    disabled={billingAction !== null}
-                    className="rounded-2xl bg-kiwi-green px-4 py-3 text-left text-sm font-semibold text-black shadow-sm transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Upgrade to add more
                   </button>
                 ) : null}
                 <Link
@@ -1724,76 +1711,158 @@ export default function DashboardPage() {
           </div>
         ) : null}
 
-        <section className="mt-10 rounded-3xl border border-black/10 bg-white p-6 shadow-xl shadow-black/5 sm:p-8">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+        <section className="mt-10">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <p className="text-sm font-medium text-black/45">Dashboard</p>
-              <h1 className="mt-2 font-fraunces text-3xl font-semibold tracking-tight sm:text-4xl">
-                Your refreshed websites
+              <h1 className="font-fraunces text-3xl font-semibold tracking-tight sm:text-4xl">
+                Your websites
               </h1>
-              {user ? (
-                <p className="mt-3 text-sm text-black/55">{user.email}</p>
-              ) : null}
+              <p className="mt-3 max-w-xl text-sm leading-6 text-black/55">
+                Everything you need to edit and manage your new websites.
+              </p>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[28rem]">
-              <div className="rounded-2xl bg-[#faf8f1] p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-black/40">
-                  Plan
-                </p>
-                <p className="mt-1 text-lg font-bold capitalize">
-                  {user?.plan ?? "free"}
-                </p>
-              </div>
-              <div className="rounded-2xl bg-[#faf8f1] p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-black/40">
-                  Status
-                </p>
-                <p className="mt-1 text-lg font-bold capitalize">
-                  {user?.subscriptionStatus?.replaceAll("_", " ") ?? "none"}
-                </p>
-              </div>
-              <div className="rounded-2xl bg-[#faf8f1] p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-black/40">
-                  Usage
-                </p>
-                <p className="mt-1 text-lg font-bold">{websiteCountLabel}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            {!isPro ? (
+            {canAddWebsite ? (
+              <Link
+                href="/?new=1"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-[#17351d] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0f2514]"
+              >
+                <span aria-hidden className="text-base leading-none">
+                  +
+                </span>
+                Create a new website
+              </Link>
+            ) : !isPro ? (
               <button
                 type="button"
                 onClick={openProSheet}
                 disabled={billingAction !== null}
-                className="rounded-full bg-kiwi-green px-6 py-3 text-sm font-semibold text-black shadow-sm transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center justify-center rounded-full bg-[#17351d] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0f2514] disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {billingAction === "checkout"
-                  ? "Opening…"
-                  : "Go Pro — £10/month"}
+                Upgrade to create more
               </button>
-            ) : null}
-            {canAddWebsite ? (
-              <Link
-                href="/?new=1"
-                className="rounded-full border border-black/10 bg-white px-6 py-3 text-center text-sm font-semibold text-black transition hover:border-black/25"
-              >
-                Add another website
-              </Link>
             ) : (
               <button
                 type="button"
-                onClick={() =>
-                  isPro ? void startBillingFlow("portal") : openProSheet()
-                }
+                onClick={() => void startBillingFlow("portal")}
                 disabled={billingAction !== null}
-                className="rounded-full border border-black/10 bg-white px-6 py-3 text-center text-sm font-semibold text-black transition hover:border-black/25 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center justify-center rounded-full bg-[#17351d] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0f2514] disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {isPro ? "Plan limit reached" : "Upgrade to add another"}
+                Plan limit reached
               </button>
             )}
+          </div>
+
+          <div className="mt-7 grid gap-4 md:grid-cols-3">
+            <div className="rounded-3xl border border-black/10 bg-white p-5 shadow-sm">
+              <div className="flex items-center gap-4">
+                <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-kiwi-green/25 text-[#3f8f22]">
+                  <svg
+                    aria-hidden
+                    viewBox="0 0 24 24"
+                    className="h-8 w-8"
+                    fill="currentColor"
+                  >
+                    <path d="M5.1 17.5h13.8l1.18-8.23a1 1 0 0 0-1.55-.98l-3.31 2.24-2.32-4.2a1 1 0 0 0-1.75 0l-2.32 4.2-3.36-2.24a1 1 0 0 0-1.54.99L5.1 17.5Z" />
+                    <path d="M5.5 19.25c0-.41.34-.75.75-.75h11.5a.75.75 0 0 1 0 1.5H6.25a.75.75 0 0 1-.75-.75Z" />
+                  </svg>
+                </span>
+                <div>
+                  <p className="text-sm font-medium text-black/50">Your plan</p>
+                  <p className="mt-1 text-xl font-bold capitalize">{planTitle}</p>
+                </div>
+              </div>
+              <div className="ml-[4.5rem] mt-5">
+                {isPro ? (
+                  <button
+                    type="button"
+                    onClick={() => void startBillingFlow("portal")}
+                    disabled={billingAction !== null}
+                    className="inline-flex items-center gap-2 text-sm font-semibold text-[#3f8f22] transition hover:text-black disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {billingAction === "portal" ? "Opening..." : "View billing"}
+                    <span aria-hidden>→</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={openProSheet}
+                    disabled={billingAction !== null}
+                    className="inline-flex items-center gap-2 text-sm font-semibold text-[#3f8f22] transition hover:text-black disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {billingAction === "checkout" ? "Opening..." : "Upgrade plan"}
+                    <span aria-hidden>→</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-black/10 bg-white p-5 shadow-sm">
+              <div className="flex items-center gap-4">
+                <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-kiwi-green/25 text-[#3f8f22]">
+                  <svg
+                    aria-hidden
+                    viewBox="0 0 24 24"
+                    className="h-8 w-8"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm4.28-10.97a.9.9 0 0 0-1.27-1.27l-4.18 4.18-1.84-1.84a.9.9 0 0 0-1.27 1.27l2.47 2.48a.9.9 0 0 0 1.28 0l4.81-4.82Z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </span>
+                <div>
+                  <p className="text-sm font-medium text-black/50">Account status</p>
+                  <p className="mt-1 text-xl font-bold capitalize">
+                    {accountStatusTitle}
+                  </p>
+                </div>
+              </div>
+              <p className="ml-[4.5rem] mt-4 text-sm text-black/55">
+                {isPro ? "Billing active and your sites can stay live." : "All systems go!"}
+              </p>
+            </div>
+
+            <div className="rounded-3xl border border-black/10 bg-white p-5 shadow-sm">
+              <div className="flex items-center gap-4">
+                <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-kiwi-green/25 text-[#3f8f22]">
+                  <svg
+                    aria-hidden
+                    viewBox="0 0 24 24"
+                    className="h-8 w-8"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M5.5 4A2.5 2.5 0 0 0 3 6.5v11A2.5 2.5 0 0 0 5.5 20h13a2.5 2.5 0 0 0 2.5-2.5v-11A2.5 2.5 0 0 0 18.5 4h-13ZM5 8.5v-2c0-.28.22-.5.5-.5h13c.28 0 .5.22.5.5v2H5Zm2 3.25c0-.41.34-.75.75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5a.75.75 0 0 1-.75-.75Zm6 0c0-.41.34-.75.75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5a.75.75 0 0 1-.75-.75ZM7.75 15a.75.75 0 0 0 0 1.5h2.5a.75.75 0 0 0 0-1.5h-2.5Zm5.25.75c0-.41.34-.75.75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5a.75.75 0 0 1-.75-.75Z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </span>
+                <div>
+                  <p className="text-sm font-medium text-black/50">Websites used</p>
+                  <p className="mt-1 text-xl font-bold">
+                    {activeWebsiteCount} of {websiteLimit}
+                  </p>
+                </div>
+              </div>
+              <p className="mt-4 text-sm text-black/55">
+                {websitesRemaining > 0
+                  ? `You can create ${websitesRemaining} more ${pluralise(
+                      websitesRemaining,
+                      "website",
+                    )}.`
+                  : "You have used your current website allowance."}
+              </p>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/10">
+                <div
+                  className="h-full rounded-full bg-[#C5E66A]"
+                  style={{ width: `${websiteUsagePercent}%` }}
+                />
+              </div>
+            </div>
           </div>
 
           {errorMessage ? (
@@ -1862,9 +1931,19 @@ export default function DashboardPage() {
                 type="button"
                 onClick={dismissDashboardTour}
                 aria-label="Dismiss quick tour"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/10 bg-white/90 text-xl leading-none text-black/45 shadow-sm backdrop-blur transition hover:border-black/25 hover:text-black"
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-black/10 bg-white/90 text-black/45 shadow-sm backdrop-blur transition hover:border-black/25 hover:text-black"
               >
-                ×
+                <svg
+                  aria-hidden
+                  viewBox="0 0 16 16"
+                  className="h-3.5 w-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeWidth="1.8"
+                >
+                  <path d="M4.5 4.5 11.5 11.5M11.5 4.5 4.5 11.5" />
+                </svg>
               </button>
             </div>
 
@@ -2016,81 +2095,107 @@ export default function DashboardPage() {
                   placingImageId !== null ||
                   revertingImageId !== null ||
                   hasActiveEditForWebsite;
+                const address = websiteAddress(website);
+                const displayAddress = address.replace(/^https?:\/\//, "");
 
                 return (
                   <article
                     key={website.id}
-                    className={`rounded-3xl border p-5 shadow-lg shadow-black/5 sm:p-6 ${
+                    className={`overflow-hidden rounded-3xl border bg-white shadow-lg shadow-black/5 ${
                       state.canView
-                        ? "border-black/10 bg-white"
-                        : "border-red-100 bg-white"
+                        ? "border-black/10"
+                        : "border-red-100"
                     }`}
                   >
-                    <div className="flex flex-col gap-5">
-                      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h2 className="font-fraunces text-2xl font-semibold">
-                              {website.brandName || website.slug}
-                            </h2>
-                            <span
-                              className={`rounded-full px-3 py-1 text-xs font-semibold ${state.badgeClass}`}
-                            >
-                              {state.label}
-                            </span>
-                          </div>
-                          <p className="mt-2 text-sm text-black/50">
-                            {websiteSourceLabel(website)}
-                          </p>
-                          <p className="mt-2 text-sm font-medium text-black/60">
-                            {state.description}
-                          </p>
-                          {state.canView ? (
-                            <div
-                              className="group relative mt-4 block overflow-hidden rounded-2xl border border-black/10 bg-[#f0f4e7]"
-                            >
-                              <div className="flex aspect-[16/9] items-center justify-center px-5 text-center text-sm font-semibold text-black/35">
-                                Homepage preview
-                              </div>
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={screenshotUrl}
-                                alt={`${website.brandName || website.slug} homepage screenshot`}
-                                loading="lazy"
-                                className="absolute inset-0 h-full w-full object-cover object-top transition duration-300 group-hover:scale-[1.02]"
-                                onError={(event) => {
-                                  event.currentTarget.style.display = "none";
-                                }}
-                              />
-                            </div>
-                          ) : null}
+                    <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-start sm:p-5">
+                      <div className="relative h-28 w-full shrink-0 overflow-hidden rounded-2xl border border-black/10 bg-[#f0f4e7] sm:h-28 sm:w-44">
+                        <div className="flex h-full w-full items-center justify-center px-4 text-center text-xs font-semibold text-black/35">
+                          Homepage preview
+                        </div>
                         {state.canView ? (
-                          <div className="mt-3 flex max-w-full flex-wrap items-center gap-2 rounded-2xl bg-[#faf8f1] px-3 py-2">
-                            <span className="text-[11px] font-semibold uppercase tracking-wide text-black/35">
-                              Your website address
-                            </span>
-                            <a
-                              href={websiteAddress(website)}
-                              target="_blank"
-                              className="min-w-0 flex-1 truncate text-sm font-semibold text-black underline-offset-2 hover:underline"
-                            >
-                              {websiteAddress(website).replace(/^https?:\/\//, "")}
-                            </a>
-                            <button
-                              type="button"
-                              onClick={() => void copyWebsiteAddress(website)}
-                              className="shrink-0 rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-semibold transition hover:border-black/25"
-                            >
-                              {copiedWebsiteId === website.id ? "Copied!" : "Copy"}
-                            </button>
-                          </div>
+                          <>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={screenshotUrl}
+                              alt={`${website.brandName || website.slug} homepage screenshot`}
+                              loading="lazy"
+                              className="absolute inset-0 h-full w-full object-cover object-top"
+                              onError={(event) => {
+                                event.currentTarget.style.display = "none";
+                              }}
+                            />
+                          </>
                         ) : null}
-                        <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs font-medium text-black/45">
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex min-w-0 items-center gap-2">
+                              <h2 className="truncate font-fraunces text-2xl font-semibold leading-tight">
+                                {website.brandName || website.slug}
+                              </h2>
+                              <button
+                                type="button"
+                                onClick={() => openWebsiteActionModal(website, "rename")}
+                                className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-black/35 transition hover:bg-black/5 hover:text-black"
+                                aria-label={`Rename ${website.brandName || website.slug}`}
+                              >
+                                <svg
+                                  aria-hidden
+                                  viewBox="0 0 16 16"
+                                  className="h-3.5 w-3.5"
+                                  fill="currentColor"
+                                >
+                                  <path d="M11.7 1.9a1.5 1.5 0 0 1 2.1 2.1l-.8.8-2.1-2.1.8-.8Zm-1.5 1.5 2.1 2.1-6.8 6.8-2.6.5.5-2.6 6.8-6.8Z" />
+                                </svg>
+                              </button>
+                            </div>
+                            {state.canView ? (
+                              <div className="mt-1 flex min-w-0 flex-wrap items-center gap-2">
+                                <a
+                                  href={address}
+                                  target="_blank"
+                                  className="min-w-0 truncate text-sm font-semibold text-[#3f8f22] underline-offset-2 hover:underline"
+                                >
+                                  {displayAddress}
+                                </a>
+                                <button
+                                  type="button"
+                                  onClick={() => void copyWebsiteAddress(website)}
+                                  className="shrink-0 text-xs font-semibold text-black/35 transition hover:text-black"
+                                >
+                                  {copiedWebsiteId === website.id ? "Copied!" : "Copy"}
+                                </button>
+                              </div>
+                            ) : (
+                              <p className="mt-1 text-sm text-black/50">
+                                {websiteSourceLabel(website)}
+                              </p>
+                            )}
+                          </div>
+                          <span
+                            className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${state.badgeClass}`}
+                          >
+                            {state.label}
+                          </span>
+                        </div>
+
+                        <p className="mt-2 text-sm font-medium text-black/55">
+                          {state.description}
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs font-medium text-black/45">
                           <span>
                             {isPro
                               ? "Changes: unlimited"
                               : `Free changes left: ${website.freeEditsRemaining} of ${website.freeEditsLimit}`}
                           </span>
+                          {generatedPages.length > 0 ? (
+                            <span>
+                              {generatedPages.length}{" "}
+                              {pluralise(generatedPages.length, "page")}
+                            </span>
+                          ) : null}
                           {!isPro && website.status !== "live" ? (
                             <span>Free preview until {formatDate(website.expiresAt)}</span>
                           ) : null}
@@ -2098,6 +2203,7 @@ export default function DashboardPage() {
                             <span>Published: {formatDate(website.publishedAt)}</span>
                           ) : null}
                         </div>
+
                         {website.latestEditRequest ? (
                           website.latestEditRequest.status === "queued" ||
                           website.latestEditRequest.status === "running" ? (
@@ -2175,6 +2281,7 @@ export default function DashboardPage() {
                             </p>
                           )
                         ) : null}
+
                         {isGeneratingPages ? (
                           <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
                             <Image
@@ -2185,8 +2292,7 @@ export default function DashboardPage() {
                               className="kiwi-bob shrink-0"
                             />
                             <span className="text-xs font-medium text-black/55">
-                              Building your extra pages — usually takes a few
-                              minutes…
+                              Building your extra pages — usually takes a few minutes…
                             </span>
                             <button
                               type="button"
@@ -2204,49 +2310,44 @@ export default function DashboardPage() {
                             </button>
                           </div>
                         ) : null}
-                        </div>
-
-                        <div className="flex flex-col gap-2 sm:flex-row lg:shrink-0 lg:justify-end">
-                          {state.canView ? (
-                            <Link
-                              href={previewHref(website.slug)}
-                              target="_blank"
-                              className="rounded-full bg-[#141811] px-5 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-black"
-                            >
-                              {website.status === "live"
-                                ? "View live site"
-                                : "View preview"}
-                            </Link>
-                          ) : null}
-                          {isPro && state.showKeepLive ? (
-                            <button
-                              type="button"
-                              onClick={() => void publishWebsite(website.id)}
-                              disabled={publishingWebsiteId === website.id}
-                              className="rounded-full bg-kiwi-green px-5 py-2.5 text-sm font-semibold text-black transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                              {publishingWebsiteId === website.id
-                                ? "Publishing…"
-                                : state.label === "Expired preview"
-                                  ? "Restore live"
-                                  : "Publish live"}
-                            </button>
-                          ) : null}
-                          {!isPro && state.showKeepLive ? (
-                            <button
-                              type="button"
-                              onClick={openProSheet}
-                              className="rounded-full bg-kiwi-green px-5 py-2.5 text-sm font-semibold text-black transition hover:bg-kiwi-green-hover"
-                            >
-                              {state.label === "Expired preview"
-                                ? "Go live again — £10/mo"
-                                : "Put it online — £10/mo"}
-                            </button>
-                          ) : null}
-                        </div>
                       </div>
+                    </div>
 
-                      <div className="flex flex-wrap gap-2 border-t border-black/5 pt-4">
+                    <div className="flex flex-wrap gap-2 border-t border-black/5 bg-[#fbfaf6] px-4 py-3 sm:px-5">
+                      {state.canView ? (
+                        <Link
+                          href={previewHref(website.slug)}
+                          target="_blank"
+                          className="rounded-full bg-[#141811] px-4 py-2 text-sm font-semibold text-white transition hover:bg-black"
+                        >
+                          {website.status === "live" ? "View live site" : "View preview"}
+                        </Link>
+                      ) : null}
+                      {isPro && state.showKeepLive ? (
+                        <button
+                          type="button"
+                          onClick={() => void publishWebsite(website.id)}
+                          disabled={publishingWebsiteId === website.id}
+                          className="rounded-full bg-kiwi-green px-4 py-2 text-sm font-semibold text-black transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {publishingWebsiteId === website.id
+                            ? "Publishing…"
+                            : state.label === "Expired preview"
+                              ? "Restore live"
+                              : "Publish live"}
+                        </button>
+                      ) : null}
+                      {!isPro && state.showKeepLive ? (
+                        <button
+                          type="button"
+                          onClick={openProSheet}
+                          className="rounded-full bg-kiwi-green px-4 py-2 text-sm font-semibold text-black transition hover:bg-kiwi-green-hover"
+                        >
+                          {state.label === "Expired preview"
+                            ? "Go live again — £10/mo"
+                            : "Put it online — £10/mo"}
+                        </button>
+                      ) : null}
                         {state.canEdit ? (
                           <button
                             type="button"
@@ -2261,9 +2362,9 @@ export default function DashboardPage() {
                                 return;
                               }
 
-                              openWebsitePanel(website, "edit");
+                              openWebsiteActionModal(website, "edit");
                             }}
-                            className="rounded-full border border-black/10 bg-white px-5 py-2.5 text-sm font-semibold text-black transition hover:border-black/25"
+                            className="rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold text-black transition hover:border-black/25"
                           >
                             {hasActiveEditForWebsite ? "Edit status" : "Edit website"}
                           </button>
@@ -2271,124 +2372,239 @@ export default function DashboardPage() {
                         {state.canEdit ? (
                           <button
                             type="button"
-                            onClick={() => openWebsitePanel(website, "images")}
-                            className="rounded-full border border-black/10 bg-white px-5 py-2.5 text-sm font-semibold text-black transition hover:border-black/25"
+                            onClick={() => openWebsiteActionModal(website, "images")}
+                            className="rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold text-black transition hover:border-black/25"
                           >
                             Images
                           </button>
                         ) : null}
-                        {state.canView && isPro && generatedPages.length === 0 ? (
+                        {state.canView ? (
                           <button
                             type="button"
-                            onClick={() => openPageChooser(website)}
+                            onClick={() => openWebsiteActionModal(website, "pages")}
                             disabled={
                               isGeneratingPages ||
                               generatingPagesWebsiteId === website.id
                             }
-                            className="rounded-full border border-black/10 bg-white px-5 py-2.5 text-sm font-semibold text-black transition hover:border-black/25 disabled:cursor-not-allowed disabled:opacity-50"
+                            className="rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold text-black transition hover:border-black/25 disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             {isGeneratingPages ||
                             generatingPagesWebsiteId === website.id
                               ? "Generating…"
-                              : "Generate pages"}
+                              : "Pages"}
                           </button>
                         ) : null}
                         <button
                           type="button"
-                          onClick={() => openWebsitePanel(website, "manage")}
-                          className="rounded-full border border-black/10 bg-white px-5 py-2.5 text-sm font-semibold text-black transition hover:border-black/25"
+                          onClick={() => openWebsiteActionModal(website, "domain")}
+                          className="rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold text-black transition hover:border-black/25"
                         >
-                          Manage
+                          Manage domain
                         </button>
-                      </div>
+                        <button
+                          type="button"
+                          onClick={() => openWebsiteActionModal(website, "delete")}
+                          className="rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700"
+                        >
+                          Delete website
+                        </button>
                     </div>
 
-                    {generatedPages.length > 0 ? (
-                      <div className="mt-5 rounded-2xl bg-[#faf8f1] p-4">
-                        <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-                          <div>
-                            <p className="text-sm font-semibold text-black">
-                              Additional pages
-                            </p>
-                            <p className="mt-1 text-xs text-black/45">
-                              View any page, then use Edit website for changes.
-                            </p>
-                          </div>
-                          <span className="text-xs font-medium text-black/40">
-                            {generatedPages.length}{" "}
-                            {pluralise(generatedPages.length, "page")}
-                          </span>
-                        </div>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {generatedPages.map((page) => (
-                            <Link
-                              key={page.id}
-                              href={pageHref(website.slug, page.path)}
-                              target="_blank"
-                              className="rounded-full border border-black/10 bg-white px-3 py-1.5 text-xs font-semibold text-black/65 transition hover:border-black/25 hover:text-black"
-                            >
-                              {page.title}
-                            </Link>
-                          ))}
-                        </div>
-                        {isPro && state.canView ? (
-                          confirmRegenerateId === website.id ? (
-                            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-3">
-                              <p className="text-xs font-semibold leading-5 text-amber-800">
-                                This rebuilds every additional page from
-                                scratch — any changes you&apos;ve made to them
-                                will be lost. Your homepage stays as it is.
+                    {websiteActionModal?.websiteId === website.id &&
+                    websiteActionModal.type === "pages" ? (
+                      <div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby={`pages-modal-${website.id}`}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-5 backdrop-blur-sm"
+                      >
+                        <div className="preview-pop max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-black/10 bg-white p-6 shadow-2xl sm:p-8">
+                          <div className="flex items-start justify-between gap-4">
+                            <div>
+                              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-black/40">
+                                Pages
                               </p>
-                              <div className="mt-2.5 flex flex-wrap gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setConfirmRegenerateId(null);
-                                    openPageChooser(website);
-                                  }}
-                                  className="rounded-full bg-[#141811] px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-black"
-                                >
-                                  Yes, start the pages again
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setConfirmRegenerateId(null)}
-                                  className="rounded-full border border-black/10 bg-white px-4 py-1.5 text-xs font-semibold text-black transition hover:border-black/25"
-                                >
-                                  Keep my pages
-                                </button>
-                              </div>
+                              <h2
+                                id={`pages-modal-${website.id}`}
+                                className="mt-2 font-fraunces text-3xl font-semibold tracking-tight"
+                              >
+                                Manage pages
+                              </h2>
+                              <p className="mt-2 text-sm leading-6 text-black/55">
+                                View existing pages or create extra pages for{" "}
+                                {website.brandName || website.slug}.
+                              </p>
                             </div>
-                          ) : (
                             <button
                               type="button"
-                              onClick={() => setConfirmRegenerateId(website.id)}
-                              disabled={
-                                isGeneratingPages ||
-                                generatingPagesWebsiteId === website.id
-                              }
-                              className="mt-4 text-xs font-semibold text-black/45 underline-offset-2 hover:text-black hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+                              onClick={closeWebsiteActionModal}
+                              className="rounded-full border border-black/10 px-3 py-1 text-sm text-black/60 transition hover:border-black/25 hover:text-black"
                             >
-                              {isGeneratingPages ||
-                              generatingPagesWebsiteId === website.id
-                                ? "Rebuilding pages…"
-                                : "Start these pages again"}
+                              Close
                             </button>
-                          )
-                        ) : null}
+                          </div>
+
+                          <div className="mt-6 rounded-2xl bg-[#faf8f1] p-4">
+                            <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                              <div>
+                                <p className="text-sm font-semibold text-black">
+                                  Current pages
+                                </p>
+                                <p className="mt-1 text-xs text-black/45">
+                                  View any page, then use Edit website for changes.
+                                </p>
+                              </div>
+                              <span className="text-xs font-medium text-black/40">
+                                {generatedPages.length}{" "}
+                                {pluralise(generatedPages.length, "page")}
+                              </span>
+                            </div>
+                            {generatedPages.length > 0 ? (
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                {generatedPages.map((page) => (
+                                  <Link
+                                    key={page.id}
+                                    href={pageHref(website.slug, page.path)}
+                                    target="_blank"
+                                    className="rounded-full border border-black/10 bg-white px-3 py-1.5 text-xs font-semibold text-black/65 transition hover:border-black/25 hover:text-black"
+                                  >
+                                    {page.title}
+                                  </Link>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="mt-3 text-sm text-black/45">
+                                No extra pages yet.
+                              </p>
+                            )}
+                          </div>
+
+                          {state.canView && generatedPages.length === 0 ? (
+                            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  isPro
+                                    ? void generateAdditionalPages(
+                                        website.id,
+                                        "business",
+                                      )
+                                    : openProSheet()
+                                }
+                                disabled={
+                                  isGeneratingPages ||
+                                  generatingPagesWebsiteId === website.id
+                                }
+                                className="rounded-3xl border border-black/10 bg-white p-4 text-left transition hover:border-black/25 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                <span className="text-sm font-semibold text-black">
+                                  Other pages
+                                </span>
+                                <span className="mt-1 block text-xs leading-5 text-black/50">
+                                  About, services, gallery, contact, FAQs and other
+                                  useful pages from the current site.
+                                </span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (!isPro) {
+                                    openProSheet();
+                                    return;
+                                  }
+
+                                  openPageChooser(website);
+                                  setPageGenerationType("legal");
+                                }}
+                                disabled={
+                                  isGeneratingPages ||
+                                  generatingPagesWebsiteId === website.id
+                                }
+                                className="rounded-3xl border border-black/10 bg-white p-4 text-left transition hover:border-black/25 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                <span className="text-sm font-semibold text-black">
+                                  Legal pages
+                                </span>
+                                <span className="mt-1 block text-xs leading-5 text-black/50">
+                                  Starter privacy, cookie and terms pages. This is
+                                  not legal advice.
+                                </span>
+                              </button>
+                            </div>
+                          ) : null}
+
+                          {generatedPages.length > 0 && isPro && state.canView ? (
+                            confirmRegenerateId === website.id ? (
+                              <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-3">
+                                <p className="text-xs font-semibold leading-5 text-amber-800">
+                                  This rebuilds every additional page from scratch —
+                                  any changes you&apos;ve made to them will be lost.
+                                  Your homepage stays as it is.
+                                </p>
+                                <div className="mt-2.5 flex flex-wrap gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setConfirmRegenerateId(null);
+                                      openPageChooser(website);
+                                    }}
+                                    className="rounded-full bg-[#141811] px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-black"
+                                  >
+                                    Yes, start the pages again
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setConfirmRegenerateId(null)}
+                                    className="rounded-full border border-black/10 bg-white px-4 py-1.5 text-xs font-semibold text-black transition hover:border-black/25"
+                                  >
+                                    Keep my pages
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setConfirmRegenerateId(website.id)}
+                                disabled={
+                                  isGeneratingPages ||
+                                  generatingPagesWebsiteId === website.id
+                                }
+                                className="mt-4 text-xs font-semibold text-black/45 underline-offset-2 hover:text-black hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                {isGeneratingPages ||
+                                generatingPagesWebsiteId === website.id
+                                  ? "Rebuilding pages…"
+                                  : "Start these pages again"}
+                              </button>
+                            )
+                          ) : null}
+                        </div>
                       </div>
                     ) : null}
 
-                    {imagesPanelWebsiteId === website.id ? (
+                    {websiteActionModal?.websiteId === website.id &&
+                    websiteActionModal.type === "images" ? (
                       <div
-                        id={`images-panel-${website.id}`}
-                        className="mt-5 scroll-mt-24 rounded-2xl bg-[#faf8f1] p-4"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby={`images-modal-${website.id}`}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-5 backdrop-blur-sm"
                       >
+                        <div
+                          id={`images-panel-${website.id}`}
+                          className="preview-pop max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-3xl border border-black/10 bg-[#faf8f1] p-5 shadow-2xl sm:p-6"
+                        >
                         <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
                           <div>
-                            <p className="text-sm font-semibold text-black">
-                              Your images
+                            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-black/40">
+                              Images
                             </p>
+                            <h2
+                              id={`images-modal-${website.id}`}
+                              className="mt-2 font-fraunces text-3xl font-semibold tracking-tight"
+                            >
+                              Your images
+                            </h2>
                             <p className="mt-1 text-xs text-black/45">
                               Swap any photo for your own, or let AI recreate
                               it. Changes go live straight away — and we keep
@@ -2401,6 +2617,13 @@ export default function DashboardPage() {
                               {pluralise(imagesState.images.length, "image")}
                             </span>
                           ) : null}
+                          <button
+                            type="button"
+                            onClick={closeWebsiteActionModal}
+                            className="rounded-full border border-black/10 bg-white px-3 py-1 text-sm text-black/60 transition hover:border-black/25 hover:text-black"
+                          >
+                            Close
+                          </button>
                         </div>
 
                         <form
@@ -2833,20 +3056,34 @@ export default function DashboardPage() {
                             </div>
                           );
                         })()}
+                        </div>
                       </div>
                     ) : null}
 
-                    {managingWebsiteId === website.id ? (
+                    {websiteActionModal?.websiteId === website.id &&
+                    websiteActionModal.type === "domain" ? (
                       <div
-                        id={`manage-panel-${website.id}`}
-                        className="mt-5 scroll-mt-24 rounded-2xl border border-black/10 bg-white p-4"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby={`domain-modal-${website.id}`}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-5 backdrop-blur-sm"
                       >
-                        <div className="mb-5 rounded-2xl bg-[#faf8f1] p-4">
+                        <div
+                          id={`manage-panel-${website.id}`}
+                          className="preview-pop max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-black/10 bg-white p-6 shadow-2xl sm:p-8"
+                        >
+                        <div className="rounded-2xl bg-[#faf8f1] p-4">
                           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                             <div>
-                              <p className="text-sm font-semibold text-black">
-                                Connect your domain
+                              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-black/40">
+                                Manage domain
                               </p>
+                              <h2
+                                id={`domain-modal-${website.id}`}
+                                className="mt-2 font-fraunces text-3xl font-semibold tracking-tight"
+                              >
+                                Connect your domain
+                              </h2>
                               <p className="mt-1 text-xs leading-5 text-black/50">
                                 Use a domain you already own, like www.yourbusiness.com.
                                 We will set up the Refresh Kiwi side automatically.
@@ -2875,6 +3112,13 @@ export default function DashboardPage() {
                                 Open domain
                               </a>
                             ) : null}
+                            <button
+                              type="button"
+                              onClick={closeWebsiteActionModal}
+                              className="rounded-full border border-black/10 bg-white px-3 py-1 text-sm text-black/60 transition hover:border-black/25 hover:text-black"
+                            >
+                              Close
+                            </button>
                           </div>
 
                           <form
@@ -2968,8 +3212,44 @@ export default function DashboardPage() {
                           ) : null}
                         </div>
 
-                        <div className="grid gap-4 lg:grid-cols-2">
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {websiteActionModal?.websiteId === website.id &&
+                    websiteActionModal.type === "rename" ? (
+                      <div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby={`rename-modal-${website.id}`}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-5 backdrop-blur-sm"
+                      >
+                        <div className="preview-pop w-full max-w-lg rounded-3xl border border-black/10 bg-white p-6 shadow-2xl sm:p-8">
+                          <div className="flex items-start justify-between gap-4">
+                            <div>
+                              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-black/40">
+                                Rename
+                              </p>
+                              <h2
+                                id={`rename-modal-${website.id}`}
+                                className="mt-2 font-fraunces text-3xl font-semibold tracking-tight"
+                              >
+                                Rename website
+                              </h2>
+                              <p className="mt-2 text-sm leading-6 text-black/55">
+                                Choose the display name shown on your dashboard.
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={closeWebsiteActionModal}
+                              className="rounded-full border border-black/10 px-3 py-1 text-sm text-black/60 transition hover:border-black/25 hover:text-black"
+                            >
+                              Close
+                            </button>
+                          </div>
                           <form
+                            className="mt-6"
                             onSubmit={(event) => {
                               event.preventDefault();
                               void renameWebsite(website);
@@ -2979,7 +3259,7 @@ export default function DashboardPage() {
                               htmlFor={`rename-${website.id}`}
                               className="text-sm font-semibold text-black"
                             >
-                              Rename website
+                              Website name
                             </label>
                             <div className="mt-3 flex flex-col gap-3 sm:flex-row">
                               <input
@@ -3008,90 +3288,145 @@ export default function DashboardPage() {
                               </button>
                             </div>
                           </form>
+                        </div>
+                      </div>
+                    ) : null}
 
-                          <div>
-                            <p className="text-sm font-semibold text-red-700">
-                              Delete website
-                            </p>
-                            <p className="mt-2 text-xs leading-5 text-black/45">
-                              Type{" "}
-                              <span className="inline-flex items-center gap-1.5">
-                                <span className="font-semibold text-black">
-                                  {website.brandName || website.slug}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    void copyDeleteConfirmationName(website)
-                                  }
-                                  className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-black/10 bg-white text-black/45 transition hover:border-black/25 hover:text-black"
-                                  aria-label={`Copy ${
-                                    website.brandName || website.slug
-                                  }`}
-                                  title={
-                                    copiedDeleteNameId === website.id
-                                      ? "Copied!"
-                                      : "Copy name"
-                                  }
-                                >
-                                  {copiedDeleteNameId === website.id ? (
-                                    <span className="text-[10px] font-bold">
-                                      ✓
-                                    </span>
-                                  ) : (
-                                    <svg
-                                      aria-hidden
-                                      viewBox="0 0 16 16"
-                                      className="h-3.5 w-3.5"
-                                    >
-                                      <path
-                                        fill="currentColor"
-                                        d="M5 2.5A1.5 1.5 0 0 1 6.5 1h5A1.5 1.5 0 0 1 13 2.5v5A1.5 1.5 0 0 1 11.5 9h-5A1.5 1.5 0 0 1 5 7.5v-5Zm1.5-.25a.25.25 0 0 0-.25.25v5c0 .14.11.25.25.25h5c.14 0 .25-.11.25-.25v-5a.25.25 0 0 0-.25-.25h-5ZM3.5 5.25c-.14 0-.25.11-.25.25v7c0 .14.11.25.25.25h7c.14 0 .25-.11.25-.25V11H12v1.5A1.5 1.5 0 0 1 10.5 14h-7A1.5 1.5 0 0 1 2 12.5v-7A1.5 1.5 0 0 1 3.5 4H4v1.25h-.5Z"
-                                      />
-                                    </svg>
-                                  )}
-                                </button>
-                              </span>{" "}
-                              to delete it from your dashboard.
-                            </p>
-                            <div className="mt-3 flex flex-col gap-3 sm:flex-row">
-                              <input
-                                value={deleteConfirmations[website.id] ?? ""}
-                                onChange={(event) =>
-                                  setDeleteConfirmations((current) => ({
-                                    ...current,
-                                    [website.id]: event.target.value,
-                                  }))
-                                }
-                                placeholder={website.brandName || website.slug}
-                                className="h-11 flex-1 rounded-full border border-red-100 bg-white px-4 text-sm outline-none placeholder:text-black/25 focus:border-red-200"
-                                aria-label="Delete confirmation"
-                              />
+                    {websiteActionModal?.websiteId === website.id &&
+                    websiteActionModal.type === "delete" ? (
+                      <div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby={`delete-modal-${website.id}`}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-5 backdrop-blur-sm"
+                      >
+                        <div className="preview-pop w-full max-w-lg rounded-3xl border border-red-100 bg-white p-6 shadow-2xl sm:p-8">
+                          <div className="flex items-start justify-between gap-4">
+                            <div>
+                              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-red-500/70">
+                                Delete website
+                              </p>
+                              <h2
+                                id={`delete-modal-${website.id}`}
+                                className="mt-2 font-fraunces text-3xl font-semibold tracking-tight"
+                              >
+                                Delete {website.brandName || website.slug}?
+                              </h2>
+                              <p className="mt-2 text-sm leading-6 text-black/55">
+                                This removes the website from your dashboard. Type
+                                the website name to confirm.
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={closeWebsiteActionModal}
+                              className="rounded-full border border-black/10 px-3 py-1 text-sm text-black/60 transition hover:border-black/25 hover:text-black"
+                            >
+                              Close
+                            </button>
+                          </div>
+                          <p className="mt-6 text-xs leading-5 text-black/45">
+                            Type{" "}
+                            <span className="inline-flex items-center gap-1.5">
+                              <span className="font-semibold text-black">
+                                {website.brandName || website.slug}
+                              </span>
                               <button
                                 type="button"
-                                onClick={() => void deleteWebsite(website)}
-                                disabled={deletingWebsiteId === website.id}
-                                className="h-11 rounded-full bg-red-600 px-5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                onClick={() =>
+                                  void copyDeleteConfirmationName(website)
+                                }
+                                className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-black/10 bg-white text-black/45 transition hover:border-black/25 hover:text-black"
+                                aria-label={`Copy ${
+                                  website.brandName || website.slug
+                                }`}
                               >
-                                {deletingWebsiteId === website.id
-                                  ? "Deleting..."
-                                  : "Delete"}
+                                {copiedDeleteNameId === website.id ? (
+                                  <span className="text-[10px] font-bold">✓</span>
+                                ) : (
+                                  <svg
+                                    aria-hidden
+                                    viewBox="0 0 16 16"
+                                    className="h-3.5 w-3.5"
+                                  >
+                                    <path
+                                      fill="currentColor"
+                                      d="M5 2.5A1.5 1.5 0 0 1 6.5 1h5A1.5 1.5 0 0 1 13 2.5v5A1.5 1.5 0 0 1 11.5 9h-5A1.5 1.5 0 0 1 5 7.5v-5Zm1.5-.25a.25.25 0 0 0-.25.25v5c0 .14.11.25.25.25h5c.14 0 .25-.11.25-.25v-5a.25.25 0 0 0-.25-.25h-5ZM3.5 5.25c-.14 0-.25.11-.25.25v7c0 .14.11.25.25.25h7c.14 0 .25-.11.25-.25V11H12v1.5A1.5 1.5 0 0 1 10.5 14h-7A1.5 1.5 0 0 1 2 12.5v-7A1.5 1.5 0 0 1 3.5 4H4v1.25h-.5Z"
+                                    />
+                                  </svg>
+                                )}
                               </button>
-                            </div>
+                            </span>{" "}
+                            to delete it from your dashboard.
+                          </p>
+                          <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                            <input
+                              value={deleteConfirmations[website.id] ?? ""}
+                              onChange={(event) =>
+                                setDeleteConfirmations((current) => ({
+                                  ...current,
+                                  [website.id]: event.target.value,
+                                }))
+                              }
+                              placeholder={website.brandName || website.slug}
+                              className="h-11 flex-1 rounded-full border border-red-100 bg-white px-4 text-sm outline-none placeholder:text-black/25 focus:border-red-200"
+                              aria-label="Delete confirmation"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => void deleteWebsite(website)}
+                              disabled={deletingWebsiteId === website.id}
+                              className="h-11 rounded-full bg-red-600 px-5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              {deletingWebsiteId === website.id
+                                ? "Deleting..."
+                                : "Delete website"}
+                            </button>
                           </div>
                         </div>
                       </div>
                     ) : null}
 
-                    {editingWebsiteId === website.id ? (
-                      <form
-                        id={`edit-panel-${website.id}`}
-                        className="mt-5 scroll-mt-24 rounded-2xl bg-[#faf8f1] p-4"
-                        onSubmit={(event) => {
-                          event.preventDefault();
-                          void submitEditRequest(website.id);
-                        }}
+                    {websiteActionModal?.websiteId === website.id &&
+                    websiteActionModal.type === "edit" ? (
+                      <div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby={`edit-modal-${website.id}`}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-5 backdrop-blur-sm"
                       >
+                        <form
+                          id={`edit-panel-${website.id}`}
+                          className="preview-pop max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-black/10 bg-[#faf8f1] p-6 shadow-2xl sm:p-8"
+                          onSubmit={(event) => {
+                            event.preventDefault();
+                            void submitEditRequest(website.id);
+                          }}
+                        >
+                        <div className="mb-6 flex items-start justify-between gap-4">
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-black/40">
+                              Edit website
+                            </p>
+                            <h2
+                              id={`edit-modal-${website.id}`}
+                              className="mt-2 font-fraunces text-3xl font-semibold tracking-tight"
+                            >
+                              Request a change
+                            </h2>
+                            <p className="mt-2 text-sm leading-6 text-black/55">
+                              Tell us what to change on{" "}
+                              {website.brandName || website.slug}.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={closeWebsiteActionModal}
+                            className="rounded-full border border-black/10 bg-white px-3 py-1 text-sm text-black/60 transition hover:border-black/25 hover:text-black"
+                          >
+                            Close
+                          </button>
+                        </div>
                         <label
                           htmlFor={`edit-${website.id}`}
                           className="text-sm font-semibold text-black"
@@ -3175,6 +3510,7 @@ export default function DashboardPage() {
                             : "We'll make your change — it usually takes a few minutes. Check back here to see when it's done."}
                         </p>
                       </form>
+                      </div>
                     ) : null}
                   </article>
                 );
