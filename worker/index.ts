@@ -10,6 +10,7 @@ import {
   completeBackgroundTask,
   failBackgroundTask,
   recoverStaleBackgroundWork,
+  resetEntityForRetry,
   type BackgroundTask,
 } from "@/lib/worker/queue";
 import { eq } from "drizzle-orm";
@@ -36,6 +37,15 @@ function payloadValue<T extends object>(payload: unknown): T {
 
 async function processTask(task: BackgroundTask): Promise<void> {
   console.info(`[refresh-kiwi-worker] starting task ${task.id} type=${task.type}`);
+
+  // On a retry (attempts already incremented past the first claim), the entity
+  // this task drives may be stuck mid-flight (e.g. job "analyzing", edit
+  // "running"). The processors early-return unless it's back in a queued state,
+  // so reset it first — otherwise we'd mark the task complete while the entity
+  // is stranded forever.
+  if (task.attempts > 1) {
+    await resetEntityForRetry(task);
+  }
 
   switch (task.type) {
     case "refresh-homepage": {

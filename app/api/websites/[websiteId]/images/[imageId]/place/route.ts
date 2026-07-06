@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { after } from "next/server";
 import { and, eq, inArray } from "drizzle-orm";
 
 import {
@@ -10,6 +9,7 @@ import { buildImagePlacementPrompt } from "@/lib/assets/placement";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getDb, schema } from "@/lib/db";
 import { checkDailyEditQuota } from "@/lib/edits/quota";
+import { enqueueBackgroundTask } from "@/lib/worker/queue";
 import {
   getOwnedWebsite,
   toWebsiteResponse,
@@ -159,16 +159,12 @@ export async function POST(request: Request, context: RouteContext) {
       .where(eq(websites.id, website.id))
       .returning();
 
-    after(async () => {
-      try {
-        const { processEditRequest } = await import("@/lib/edits/processor");
-        await processEditRequest(editRequest.id);
-      } catch (error) {
-        console.error(
-          `[refresh-kiwi] failed to start image placement edit ${editRequest.id}`,
-          error,
-        );
-      }
+    // Durable queue instead of after(): a fire-and-forget after() task is lost
+    // if the instance recycles, leaving the user charged a free edit for work
+    // that never runs. The worker picks this up and retries on failure.
+    await enqueueBackgroundTask({
+      type: "edit-request",
+      payload: { editRequestId: editRequest.id },
     });
 
     return NextResponse.json({

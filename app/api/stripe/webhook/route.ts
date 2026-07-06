@@ -1,6 +1,8 @@
+import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 
+import { getDb, schema } from "@/lib/db";
 import { getStripeWebhookSecret } from "@/lib/stripe/config";
 import {
   getStripeClient,
@@ -12,6 +14,23 @@ import {
 } from "@/lib/stripe/service";
 
 export const runtime = "nodejs";
+
+const { stripeEvents } = schema;
+
+/**
+ * Records the event id and returns false if we've already processed it.
+ * Stripe retries deliveries, so this guards against double plan syncs and
+ * duplicate emails. The primary-key conflict is the atomic dedupe point.
+ */
+async function claimStripeEvent(event: Stripe.Event): Promise<boolean> {
+  const inserted = await getDb()
+    .insert(stripeEvents)
+    .values({ id: event.id, type: event.type })
+    .onConflictDoNothing({ target: stripeEvents.id })
+    .returning({ id: stripeEvents.id });
+
+  return inserted.length > 0;
+}
 
 export async function POST(request: Request) {
   const signature = request.headers.get("stripe-signature");
@@ -39,6 +58,11 @@ export async function POST(request: Request) {
   }
 
   try {
+    // Skip events we've already handled (Stripe re-delivers on retry).
+    if (!(await claimStripeEvent(event))) {
+      return NextResponse.json({ received: true, duplicate: true });
+    }
+
     switch (event.type) {
       case "checkout.session.completed":
         await handleCheckoutSessionCompleted(event.data.object);
@@ -62,6 +86,13 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ received: true });
   } catch (error) {
+    // Release the idempotency claim so Stripe's retry can reprocess — we only
+    // want to skip events that fully succeeded.
+    await getDb()
+      .delete(stripeEvents)
+      .where(eq(stripeEvents.id, event.id))
+      .catch(() => {});
+
     const message =
       error instanceof Error ? error.message : "Failed to process webhook";
 

@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, type SQL } from "drizzle-orm";
 import Stripe from "stripe";
 
 import { getCurrentUser } from "@/lib/auth/session";
@@ -63,35 +63,37 @@ async function updateUserSubscription(params: {
     values.stripeSubscriptionId = params.stripeSubscriptionId;
   }
 
-  async function syncWebsites(userId: string) {
-    if (plan === "pro") {
-      await db
-        .update(websites)
-        .set({
-          status: "live",
-          publishedAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .where(eq(websites.userId, userId));
-      return;
-    }
+  const websiteStatusValues =
+    plan === "pro"
+      ? { status: "live" as const, publishedAt: new Date(), updatedAt: new Date() }
+      : { status: "preview" as const, updatedAt: new Date() };
 
-    await db
-      .update(websites)
-      .set({
-        status: "preview",
-        updatedAt: new Date(),
-      })
-      .where(eq(websites.userId, userId));
+  // Apply the plan change and the dependent website status sync atomically:
+  // a partial apply (user upgraded but sites still "preview", or downgraded
+  // but sites still "live") mis-gates access and publishing.
+  async function applyPlanChange(
+    where: SQL,
+  ): Promise<{ id: string; email: string } | null> {
+    return db.transaction(async (tx) => {
+      const [user] = await tx
+        .update(users)
+        .set(values)
+        .where(where)
+        .returning({ id: users.id, email: users.email });
+
+      if (user) {
+        await tx
+          .update(websites)
+          .set(websiteStatusValues)
+          .where(eq(websites.userId, user.id));
+      }
+
+      return user ?? null;
+    });
   }
 
   if (params.userId) {
-    const [user] = await db
-      .update(users)
-      .set(values)
-      .where(eq(users.id, params.userId))
-      .returning({ id: users.id, email: users.email });
-    await syncWebsites(params.userId);
+    const user = await applyPlanChange(eq(users.id, params.userId));
 
     if (user) {
       await sendSubscriptionEmail({
@@ -105,14 +107,11 @@ async function updateUserSubscription(params: {
   }
 
   if (params.stripeCustomerId) {
-    const [user] = await db
-      .update(users)
-      .set(values)
-      .where(eq(users.stripeCustomerId, params.stripeCustomerId))
-      .returning({ id: users.id, email: users.email });
+    const user = await applyPlanChange(
+      eq(users.stripeCustomerId, params.stripeCustomerId),
+    );
 
     if (user) {
-      await syncWebsites(user.id);
       await sendSubscriptionEmail({
         userId: user.id,
         email: user.email,
@@ -124,14 +123,11 @@ async function updateUserSubscription(params: {
   }
 
   if (params.stripeSubscriptionId) {
-    const [user] = await db
-      .update(users)
-      .set(values)
-      .where(eq(users.stripeSubscriptionId, params.stripeSubscriptionId))
-      .returning({ id: users.id, email: users.email });
+    const user = await applyPlanChange(
+      eq(users.stripeSubscriptionId, params.stripeSubscriptionId),
+    );
 
     if (user) {
-      await syncWebsites(user.id);
       await sendSubscriptionEmail({
         userId: user.id,
         email: user.email,

@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
   index,
@@ -229,41 +230,52 @@ export const jobs = pgTable("jobs", {
     .defaultNow(),
 });
 
-export const websites = pgTable("websites", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
-  jobId: uuid("job_id")
-    .notNull()
-    .references(() => jobs.id, { onDelete: "cascade" }),
-  sourceUrl: text("source_url"),
-  generationMode: generationModeEnum("generation_mode")
-    .notNull()
-    .default("refresh"),
-  creationPrompt: text("creation_prompt"),
-  slug: text("slug").notNull().unique(),
-  brandName: text("brand_name"),
-  status: websiteStatusEnum("status").notNull().default("preview"),
-  freeEditsUsed: integer("free_edits_used").notNull().default(0),
-  freeEditsLimit: integer("free_edits_limit").notNull().default(3),
-  customDomain: text("custom_domain"),
-  customDomainStatus: text("custom_domain_status").notNull().default("none"),
-  customDomainRenderId: text("custom_domain_render_id"),
-  customDomainError: text("custom_domain_error"),
-  customDomainVerifiedAt: timestamp("custom_domain_verified_at", {
-    withTimezone: true,
+export const websites = pgTable(
+  "websites",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    sourceUrl: text("source_url"),
+    generationMode: generationModeEnum("generation_mode")
+      .notNull()
+      .default("refresh"),
+    creationPrompt: text("creation_prompt"),
+    slug: text("slug").notNull().unique(),
+    brandName: text("brand_name"),
+    status: websiteStatusEnum("status").notNull().default("preview"),
+    freeEditsUsed: integer("free_edits_used").notNull().default(0),
+    freeEditsLimit: integer("free_edits_limit").notNull().default(3),
+    customDomain: text("custom_domain"),
+    customDomainStatus: text("custom_domain_status").notNull().default("none"),
+    customDomainRenderId: text("custom_domain_render_id"),
+    customDomainError: text("custom_domain_error"),
+    customDomainVerifiedAt: timestamp("custom_domain_verified_at", {
+      withTimezone: true,
+    }),
+    customDomainLastCheckedAt: timestamp("custom_domain_last_checked_at", {
+      withTimezone: true,
+    }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    // One website per connected custom domain — a duplicate would make the
+    // custom-domain lookup ambiguous (it serves the first match). Partial so
+    // the many websites without a domain (NULL) aren't constrained.
+    customDomainIdx: uniqueIndex("websites_custom_domain_idx")
+      .on(table.customDomain)
+      .where(sql`${table.customDomain} IS NOT NULL`),
   }),
-  customDomainLastCheckedAt: timestamp("custom_domain_last_checked_at", {
-    withTimezone: true,
-  }),
-  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-  publishedAt: timestamp("published_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+);
 
 export const emailEvents = pgTable("email_events", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -308,6 +320,17 @@ export const editRequests = pgTable("edit_requests", {
     .notNull()
     .defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+// Idempotency ledger for Stripe webhooks. Stripe re-delivers events on
+// timeout/retry, so we record each event id the first time we process it and
+// skip any repeat — preventing double plan syncs, duplicate emails, etc.
+export const stripeEvents = pgTable("stripe_events", {
+  id: text("id").primaryKey(),
+  type: text("type").notNull(),
+  processedAt: timestamp("processed_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
 });

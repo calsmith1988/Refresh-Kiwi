@@ -258,16 +258,23 @@ export async function claimWebsite(params: { jobId: string; userId: string }) {
     );
   }
 
-  const [updated] = await db
-    .update(websites)
-    .set({ userId: params.userId, updatedAt: new Date() })
-    .where(eq(websites.id, website.id))
-    .returning();
+  // Claim the website and its originating job atomically — a half-applied
+  // claim (website owned but job still anonymous, or vice versa) breaks
+  // ownership checks and quota accounting.
+  const updated = await db.transaction(async (tx) => {
+    const [claimedWebsite] = await tx
+      .update(websites)
+      .set({ userId: params.userId, updatedAt: new Date() })
+      .where(eq(websites.id, website.id))
+      .returning();
 
-  await db
-    .update(jobs)
-    .set({ userId: params.userId, updatedAt: new Date() })
-    .where(eq(jobs.id, params.jobId));
+    await tx
+      .update(jobs)
+      .set({ userId: params.userId, updatedAt: new Date() })
+      .where(eq(jobs.id, params.jobId));
+
+    return claimedWebsite;
+  });
 
   return updated;
 }
@@ -375,22 +382,26 @@ export async function renameOwnedWebsite(params: {
     throw new Error("Website not found");
   }
 
-  const [updated] = await getDb()
-    .update(websites)
-    .set({
-      brandName: name,
-      updatedAt: new Date(),
-    })
-    .where(eq(websites.id, website.id))
-    .returning();
+  const updated = await getDb().transaction(async (tx) => {
+    const [renamedWebsite] = await tx
+      .update(websites)
+      .set({
+        brandName: name,
+        updatedAt: new Date(),
+      })
+      .where(eq(websites.id, website.id))
+      .returning();
 
-  await getDb()
-    .update(jobs)
-    .set({
-      brandName: name,
-      updatedAt: new Date(),
-    })
-    .where(eq(jobs.id, website.jobId));
+    await tx
+      .update(jobs)
+      .set({
+        brandName: name,
+        updatedAt: new Date(),
+      })
+      .where(eq(jobs.id, website.jobId));
+
+    return renamedWebsite;
+  });
 
   return updated;
 }
@@ -412,8 +423,10 @@ export async function archiveOwnedWebsite(params: {
     throw new Error(`Type "${expectedConfirmation}" to delete this website.`);
   }
 
-  await deleteSiteDirectoryFromR2(website.slug);
-
+  // Commit the archive in the database first, then delete the R2 files. If we
+  // deleted R2 first and the DB write failed, the site would still show as
+  // active but serve nothing. This order makes the DB authoritative; an R2
+  // failure only leaves orphaned files behind an already-unreachable site.
   const [updated] = await getDb()
     .update(websites)
     .set({
@@ -422,6 +435,15 @@ export async function archiveOwnedWebsite(params: {
     })
     .where(eq(websites.id, website.id))
     .returning();
+
+  try {
+    await deleteSiteDirectoryFromR2(website.slug);
+  } catch (error) {
+    console.error(
+      `[refresh-kiwi] archived website ${website.id} but failed to delete R2 files for slug=${website.slug}`,
+      error,
+    );
+  }
 
   return updated;
 }
