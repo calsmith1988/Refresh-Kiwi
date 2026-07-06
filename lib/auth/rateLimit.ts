@@ -1,6 +1,8 @@
 import net from "node:net";
 import tls from "node:tls";
 
+import { clientIpFromRequest } from "@/lib/security/client-ip";
+
 interface RateLimitEntry {
   count: number;
   resetAt: number;
@@ -252,8 +254,7 @@ export async function assertRateLimit(
 }
 
 export function rateLimitKey(request: Request, scope: string): string {
-  const forwardedFor = request.headers.get("x-forwarded-for");
-  const ip = forwardedFor?.split(",")[0]?.trim() || "unknown";
+  const ip = clientIpFromRequest(request) || "unknown";
 
   return `${scope}:${ip}`;
 }

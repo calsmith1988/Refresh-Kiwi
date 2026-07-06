@@ -5,6 +5,8 @@ import {
   canRewritePreviewContent,
   rewriteLocalPreviewOriginsText,
 } from "@/lib/preview/rewrite";
+import { isSvgContentType, svgSecurityHeaders } from "@/lib/assets/validate";
+import { CUSTOM_DOMAIN_HOST_HEADER } from "@/lib/security/headers";
 import { getWebsiteAccessByCustomDomain } from "@/lib/websites/service";
 
 export const runtime = "nodejs";
@@ -30,10 +32,11 @@ function rewriteLocalPreviewOrigins(
 }
 
 export async function GET(request: Request, context: RouteContext) {
-  const url = new URL(request.url);
+  // Only the middleware-set header is trusted here. The ?host= query param
+  // and the raw Host header are client-controlled, so honouring them would
+  // let anyone serve a connected customer's site from the app's own origin.
   const host =
-    url.searchParams.get("host") ??
-    request.headers.get("host")?.split(":")[0]?.toLowerCase() ??
+    request.headers.get(CUSTOM_DOMAIN_HOST_HEADER)?.trim().toLowerCase() ||
     null;
 
   if (!host) {
@@ -68,6 +71,7 @@ export async function GET(request: Request, context: RouteContext) {
     headers: {
       "Content-Type": file.contentType,
       "Cache-Control": "public, max-age=60",
+      ...(isSvgContentType(file.contentType) ? svgSecurityHeaders() : {}),
     },
   });
 }

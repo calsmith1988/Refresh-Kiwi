@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { isSvgContentType, svgSecurityHeaders } from "@/lib/assets/validate";
 import { isValidSlug } from "@/lib/jobs/slug";
 import { readPreviewFile } from "@/lib/preview/serve";
 import {
@@ -150,6 +151,7 @@ export async function GET(request: Request, context: RouteContext) {
     headers: {
       "Content-Type": file.contentType,
       "Cache-Control": "public, max-age=60",
+      ...(isSvgContentType(file.contentType) ? svgSecurityHeaders() : {}),
     },
   });
 }

@@ -6,7 +6,7 @@ export const IMAGE_PLACEMENT_LABELS: Record<string, string> = {
   gallery: "Place these assets in a gallery or portfolio section.",
   services: "Place these assets in the services section.",
   about: "Place these assets in the about section.",
-  header_logo: "Use the first uploaded asset as the header logo or brand mark.",
+  header_logo: "Use the first provided asset as the header logo or brand mark.",
 };
 
 function placementInstruction(placement: string): string {
@@ -26,7 +26,7 @@ export function buildImagePlacementPrompt(params: {
     .join("\n");
 
   return [
-    "Add these newly uploaded website assets to the existing site design.",
+    "Add these provided website assets to the existing site design.",
     "",
     listedAssets,
     "",

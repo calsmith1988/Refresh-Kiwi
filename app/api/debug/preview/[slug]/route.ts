@@ -7,6 +7,7 @@ import { getSitesRepoUrl } from "@/lib/cursor/config";
 import { isValidSlug } from "@/lib/jobs/slug";
 import { previewDirectory } from "@/lib/preview/paths";
 import { githubHeaders, parseGithubRepo } from "@/lib/preview/sync";
+import { isInternalRequestAuthorized } from "@/lib/security/internal";
 import { listR2Keys } from "@/lib/storage/r2";
 
 export const runtime = "nodejs";
@@ -67,6 +68,10 @@ async function listR2PreviewFiles(slug: string): Promise<string[]> {
 }
 
 export async function GET(request: Request, context: RouteContext) {
+  if (!isInternalRequestAuthorized(request)) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const { slug } = await context.params;
 
   if (!isValidSlug(slug)) {

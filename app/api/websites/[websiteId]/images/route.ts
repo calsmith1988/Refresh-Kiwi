@@ -9,9 +9,11 @@ import {
   readWebsiteImageManifest,
 } from "@/lib/assets/localize";
 import { optimizeImage } from "@/lib/assets/optimize";
+import { validateImageBuffer } from "@/lib/assets/validate";
 import { buildImagePlacementPrompt } from "@/lib/assets/placement";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getDb, schema } from "@/lib/db";
+import { checkDailyEditQuota } from "@/lib/edits/quota";
 import { enqueueBackgroundTask } from "@/lib/worker/queue";
 import {
   getOwnedWebsite,
@@ -150,6 +152,14 @@ export async function POST(request: Request, context: RouteContext) {
         { status: 402 },
       );
     }
+
+    const dailyQuota = await checkDailyEditQuota(user.id);
+    if (!dailyQuota.ok) {
+      return NextResponse.json(
+        { error: dailyQuota.message },
+        { status: dailyQuota.status },
+      );
+    }
   }
 
   try {
@@ -174,10 +184,17 @@ export async function POST(request: Request, context: RouteContext) {
         );
       }
 
-      const optimized = await optimizeImage(
-        Buffer.from(await file.arrayBuffer()),
-        file.type,
-      );
+      const original = Buffer.from(await file.arrayBuffer());
+
+      // Trust the bytes, not the declared MIME type.
+      if (!validateImageBuffer(original)) {
+        return NextResponse.json(
+          { error: "One of those files isn't a valid image" },
+          { status: 400 },
+        );
+      }
+
+      const optimized = await optimizeImage(original, file.type);
 
       assets.push({
         buffer: optimized.buffer,

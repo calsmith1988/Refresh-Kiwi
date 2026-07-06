@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server";
 
 import { getCursorApiKey, getSitesRepoUrl } from "@/lib/cursor/config";
+import { isInternalRequestAuthorized } from "@/lib/security/internal";
 
 export const runtime = "nodejs";
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!isInternalRequestAuthorized(request)) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   try {
     const apiKey = getCursorApiKey();
     const repoUrl = getSitesRepoUrl();

@@ -1,8 +1,9 @@
 "use client";
 
 import type { FormEvent } from "react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
+import TurnstileWidget from "@/components/TurnstileWidget";
 import type { JobResponse } from "@/lib/jobs/types";
 import {
   createMetaEventId,
@@ -10,12 +11,17 @@ import {
 } from "@/lib/meta/browser";
 
 const ACTIVE_JOB_STORAGE_KEY = "refresh-kiwi:active-job";
-type RefreshResponse = Partial<JobResponse> & { error?: string };
+type RefreshResponse = Partial<JobResponse> & {
+  error?: string;
+  accessToken?: string;
+};
 
 export default function BlogRefreshForm() {
   const [url, setUrl] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const clearTurnstileToken = useCallback(() => setTurnstileToken(null), []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -32,8 +38,13 @@ export default function BlogRefreshForm() {
       const response = await fetch("/api/refresh", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url, metaEventId }),
+        body: JSON.stringify({
+          url,
+          metaEventId,
+          turnstileToken: turnstileToken ?? undefined,
+        }),
       });
+      setTurnstileToken(null);
       const payload = (await response.json()) as RefreshResponse;
 
       if (!response.ok) {
@@ -56,14 +67,20 @@ export default function BlogRefreshForm() {
       try {
         window.localStorage.setItem(
           ACTIVE_JOB_STORAGE_KEY,
-          JSON.stringify({ jobId: payload.id, url }),
+          JSON.stringify({
+            jobId: payload.id,
+            url,
+            token: payload.accessToken ?? "",
+          }),
         );
       } catch {
         // The landing page can still resume from the query string.
       }
       window.location.href = `/?job=${encodeURIComponent(
         payload.id,
-      )}&url=${encodeURIComponent(url)}#refresh-input`;
+      )}&url=${encodeURIComponent(url)}&jobToken=${encodeURIComponent(
+        payload.accessToken ?? "",
+      )}#refresh-input`;
     } catch (error) {
       setIsSubmitting(false);
       setErrorMessage(
@@ -88,6 +105,11 @@ export default function BlogRefreshForm() {
         inputMode="url"
         autoComplete="url"
         className="h-12 min-w-0 flex-1 rounded-full bg-transparent px-4 text-base outline-none placeholder:text-black/35"
+      />
+      <TurnstileWidget
+        className="shrink-0"
+        onVerify={setTurnstileToken}
+        onExpire={clearTurnstileToken}
       />
       <button
         type="submit"

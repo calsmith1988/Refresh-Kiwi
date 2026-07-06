@@ -8,7 +8,9 @@ import {
   clientIpFromRequest,
 } from "@/lib/jobs/rate-limit";
 import { createRefreshJob } from "@/lib/jobs/service";
+import { createJobAccessToken } from "@/lib/jobs/token";
 import { metaUserDataFromRequest, sendMetaEvent } from "@/lib/meta/events";
+import { verifyTurnstileToken } from "@/lib/security/turnstile";
 import { enqueueBackgroundTask } from "@/lib/worker/queue";
 import { userHasProPlan } from "@/lib/websites/service";
 
@@ -17,6 +19,7 @@ export const runtime = "nodejs";
 type RefreshRequestBody = {
   url?: string;
   metaEventId?: string;
+  turnstileToken?: string;
 };
 
 function normalizeUrl(raw: string): string | null {
@@ -63,6 +66,19 @@ export async function POST(request: Request) {
   try {
     const currentUser = await getCurrentUser();
     const clientIp = clientIpFromRequest(request);
+
+    // Anonymous generations spawn a paid agent — require human verification.
+    if (!currentUser) {
+      const verification = await verifyTurnstileToken(
+        body.turnstileToken ?? null,
+        clientIp,
+      );
+
+      if (!verification.ok) {
+        return NextResponse.json({ error: verification.message }, { status: 400 });
+      }
+    }
+
     await assertRateLimit(rateLimitKey(request, "refresh-create"), {
       limit: currentUser ? 10 : 3,
       windowMs: 10 * 60 * 1000,
@@ -96,7 +112,10 @@ export async function POST(request: Request) {
       payload: { jobId: job.id },
     });
 
-    return NextResponse.json(job, { status: 202 });
+    return NextResponse.json(
+      { ...job, accessToken: createJobAccessToken(job.id) },
+      { status: 202 },
+    );
   } catch (error) {
     const limited = rateLimitResponse(error);
     if (limited) {

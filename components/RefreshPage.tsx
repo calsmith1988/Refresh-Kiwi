@@ -20,6 +20,7 @@ import engineerBeforePreview from "../before-preview2.png";
 import kiwiGroupBackground from "../kiwi-group-background.png";
 import ActivityToast from "@/components/ActivityToast";
 import CookieSettingsButton from "@/components/CookieSettingsButton";
+import TurnstileWidget from "@/components/TurnstileWidget";
 import type { JobResponse } from "@/lib/jobs/types";
 import {
   createMetaEventId,
@@ -48,6 +49,11 @@ const OVERTIME_MESSAGE =
 const STAGE_2_AT_MS = 25 * 1000;
 const STAGE_3_AT_MS = 95 * 1000;
 const ACTIVE_JOB_STORAGE_KEY = "refresh-kiwi:active-job";
+const HERO_KIWI_FLOATINESS = 1.15;
+
+function heroKiwiMotion(value: number, unit: "px" | "deg"): string {
+  return `${Number((value * HERO_KIWI_FLOATINESS).toFixed(2))}${unit}`;
+}
 
 const HERO_KIWI_MARKS = [
   { left: "52%", top: "-2%", size: "116px", opacity: 0.13, rotate: "-12deg" },
@@ -141,6 +147,7 @@ function readStoredJob(): {
   url: string;
   mode: FlowMode;
   prompt: string;
+  token: string;
 } | null {
   try {
     const raw = window.localStorage.getItem(ACTIVE_JOB_STORAGE_KEY);
@@ -152,6 +159,7 @@ function readStoredJob(): {
       url?: string;
       mode?: FlowMode;
       prompt?: string;
+      token?: string;
     };
     return parsed.jobId
       ? {
@@ -159,6 +167,7 @@ function readStoredJob(): {
           url: parsed.url ?? "",
           mode: parsed.mode ?? "refresh",
           prompt: parsed.prompt ?? "",
+          token: parsed.token ?? "",
         }
       : null;
   } catch {
@@ -168,7 +177,7 @@ function readStoredJob(): {
 
 function storeJob(
   jobId: string,
-  params: { url?: string; mode: FlowMode; prompt?: string },
+  params: { url?: string; mode: FlowMode; prompt?: string; token?: string },
 ) {
   try {
     window.localStorage.setItem(
@@ -178,6 +187,7 @@ function storeJob(
         url: params.url ?? "",
         mode: params.mode,
         prompt: params.prompt ?? "",
+        token: params.token ?? "",
       }),
     );
   } catch {
@@ -804,6 +814,8 @@ export default function RefreshPage({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [job, setJob] = useState<JobResponse | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const clearTurnstileToken = useCallback(() => setTurnstileToken(null), []);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [authErrorMessage, setAuthErrorMessage] = useState<string | null>(null);
   const [accountMode, setAccountMode] = useState<"closed" | "signup" | "login">(
@@ -835,6 +847,9 @@ export default function RefreshPage({
   const editPollTimerRef = useRef<number | null>(null);
   const pollTimerRef = useRef<number | null>(null);
   const pollFailuresRef = useRef(0);
+  // Access token issued when the job was created; proves this browser started
+  // the job so it may poll/cancel it even while signed out.
+  const jobTokenRef = useRef<string | null>(null);
   const elapsedTimerRef = useRef<number | null>(null);
   const statusTimerRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
@@ -917,7 +932,11 @@ export default function RefreshPage({
   const pollJob = useCallback(
     async (jobId: string) => {
       try {
-        const response = await fetch(`/api/refresh/${jobId}`);
+        const response = await fetch(`/api/refresh/${jobId}`, {
+          headers: jobTokenRef.current
+            ? { "x-job-token": jobTokenRef.current }
+            : undefined,
+        });
 
         if (!response.ok) {
           throw new Error("Failed to fetch job status");
@@ -997,12 +1016,24 @@ export default function RefreshPage({
   );
 
   const resumeJob = useCallback(
-    (stored: { jobId: string; url: string; mode: FlowMode; prompt: string }) => {
+    (stored: {
+      jobId: string;
+      url: string;
+      mode: FlowMode;
+      prompt: string;
+      token?: string;
+    }) => {
       setFlowMode(stored.mode);
       setUrl((current) => current || stored.url);
       setFreshPrompt((current) => current || stored.prompt);
 
-      void fetch(`/api/refresh/${stored.jobId}`)
+      if (stored.token) {
+        jobTokenRef.current = stored.token;
+      }
+
+      void fetch(`/api/refresh/${stored.jobId}`, {
+        headers: stored.token ? { "x-job-token": stored.token } : undefined,
+      })
         .then(async (response) => {
           if (!response.ok) {
             clearStoredJob();
@@ -1064,15 +1095,18 @@ export default function RefreshPage({
         const linkedJobId = params.get("job");
         if (linkedJobId) {
           const linkedUrl = params.get("url") ?? "";
+          const linkedToken = params.get("jobToken") ?? "";
           storeJob(linkedJobId, {
             url: linkedUrl,
             mode: "refresh",
+            token: linkedToken,
           });
           resumeJob({
             jobId: linkedJobId,
             url: linkedUrl,
             mode: "refresh",
             prompt: "",
+            token: linkedToken,
           });
           window.history.replaceState(null, "", "/");
           return;
@@ -1123,7 +1157,11 @@ export default function RefreshPage({
       throw new Error(payload.error ?? "Failed to save website");
     }
 
-    const refreshed = await fetch(`/api/refresh/${job.id}`);
+    const refreshed = await fetch(`/api/refresh/${job.id}`, {
+      headers: jobTokenRef.current
+        ? { "x-job-token": jobTokenRef.current }
+        : undefined,
+    });
     if (refreshed.ok) {
       setJob((await refreshed.json()) as JobResponse);
     }
@@ -1408,7 +1446,11 @@ export default function RefreshPage({
         pollEditStatus(job.websiteId, created.editRequest.id);
       }
 
-      const refreshed = await fetch(`/api/refresh/${job.id}`);
+      const refreshed = await fetch(`/api/refresh/${job.id}`, {
+        headers: jobTokenRef.current
+          ? { "x-job-token": jobTokenRef.current }
+          : undefined,
+      });
       if (refreshed.ok) {
         setJob((await refreshed.json()) as JobResponse);
       }
@@ -1432,6 +1474,9 @@ export default function RefreshPage({
     try {
       const response = await fetch(`/api/refresh/${job.id}`, {
         method: "DELETE",
+        headers: jobTokenRef.current
+          ? { "x-job-token": jobTokenRef.current }
+          : undefined,
       });
 
       if (!response.ok) {
@@ -1545,8 +1590,14 @@ export default function RefreshPage({
       const response = await fetch("/api/refresh", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url, metaEventId }),
+        body: JSON.stringify({
+          url,
+          metaEventId,
+          turnstileToken: turnstileToken ?? undefined,
+        }),
       });
+      // Turnstile tokens are single-use; drop it so the widget re-challenges.
+      setTurnstileToken(null);
 
       const payload = await response.json();
 
@@ -1554,7 +1605,7 @@ export default function RefreshPage({
         throw new Error(payload.error ?? "Failed to start refresh");
       }
 
-      const createdJob = payload as JobResponse;
+      const createdJob = payload as JobResponse & { accessToken?: string };
       trackMetaBrowserEvent({
         eventName: "Lead",
         eventId: metaEventId,
@@ -1562,8 +1613,13 @@ export default function RefreshPage({
           content_name: "Website refresh request",
         },
       });
+      jobTokenRef.current = createdJob.accessToken ?? null;
       setJob(createdJob);
-      storeJob(createdJob.id, { url, mode: "refresh" });
+      storeJob(createdJob.id, {
+        url,
+        mode: "refresh",
+        token: createdJob.accessToken,
+      });
       beginPolling(createdJob.id);
     } catch (error) {
       setIsRefreshing(false);
@@ -1610,10 +1666,16 @@ export default function RefreshPage({
         body.append("generateStarterVisuals", "1");
       }
 
+      if (turnstileToken) {
+        body.append("turnstileToken", turnstileToken);
+      }
+
       const response = await fetch("/api/fresh", {
         method: "POST",
         body,
       });
+      // Turnstile tokens are single-use; drop it so the widget re-challenges.
+      setTurnstileToken(null);
 
       const payload = await response.json();
 
@@ -1621,7 +1683,7 @@ export default function RefreshPage({
         throw new Error(payload.error ?? "Failed to start website creation");
       }
 
-      const createdJob = payload as JobResponse;
+      const createdJob = payload as JobResponse & { accessToken?: string };
       trackMetaBrowserEvent({
         eventName: "Lead",
         eventId: metaEventId,
@@ -1629,10 +1691,12 @@ export default function RefreshPage({
           content_name: "Fresh website creation request",
         },
       });
+      jobTokenRef.current = createdJob.accessToken ?? null;
       setJob(createdJob);
       storeJob(createdJob.id, {
         mode: "fresh",
         prompt: freshPrompt,
+        token: createdJob.accessToken,
       });
       beginPolling(createdJob.id);
     } catch (error) {
@@ -1701,9 +1765,18 @@ export default function RefreshPage({
                 height: mark.size,
                 opacity: mark.opacity,
                 "--hero-kiwi-rotate": mark.rotate,
-                "--hero-kiwi-drift-x": `${index % 2 === 0 ? 6 : -5}px`,
-                "--hero-kiwi-drift-y": `${index % 2 === 0 ? -7 : 6}px`,
-                "--hero-kiwi-drift-rotate": `${index % 2 === 0 ? 3 : -4}deg`,
+                "--hero-kiwi-drift-x": heroKiwiMotion(
+                  index % 2 === 0 ? 6 : -5,
+                  "px",
+                ),
+                "--hero-kiwi-drift-y": heroKiwiMotion(
+                  index % 2 === 0 ? -7 : 6,
+                  "px",
+                ),
+                "--hero-kiwi-drift-rotate": heroKiwiMotion(
+                  index % 2 === 0 ? 3 : -4,
+                  "deg",
+                ),
                 "--hero-kiwi-duration": `${20 + index * 3}s`,
                 "--hero-kiwi-delay": `${index * -1.4}s`,
               } as CSSProperties}
@@ -1729,9 +1802,18 @@ export default function RefreshPage({
                 height: mark.size,
                 opacity: mark.opacity,
                 "--hero-kiwi-rotate": mark.rotate,
-                "--hero-kiwi-drift-x": `${index % 2 === 0 ? 10 : -8}px`,
-                "--hero-kiwi-drift-y": `${index % 3 === 0 ? -12 : 9}px`,
-                "--hero-kiwi-drift-rotate": `${index % 2 === 0 ? 4 : -5}deg`,
+                "--hero-kiwi-drift-x": heroKiwiMotion(
+                  index % 2 === 0 ? 10 : -8,
+                  "px",
+                ),
+                "--hero-kiwi-drift-y": heroKiwiMotion(
+                  index % 3 === 0 ? -12 : 9,
+                  "px",
+                ),
+                "--hero-kiwi-drift-rotate": heroKiwiMotion(
+                  index % 2 === 0 ? 4 : -5,
+                  "deg",
+                ),
                 "--hero-kiwi-duration": `${18 + (index % 5) * 3}s`,
                 "--hero-kiwi-delay": `${index * -1.7}s`,
               } as CSSProperties}
@@ -1768,7 +1850,7 @@ export default function RefreshPage({
               aria-hidden
               className="rounded-full"
             />
-            <span className="hidden translate-y-[2px] font-marhey text-xl font-normal leading-none min-[400px]:inline">
+            <span className="hidden translate-y-[3px] font-marhey text-xl font-normal leading-none min-[400px]:inline-block">
               Refresh Kiwi
             </span>
           </Link>
@@ -2266,6 +2348,13 @@ export default function RefreshPage({
                         onChange={(event) => setUrl(event.target.value)}
                         className="h-12 w-full rounded-full bg-transparent px-5 text-base outline-none placeholder:text-black/30 sm:flex-1"
                       />
+                      {!user ? (
+                        <TurnstileWidget
+                          className="shrink-0"
+                          onVerify={setTurnstileToken}
+                          onExpire={clearTurnstileToken}
+                        />
+                      ) : null}
                       <button
                         type="submit"
                         disabled={!url.trim()}
@@ -2372,6 +2461,13 @@ export default function RefreshPage({
                         />
                       </label>
                     </div>
+                    {!user ? (
+                      <TurnstileWidget
+                        className="mt-3"
+                        onVerify={setTurnstileToken}
+                        onExpire={clearTurnstileToken}
+                      />
+                    ) : null}
                     <button
                       type="submit"
                       disabled={!freshPrompt.trim()}
@@ -2898,7 +2994,7 @@ export default function RefreshPage({
                     aria-hidden
                     className="rounded-full"
                   />
-                  <span className="translate-y-[2px] font-marhey text-xl font-normal leading-none">
+                  <span className="inline-block translate-y-[3px] font-marhey text-xl font-normal leading-none">
                     Refresh Kiwi
                   </span>
                 </Link>

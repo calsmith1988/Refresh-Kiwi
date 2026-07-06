@@ -7,6 +7,7 @@ import { commitFilesToSitesRepo, type RepoFile } from "@/lib/github/commit";
 import { logMemoryUsage } from "@/lib/observability/memory";
 import { previewDirectory } from "@/lib/preview/paths";
 import { syncFromGithubMain } from "@/lib/preview/sync";
+import { isBlockedHostname, resolvesToPrivateIp } from "@/lib/security/ssrf";
 import {
   downloadSiteDirectoryFromR2,
   uploadSiteDirectoryToR2,
@@ -123,11 +124,13 @@ function isLocalizableUrl(url: string): boolean {
     // Never re-download things we already host.
     if (
       parsed.hostname === "refresh.kiwi" ||
-      parsed.hostname.endsWith(".refresh.kiwi") ||
-      parsed.hostname === "localhost" ||
-      parsed.hostname === "127.0.0.1" ||
-      parsed.hostname === "::1"
+      parsed.hostname.endsWith(".refresh.kiwi")
     ) {
+      return false;
+    }
+
+    // SSRF guard: block localhost, private ranges and cloud metadata hosts.
+    if (isBlockedHostname(parsed.hostname)) {
       return false;
     }
 
@@ -265,6 +268,58 @@ function assetFileName(originalUrl: string, contentType: string): string {
   return `img-${hash}${extension}`;
 }
 
+const MAX_IMAGE_REDIRECTS = 5;
+
+/**
+ * Fetches a URL while validating every redirect hop against the SSRF
+ * blocklist, so a public image URL can't bounce the server into an internal
+ * service or the cloud metadata endpoint.
+ */
+async function fetchImageResponse(initialUrl: string): Promise<Response> {
+  let currentUrl = initialUrl;
+
+  for (let hop = 0; hop <= MAX_IMAGE_REDIRECTS; hop += 1) {
+    const parsed = new URL(currentUrl);
+
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+      throw new Error(`blocked non-http redirect (${parsed.protocol})`);
+    }
+
+    if (
+      isBlockedHostname(parsed.hostname) ||
+      (await resolvesToPrivateIp(parsed.hostname))
+    ) {
+      throw new Error("blocked private or internal address");
+    }
+
+    const response = await fetch(currentUrl, {
+      signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS),
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        Accept: "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+        Referer: parsed.origin,
+      },
+      redirect: "manual",
+    });
+
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get("location");
+
+      if (!location) {
+        return response;
+      }
+
+      currentUrl = new URL(location, currentUrl).toString();
+      continue;
+    }
+
+    return response;
+  }
+
+  throw new Error("too many redirects");
+}
+
 async function downloadImage(
   url: string,
 ): Promise<{ buffer: Buffer; contentType: string } | null> {
@@ -277,16 +332,7 @@ async function downloadImage(
         continue;
       }
 
-      const response = await fetch(downloadUrl, {
-        signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS),
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
-          Accept: "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
-          Referer: new URL(downloadUrl).origin,
-        },
-        redirect: "follow",
-      });
+      const response = await fetchImageResponse(downloadUrl);
 
       const responseContentType = response.headers.get("content-type") ?? "";
 

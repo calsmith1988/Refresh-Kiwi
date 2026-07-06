@@ -5,6 +5,7 @@ import {
   getMetaPixelId,
   getMetaTestEventCode,
 } from "@/lib/meta/config";
+import { clientIpFromRequest } from "@/lib/security/client-ip";
 
 export type MetaEventName =
   | "ViewContent"
@@ -51,15 +52,9 @@ export function metaUserDataFromRequest(
   request: Request,
   params?: { email?: string | null },
 ): MetaUserData {
-  const forwarded = request.headers.get("x-forwarded-for");
-  const clientIpAddress =
-    forwarded?.split(",")[0]?.trim() ||
-    request.headers.get("x-real-ip")?.trim() ||
-    null;
-
   return {
     email: params?.email ?? null,
-    clientIpAddress,
+    clientIpAddress: clientIpFromRequest(request),
     clientUserAgent: request.headers.get("user-agent"),
     fbp: cookieValue(request, "_fbp"),
     fbc: cookieValue(request, "_fbc"),

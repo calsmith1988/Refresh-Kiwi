@@ -1,6 +1,7 @@
 import { and, count, eq, gte, isNull, ne } from "drizzle-orm";
 
 import { getDb, schema } from "@/lib/db";
+import { clientIpFromRequest as deriveClientIp } from "@/lib/security/client-ip";
 
 const { jobs } = schema;
 
@@ -57,9 +58,19 @@ export async function checkRefreshLimit(params: {
     return { ok: true };
   }
 
-  // Anonymous visitors are limited by IP. No IP header (e.g. local dev)
-  // means we can't meaningfully limit, so allow it.
+  // Anonymous visitors are limited by IP. Behind our proxy the client IP is
+  // always present, so a missing IP in production means we can't attribute
+  // (or cap) the request — refuse rather than hand out an uncapped free agent.
+  // Locally there's no proxy, so allow it for development.
   if (!params.clientIp) {
+    if (process.env.NODE_ENV === "production") {
+      return {
+        ok: false,
+        message:
+          "We couldn't verify your request. Create a free account to keep going.",
+      };
+    }
+
     return { ok: true };
   }
 
@@ -83,17 +94,10 @@ export async function checkRefreshLimit(params: {
   return { ok: true };
 }
 
-/** First hop of x-forwarded-for is the real client when behind a proxy. */
+/**
+ * Re-exported for call sites that create jobs. Uses the trusted-proxy-aware
+ * derivation so a client can't spoof its IP to dodge quotas.
+ */
 export function clientIpFromRequest(request: Request): string | null {
-  const forwarded = request.headers.get("x-forwarded-for");
-
-  if (forwarded) {
-    const first = forwarded.split(",")[0]?.trim();
-
-    if (first) {
-      return first;
-    }
-  }
-
-  return request.headers.get("x-real-ip")?.trim() || null;
+  return deriveClientIp(request);
 }

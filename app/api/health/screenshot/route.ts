@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { isInternalRequestAuthorized } from "@/lib/security/internal";
+
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
@@ -16,7 +18,11 @@ async function loadChromium(): Promise<PlaywrightChromium> {
   return chromium;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!isInternalRequestAuthorized(request)) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   try {
     const chromium = await loadChromium();
     const browser = await chromium.launch({

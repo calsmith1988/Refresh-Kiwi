@@ -35,7 +35,10 @@ export default function BlogIndexPage() {
     <main className="min-h-screen bg-[#fbfaf5] text-black">
       <header className="border-b border-black/10 bg-white/80 px-5 py-5 backdrop-blur sm:px-8">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4">
-          <Link href="/" className="font-montserrat text-sm font-bold">
+          <Link
+            href="/"
+            className="inline-block translate-y-[3px] font-marhey text-base font-normal leading-none"
+          >
             Refresh Kiwi
           </Link>
           <Link

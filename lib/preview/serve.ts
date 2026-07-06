@@ -28,6 +28,19 @@ function contentType(filePath: string): string {
   return MIME_TYPES[extension] ?? "application/octet-stream";
 }
 
+// Rejects traversal sequences and separator tricks so a request can never
+// resolve outside the preview directory (or another slug's R2/GitHub prefix).
+function isSafePathSegment(segment: string): boolean {
+  return (
+    segment.length > 0 &&
+    segment !== "." &&
+    segment !== ".." &&
+    !segment.includes("/") &&
+    !segment.includes("\\") &&
+    !segment.includes("\0")
+  );
+}
+
 function htmlContentTypePathForExtensionless(
   relativePath: string,
   fallback: string,
@@ -91,7 +104,9 @@ async function resolveFile(
     const resolved = path.resolve(candidate.path);
     const resolvedBase = path.resolve(baseDir);
 
-    if (!resolved.startsWith(resolvedBase)) {
+    // Require the separator so "previews/test-admin" can't pass a check
+    // against "previews/test" (prefix match alone is not a boundary).
+    if (!resolved.startsWith(resolvedBase + path.sep)) {
       continue;
     }
 
@@ -191,6 +206,10 @@ async function readR2PreviewFile(slug: string, segments: string[]) {
 }
 
 export async function readPreviewFile(slug: string, segments: string[]) {
+  if (!isSafePathSegment(slug) || !segments.every(isSafePathSegment)) {
+    return null;
+  }
+
   const filePath = await resolveFile(slug, segments);
 
   if (filePath) {

@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { CUSTOM_DOMAIN_HOST_HEADER } from "@/lib/security/headers";
+
 const APP_HOSTS = new Set([
   "localhost",
   "127.0.0.1",
@@ -32,6 +34,10 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Never forward a client-supplied copy of the internal host header.
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.delete(CUSTOM_DOMAIN_HOST_HEADER);
+
   if (
     !host ||
     APP_HOSTS.has(host) ||
@@ -40,14 +46,16 @@ export function middleware(request: NextRequest) {
     pathname.startsWith("/_next") ||
     pathname.startsWith("/preview")
   ) {
-    return NextResponse.next();
+    return NextResponse.next({ request: { headers: requestHeaders } });
   }
+
+  requestHeaders.set(CUSTOM_DOMAIN_HOST_HEADER, host);
 
   const url = request.nextUrl.clone();
   url.pathname = `/custom-domain/${pathname.replace(/^\/+/, "")}`;
-  url.searchParams.set("host", host);
+  url.searchParams.delete("host");
 
-  return NextResponse.rewrite(url);
+  return NextResponse.rewrite(url, { request: { headers: requestHeaders } });
 }
 
 export const config = {

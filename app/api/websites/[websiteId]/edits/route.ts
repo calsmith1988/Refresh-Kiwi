@@ -4,6 +4,11 @@ import { assertRateLimit, rateLimitKey } from "@/lib/auth/rateLimit";
 import { rateLimitResponse } from "@/lib/auth/rateLimitResponse";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getDb, schema } from "@/lib/db";
+import {
+  checkDailyEditQuota,
+  MAX_EDIT_PROMPT_LENGTH,
+  MIN_EDIT_PROMPT_LENGTH,
+} from "@/lib/edits/quota";
 import { enqueueBackgroundTask } from "@/lib/worker/queue";
 import { getOwnedWebsite, toWebsiteResponse, userHasProPlan } from "@/lib/websites/service";
 import { and, eq, inArray } from "drizzle-orm";
@@ -49,9 +54,16 @@ export async function POST(request: Request, context: RouteContext) {
   const body = (await request.json()) as { prompt?: string };
   const prompt = body.prompt?.trim() ?? "";
 
-  if (prompt.length < 5) {
+  if (prompt.length < MIN_EDIT_PROMPT_LENGTH) {
     return NextResponse.json(
       { error: "Tell us what you want changed" },
+      { status: 400 },
+    );
+  }
+
+  if (prompt.length > MAX_EDIT_PROMPT_LENGTH) {
+    return NextResponse.json(
+      { error: "Keep the change request under 4,000 characters." },
       { status: 400 },
     );
   }
@@ -106,6 +118,14 @@ export async function POST(request: Request, context: RouteContext) {
     return NextResponse.json(
       { error: "You've used your 3 free changes. Go Pro (£10/month) for unlimited changes." },
       { status: 402 },
+    );
+  }
+
+  const dailyQuota = await checkDailyEditQuota(user.id);
+  if (!dailyQuota.ok) {
+    return NextResponse.json(
+      { error: dailyQuota.message },
+      { status: dailyQuota.status },
     );
   }
 

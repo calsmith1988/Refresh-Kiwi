@@ -5,6 +5,7 @@ import {
   MAX_UPLOAD_BYTES,
 } from "@/lib/assets/localize";
 import { optimizeImage } from "@/lib/assets/optimize";
+import { validateImageBuffer } from "@/lib/assets/validate";
 import { seedWebsiteAssets, type SeedAssetInput } from "@/lib/assets/seed";
 import { assertRateLimit, rateLimitKey } from "@/lib/auth/rateLimit";
 import { rateLimitResponse } from "@/lib/auth/rateLimitResponse";
@@ -14,7 +15,9 @@ import {
   clientIpFromRequest,
 } from "@/lib/jobs/rate-limit";
 import { createFreshJob } from "@/lib/jobs/service";
+import { createJobAccessToken } from "@/lib/jobs/token";
 import { metaUserDataFromRequest, sendMetaEvent } from "@/lib/meta/events";
+import { verifyTurnstileToken } from "@/lib/security/turnstile";
 import { enqueueBackgroundTask } from "@/lib/worker/queue";
 import { userHasProPlan } from "@/lib/websites/service";
 
@@ -45,10 +48,14 @@ async function fileToSeedAsset(
     throw new Error("Each image must be under 15MB");
   }
 
-  const optimized = await optimizeImage(
-    Buffer.from(await file.arrayBuffer()),
-    file.type,
-  );
+  const original = Buffer.from(await file.arrayBuffer());
+
+  // Trust the bytes, not the declared MIME type.
+  if (!validateImageBuffer(original)) {
+    throw new Error("That file isn't a valid image");
+  }
+
+  const optimized = await optimizeImage(original, file.type);
 
   return {
     role,
@@ -111,6 +118,19 @@ export async function POST(request: Request) {
 
     const currentUser = await getCurrentUser();
     const clientIp = clientIpFromRequest(request);
+
+    // Anonymous generations spawn a paid agent — require human verification.
+    if (!currentUser) {
+      const verification = await verifyTurnstileToken(
+        String(form.get("turnstileToken") ?? "") || null,
+        clientIp,
+      );
+
+      if (!verification.ok) {
+        return NextResponse.json({ error: verification.message }, { status: 400 });
+      }
+    }
+
     await assertRateLimit(rateLimitKey(request, "fresh-create"), {
       limit: currentUser ? 10 : 3,
       windowMs: 10 * 60 * 1000,
@@ -152,7 +172,10 @@ export async function POST(request: Request) {
       },
     });
 
-    return NextResponse.json(job, { status: 202 });
+    return NextResponse.json(
+      { ...job, accessToken: createJobAccessToken(job.id) },
+      { status: 202 },
+    );
   } catch (error) {
     const limited = rateLimitResponse(error);
     if (limited) {
