@@ -879,6 +879,7 @@ export default function RefreshPage({
   const [selectedGbpPlace, setSelectedGbpPlace] = useState<GbpPlace | null>(null);
   const [selectedGbpPhotoNames, setSelectedGbpPhotoNames] = useState<string[]>([]);
   const [isSearchingPlaces, setIsSearchingPlaces] = useState(false);
+  const [placesSearchError, setPlacesSearchError] = useState<string | null>(null);
   const [isLoadingPlaceDetails, setIsLoadingPlaceDetails] = useState(false);
   const [forceUrlRefresh, setForceUrlRefresh] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -989,6 +990,7 @@ export default function RefreshPage({
     ) {
       setPlaceSuggestions([]);
       setIsSearchingPlaces(false);
+      setPlacesSearchError(null);
       return;
     }
 
@@ -996,12 +998,14 @@ export default function RefreshPage({
     if (query.length < 3) {
       setPlaceSuggestions([]);
       setIsSearchingPlaces(false);
+      setPlacesSearchError(null);
       return;
     }
 
     let cancelled = false;
     const timer = window.setTimeout(() => {
       setIsSearchingPlaces(true);
+      setPlacesSearchError(null);
       void fetch("/api/places/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1021,9 +1025,14 @@ export default function RefreshPage({
             setPlaceSuggestions(payload.suggestions ?? []);
           }
         })
-        .catch(() => {
+        .catch((error) => {
           if (!cancelled) {
             setPlaceSuggestions([]);
+            setPlacesSearchError(
+              error instanceof Error
+                ? error.message
+                : "Google business search failed.",
+            );
           }
         })
         .finally(() => {
@@ -1692,6 +1701,7 @@ export default function RefreshPage({
     setSelectedGbpPlace(null);
     setSelectedGbpPhotoNames([]);
     setIsSearchingPlaces(false);
+    setPlacesSearchError(null);
     setIsLoadingPlaceDetails(false);
     setForceUrlRefresh(false);
     setShowVerification(false);
@@ -2822,6 +2832,7 @@ export default function RefreshPage({
                                 setForceUrlRefresh(false);
                                 setSelectedGbpPlace(null);
                                 setSelectedGbpPhotoNames([]);
+                                setPlacesSearchError(null);
                               }}
                               className="h-12 w-full rounded-full bg-transparent px-5 text-base outline-none placeholder:text-black/30 sm:flex-1"
                             />
@@ -2841,6 +2852,10 @@ export default function RefreshPage({
                               {isSearchingPlaces ? (
                                 <p className="px-4 py-3 text-sm font-medium text-black/45">
                                   Finding Google listings…
+                                </p>
+                              ) : placesSearchError ? (
+                                <p className="px-4 py-3 text-sm font-medium text-black/55">
+                                  {placesSearchError}
                                 </p>
                               ) : placeSuggestions.length > 0 ? (
                                 <>

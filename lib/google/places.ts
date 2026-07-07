@@ -30,6 +30,13 @@ const DETAILS_FIELD_MASK = [
   "primaryTypeDisplayName",
 ].join(",");
 
+const AUTOCOMPLETE_FIELD_MASK = [
+  "suggestions.placePrediction.placeId",
+  "suggestions.placePrediction.structuredFormat.mainText.text",
+  "suggestions.placePrediction.structuredFormat.secondaryText.text",
+  "suggestions.placePrediction.text.text",
+].join(",");
+
 export function isPlacesEnabled(): boolean {
   return Boolean(process.env.GOOGLE_PLACES_API_KEY?.trim());
 }
@@ -100,17 +107,24 @@ export async function autocompleteBusinesses(
     headers: {
       "Content-Type": "application/json",
       "X-Goog-Api-Key": getPlacesApiKey(),
+      "X-Goog-FieldMask": AUTOCOMPLETE_FIELD_MASK,
     },
     body: JSON.stringify({
       input,
       // Small businesses in our target markets only.
       includedRegionCodes: ["gb", "us"],
+      includePureServiceAreaBusinesses: true,
     }),
     signal: AbortSignal.timeout(8_000),
   });
 
   if (!response.ok) {
-    throw new Error(`Places autocomplete failed with status ${response.status}`);
+    const message = await response.text().catch(() => "");
+    throw new Error(
+      `Places autocomplete failed with status ${response.status}${
+        message ? `: ${message}` : ""
+      }`,
+    );
   }
 
   const data = (await response.json()) as AutocompleteResponse;
