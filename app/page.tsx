@@ -29,5 +29,10 @@ export default function Home() {
     readingTime: article.readingTime,
   }));
 
-  return <RefreshPage blogSnippets={blogSnippets} />;
+  return (
+    <RefreshPage
+      blogSnippets={blogSnippets}
+      googleBusinessImportEnabled={Boolean(process.env.GOOGLE_PLACES_API_KEY)}
+    />
+  );
 }

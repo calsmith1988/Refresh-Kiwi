@@ -113,7 +113,8 @@ export async function processAdditionalPages(
             console.info(
               `[refresh-kiwi] legal pages source discovery starting websiteId=${websiteId} slug=${website.slug}`,
             );
-            const discoveredLegal = website.sourceUrl
+            const discoveredLegal =
+              website.generationMode !== "fresh" && website.sourceUrl
               ? await discoverLegalPagesFromSource(website.sourceUrl)
               : {
                   pages: [],
@@ -146,7 +147,8 @@ export async function processAdditionalPages(
       options.type === "legal"
         ? await runLegalPagesPhase(
             {
-              sourceUrl: website.sourceUrl,
+              sourceUrl:
+                website.generationMode === "fresh" ? null : website.sourceUrl,
               slug: website.slug,
               agentId: job.homepageAgentId,
               generationMode: website.generationMode,

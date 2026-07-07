@@ -131,6 +131,36 @@ export async function createFreshJob(
   return toJobResponse(job);
 }
 
+export async function createGbpJob(
+  params: {
+    creationPrompt: string;
+    businessName: string;
+  },
+  userId?: string | null,
+  clientIp?: string | null,
+): Promise<JobResponse> {
+  const db = getDb();
+  const slug = await uniqueJobSlug(
+    normalizeSlug(params.businessName) || slugFromPrompt(params.creationPrompt),
+  );
+
+  const [job] = await db
+    .insert(jobs)
+    .values({
+      sourceUrl: internalFreshSourceUrl(slug),
+      generationMode: "fresh",
+      creationPrompt: params.creationPrompt,
+      slug,
+      brandName: params.businessName,
+      userId: userId ?? null,
+      clientIp: clientIp ?? null,
+      status: "queued",
+    })
+    .returning();
+
+  return toJobResponse(job);
+}
+
 export async function failJob(jobId: string, errorMessage: string): Promise<void> {
   const db = getDb();
 

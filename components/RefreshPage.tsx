@@ -91,6 +91,12 @@ const FRESH_LOADING_STAGES = [
   "Finishing touches",
 ] as const;
 
+const GBP_LOADING_STAGES = [
+  "Reading your Google listing",
+  "Designing your website",
+  "Finishing touches",
+] as const;
+
 const REFRESH_STATUS_MESSAGES = [
   "Peeling back the old homepage…",
   "Scooping up the useful bits…",
@@ -122,6 +128,20 @@ const FRESH_STATUS_MESSAGES = [
   "Nearly ripe — just finishing the homepage…",
 ] as const;
 
+const GBP_STATUS_MESSAGES = [
+  "Pulling your details from Google…",
+  "Reading your opening hours and contact details…",
+  "Picking out the strongest review themes…",
+  "Working in your selected photos…",
+  "Shaping your homepage story…",
+  "Designing a fresh local-business site…",
+  "Polishing the calls to action…",
+  "Checking the mobile crop…",
+  "Packing the preview basket…",
+  "One last kiwi quality check…",
+  "Nearly ripe — just finishing the homepage…",
+] as const;
+
 interface AuthUser {
   id: string;
   email: string;
@@ -141,6 +161,31 @@ type BlogSnippet = {
 };
 
 type FlowMode = "refresh" | "fresh";
+type GenerationSource = FlowMode | "gbp";
+
+type PlaceSuggestion = {
+  placeId: string;
+  name: string;
+  address: string;
+};
+
+type GbpPhoto = {
+  name: string;
+  widthPx: number;
+  heightPx: number;
+  uri: string;
+};
+
+type GbpPlace = {
+  placeId: string;
+  name: string;
+  address: string;
+  phone: string | null;
+  category: string | null;
+  rating: number | null;
+  reviewCount: number | null;
+  photos: GbpPhoto[];
+};
 
 function readStoredJob(): {
   jobId: string;
@@ -223,6 +268,20 @@ function hostLabel(raw: string): string {
   } catch {
     return raw;
   }
+}
+
+function looksLikeWebAddress(raw: string): boolean {
+  const value = raw.trim();
+
+  if (!value) {
+    return false;
+  }
+
+  if (/^https?:\/\//i.test(value)) {
+    return true;
+  }
+
+  return /^[^\s]+\.[^\s]+/.test(value);
 }
 
 function jobLabel(
@@ -802,15 +861,25 @@ function BeforeAfterReveal({
 
 export default function RefreshPage({
   blogSnippets = [],
+  googleBusinessImportEnabled = false,
 }: {
   blogSnippets?: BlogSnippet[];
+  googleBusinessImportEnabled?: boolean;
 }) {
   const [flowMode, setFlowMode] = useState<FlowMode>("refresh");
+  const [generationSource, setGenerationSource] =
+    useState<GenerationSource>("refresh");
   const [hasChosenHeroMode, setHasChosenHeroMode] = useState(false);
   const [url, setUrl] = useState("");
   const [freshPrompt, setFreshPrompt] = useState("");
   const [freshLogo, setFreshLogo] = useState<File | null>(null);
   const [freshImages, setFreshImages] = useState<File[]>([]);
+  const [placeSuggestions, setPlaceSuggestions] = useState<PlaceSuggestion[]>([]);
+  const [selectedGbpPlace, setSelectedGbpPlace] = useState<GbpPlace | null>(null);
+  const [selectedGbpPhotoNames, setSelectedGbpPhotoNames] = useState<string[]>([]);
+  const [isSearchingPlaces, setIsSearchingPlaces] = useState(false);
+  const [isLoadingPlaceDetails, setIsLoadingPlaceDetails] = useState(false);
+  const [forceUrlRefresh, setForceUrlRefresh] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [job, setJob] = useState<JobResponse | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -880,7 +949,16 @@ export default function RefreshPage({
 
   const chooseHeroMode = useCallback((mode: FlowMode) => {
     setFlowMode(mode);
+    setGenerationSource(mode);
     setHasChosenHeroMode(true);
+    setErrorMessage(null);
+
+    if (mode === "fresh") {
+      setPlaceSuggestions([]);
+      setSelectedGbpPlace(null);
+      setSelectedGbpPhotoNames([]);
+      setForceUrlRefresh(false);
+    }
 
     window.setTimeout(() => {
       document
@@ -896,6 +974,72 @@ export default function RefreshPage({
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (
+      !googleBusinessImportEnabled ||
+      flowMode !== "refresh" ||
+      selectedGbpPlace ||
+      forceUrlRefresh ||
+      looksLikeWebAddress(url)
+    ) {
+      setPlaceSuggestions([]);
+      setIsSearchingPlaces(false);
+      return;
+    }
+
+    const query = url.trim();
+    if (query.length < 3) {
+      setPlaceSuggestions([]);
+      setIsSearchingPlaces(false);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      setIsSearchingPlaces(true);
+      void fetch("/api/places/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query }),
+      })
+        .then(async (response) => {
+          const payload = (await response.json()) as {
+            suggestions?: PlaceSuggestion[];
+            error?: string;
+          };
+
+          if (!response.ok) {
+            throw new Error(payload.error ?? "Failed to search Google");
+          }
+
+          if (!cancelled) {
+            setPlaceSuggestions(payload.suggestions ?? []);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setPlaceSuggestions([]);
+          }
+        })
+        .finally(() => {
+          if (!cancelled) {
+            setIsSearchingPlaces(false);
+          }
+        });
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [
+    flowMode,
+    forceUrlRefresh,
+    googleBusinessImportEnabled,
+    selectedGbpPlace,
+    url,
+  ]);
 
   const stopPolling = useCallback(() => {
     if (pollTimerRef.current !== null) {
@@ -1539,6 +1683,13 @@ export default function RefreshPage({
     clearStoredJob();
     setJob(null);
     setUrl("");
+    setGenerationSource("refresh");
+    setPlaceSuggestions([]);
+    setSelectedGbpPlace(null);
+    setSelectedGbpPhotoNames([]);
+    setIsSearchingPlaces(false);
+    setIsLoadingPlaceDetails(false);
+    setForceUrlRefresh(false);
     setFreshPrompt("");
     setFreshLogo(null);
     setFreshImages([]);
@@ -1552,6 +1703,7 @@ export default function RefreshPage({
     const prompt = promptFromStarter(starter);
 
     setFlowMode("fresh");
+    setGenerationSource("fresh");
     setErrorMessage(null);
     setFreshPrompt((current) => {
       const trimmed = current.trim();
@@ -1568,14 +1720,131 @@ export default function RefreshPage({
     });
   };
 
+  const handleSelectPlace = async (suggestion: PlaceSuggestion) => {
+    setIsLoadingPlaceDetails(true);
+    setErrorMessage(null);
+
+    try {
+      const response = await fetch("/api/places/details", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ placeId: suggestion.placeId }),
+      });
+      const payload = (await response.json()) as {
+        place?: GbpPlace;
+        error?: string;
+      };
+
+      if (!response.ok || !payload.place) {
+        throw new Error(payload.error ?? "Failed to load that Google listing");
+      }
+
+      setSelectedGbpPlace(payload.place);
+      setSelectedGbpPhotoNames(payload.place.photos.map((photo) => photo.name));
+      setPlaceSuggestions([]);
+      setUrl(payload.place.name);
+      setGenerationSource("gbp");
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Failed to load that Google listing",
+      );
+    } finally {
+      setIsLoadingPlaceDetails(false);
+    }
+  };
+
+  const handleBackToPlaceSearch = () => {
+    setSelectedGbpPlace(null);
+    setSelectedGbpPhotoNames([]);
+    setGenerationSource("refresh");
+  };
+
+  const toggleSelectedGbpPhoto = (photoName: string) => {
+    setSelectedGbpPhotoNames((current) =>
+      current.includes(photoName)
+        ? current.filter((name) => name !== photoName)
+        : [...current, photoName],
+    );
+  };
+
+  const handleGbpImport = async () => {
+    if (!selectedGbpPlace || isRefreshing) {
+      return;
+    }
+
+    setIsRefreshing(true);
+    setGenerationSource("gbp");
+    setJob(null);
+    setErrorMessage(null);
+    setEditStatus("idle");
+    setActiveEditRequestId(null);
+    setStatusMessageIndex(0);
+    stopPolling();
+    stopEditPolling();
+    startProgressTimers();
+
+    try {
+      const metaEventId = createMetaEventId("lead");
+      const response = await fetch("/api/import/gbp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          placeId: selectedGbpPlace.placeId,
+          selectedPhotoNames: selectedGbpPhotoNames,
+          metaEventId,
+          turnstileToken: turnstileToken ?? undefined,
+        }),
+      });
+      setTurnstileToken(null);
+
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Failed to start Google listing import");
+      }
+
+      const createdJob = payload as JobResponse & { accessToken?: string };
+      trackMetaBrowserEvent({
+        eventName: "Lead",
+        eventId: metaEventId,
+        customData: {
+          content_name: "Google Business Profile website creation request",
+        },
+      });
+      jobTokenRef.current = createdJob.accessToken ?? null;
+      setJob(createdJob);
+      storeJob(createdJob.id, {
+        mode: "fresh",
+        prompt: selectedGbpPlace.name,
+        token: createdJob.accessToken,
+      });
+      beginPolling(createdJob.id);
+    } catch (error) {
+      setIsRefreshing(false);
+      stopTimer();
+      stopStatusRotation();
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Failed to start Google listing import",
+      );
+    }
+  };
+
   const handleRefresh = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (selectedGbpPlace) {
+      await handleGbpImport();
+      return;
+    }
 
     if (!url.trim() || isRefreshing) {
       return;
     }
 
     setIsRefreshing(true);
+    setGenerationSource("refresh");
     setJob(null);
     setErrorMessage(null);
     setEditStatus("idle");
@@ -1639,6 +1908,7 @@ export default function RefreshPage({
     }
 
     setIsRefreshing(true);
+    setGenerationSource("fresh");
     setJob(null);
     setErrorMessage(null);
     setEditStatus("idle");
@@ -1719,11 +1989,21 @@ export default function RefreshPage({
   const previewHref = normalizePreviewUrl(job?.previewUrl ?? null);
   const showReveal = !isRefreshing && Boolean(previewHref);
   const activeMode = job?.generationMode ?? flowMode;
+  const activeGenerationSource: GenerationSource =
+    generationSource === "gbp" ? "gbp" : activeMode;
   const activeLabel = jobLabel(job, activeMode, url);
   const activeLoadingStages =
-    activeMode === "fresh" ? FRESH_LOADING_STAGES : LOADING_STAGES;
+    activeGenerationSource === "gbp"
+      ? GBP_LOADING_STAGES
+      : activeMode === "fresh"
+        ? FRESH_LOADING_STAGES
+        : LOADING_STAGES;
   const activeStatusMessages =
-    activeMode === "fresh" ? FRESH_STATUS_MESSAGES : REFRESH_STATUS_MESSAGES;
+    activeGenerationSource === "gbp"
+      ? GBP_STATUS_MESSAGES
+      : activeMode === "fresh"
+        ? FRESH_STATUS_MESSAGES
+        : REFRESH_STATUS_MESSAGES;
   const expiryLabel = job?.expiresAt
     ? new Intl.DateTimeFormat("en-GB", {
         day: "numeric",
@@ -1731,6 +2011,20 @@ export default function RefreshPage({
       }).format(new Date(job.expiresAt))
     : null;
   const freeEditsRemaining = job?.freeEditsRemaining ?? 0;
+  const refreshInputLooksLikeUrl = looksLikeWebAddress(url) || forceUrlRefresh;
+  const isBusinessSearchInput =
+    googleBusinessImportEnabled &&
+    flowMode === "refresh" &&
+    url.trim().length >= 3 &&
+    !refreshInputLooksLikeUrl &&
+    !selectedGbpPlace;
+  const refreshSubmitDisabled =
+    !url.trim() ||
+    isLoadingPlaceDetails ||
+    (googleBusinessImportEnabled &&
+      !refreshInputLooksLikeUrl &&
+      !selectedGbpPlace &&
+      !forceUrlRefresh);
   const heroSpotlightStyle: CSSProperties = {
     background: `radial-gradient(420px circle at ${heroPointer.x * 100}% ${
       heroPointer.y * 100
@@ -2001,7 +2295,11 @@ export default function RefreshPage({
                   {activeMode === "fresh" ? "Creating" : "Refreshing"}
                 </p>
                 <h1 className="mx-auto mt-2 max-w-[22ch] font-fraunces text-[clamp(1.6rem,4.5vw,2.15rem)] font-semibold leading-none tracking-tight [overflow-wrap:anywhere]">
-                  {activeMode === "fresh" ? "Creating your new website" : activeLabel}
+                  {activeGenerationSource === "gbp"
+                    ? "Creating from your Google listing"
+                    : activeMode === "fresh"
+                      ? "Creating your new website"
+                      : activeLabel}
                 </h1>
 
                 <ol className="mx-auto mt-8 max-w-xs space-y-3.5 text-left">
@@ -2324,45 +2622,219 @@ export default function RefreshPage({
                 <p className="mt-6 max-w-md text-lg leading-8 text-black/55">
                   {flowMode === "fresh"
                     ? "Describe your business, add a logo or photos if you have them, and get a polished website from a website creation company built for small businesses."
-                    : "Input your web address. In about 2 minutes, our website redesign service rebuilds your site with a fresh, modern design — your words, your photos, your business."}
+                    : googleBusinessImportEnabled
+                      ? "Input your web address, or find your Google listing if you do not have a site yet. In about 2 minutes, we rebuild your business online with a fresh, modern design."
+                      : "Input your web address. In about 2 minutes, our website redesign service rebuilds your site with a fresh, modern design — your words, your photos, your business."}
                 </p>
 
                 <div className="mt-8 max-w-lg">
                   {flowMode === "refresh" ? (
-                    <form
-                      onSubmit={handleRefresh}
-                      className="mt-3 flex flex-col gap-2 rounded-[1.75rem] border-2 border-black/20 bg-white p-2 shadow-xl shadow-black/10 transition focus-within:border-black/40 sm:flex-row sm:items-center sm:rounded-full"
-                    >
-                      <label htmlFor="refresh-input" className="sr-only">
-                        Your website address
-                      </label>
-                      <input
-                        id="refresh-input"
-                        type="text"
-                        inputMode="url"
-                        autoCapitalize="none"
-                        autoCorrect="off"
-                        spellCheck={false}
-                        placeholder="yourwebsite.co.uk"
-                        value={url}
-                        onChange={(event) => setUrl(event.target.value)}
-                        className="h-12 w-full rounded-full bg-transparent px-5 text-base outline-none placeholder:text-black/30 sm:flex-1"
-                      />
-                      {!user ? (
-                        <TurnstileWidget
-                          className="shrink-0"
-                          onVerify={setTurnstileToken}
-                          onExpire={clearTurnstileToken}
-                        />
+                    <div className="mt-3">
+                      {selectedGbpPlace ? (
+                        <form
+                          onSubmit={handleRefresh}
+                          className="rounded-[1.75rem] border-2 border-black/20 bg-white p-4 shadow-xl shadow-black/10"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-xs font-bold uppercase tracking-[0.16em] text-black/35">
+                                Google listing
+                              </p>
+                              <h2 className="mt-1 font-fraunces text-2xl font-semibold tracking-tight">
+                                {selectedGbpPlace.name}
+                              </h2>
+                              <p className="mt-1 text-sm leading-6 text-black/55">
+                                {selectedGbpPlace.address}
+                              </p>
+                              <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs font-medium text-black/45">
+                                {selectedGbpPlace.category ? (
+                                  <span>{selectedGbpPlace.category}</span>
+                                ) : null}
+                                {selectedGbpPlace.phone ? (
+                                  <span>{selectedGbpPlace.phone}</span>
+                                ) : null}
+                                {selectedGbpPlace.rating &&
+                                selectedGbpPlace.reviewCount ? (
+                                  <span>
+                                    {selectedGbpPlace.rating.toFixed(1)} from{" "}
+                                    {selectedGbpPlace.reviewCount} Google reviews
+                                  </span>
+                                ) : null}
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={handleBackToPlaceSearch}
+                              className="shrink-0 rounded-full border border-black/10 px-3 py-1.5 text-xs font-semibold text-black/55 transition hover:border-black/25 hover:text-black"
+                            >
+                              Back
+                            </button>
+                          </div>
+
+                          {selectedGbpPlace.photos.length > 0 ? (
+                            <div className="mt-4">
+                              <p className="text-xs font-semibold text-black/50">
+                                Untick any Google listing photos you do not want
+                                on your site.
+                              </p>
+                              <div className="mt-2 grid grid-cols-4 gap-2">
+                                {selectedGbpPlace.photos.map((photo) => {
+                                  const selected = selectedGbpPhotoNames.includes(
+                                    photo.name,
+                                  );
+
+                                  return (
+                                    <button
+                                      key={photo.name}
+                                      type="button"
+                                      onClick={() => toggleSelectedGbpPhoto(photo.name)}
+                                      className={`relative aspect-square overflow-hidden rounded-2xl border-2 transition ${
+                                        selected
+                                          ? "border-kiwi-green"
+                                          : "border-transparent opacity-45"
+                                      }`}
+                                      aria-pressed={selected}
+                                    >
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img
+                                        src={photo.uri}
+                                        alt=""
+                                        className="h-full w-full object-cover"
+                                      />
+                                      <span className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-white text-[11px] font-black shadow">
+                                        {selected ? "✓" : ""}
+                                      </span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ) : null}
+
+                          {!user ? (
+                            <TurnstileWidget
+                              className="mt-3"
+                              onVerify={setTurnstileToken}
+                              onExpire={clearTurnstileToken}
+                            />
+                          ) : null}
+                          <button
+                            type="submit"
+                            disabled={refreshSubmitDisabled}
+                            className="mt-3 h-12 w-full rounded-full bg-kiwi-green px-6 text-sm font-bold transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            Build my website →
+                          </button>
+                        </form>
+                      ) : (
+                        <div className="relative">
+                          <form
+                            onSubmit={handleRefresh}
+                            className="flex flex-col gap-2 rounded-[1.75rem] border-2 border-black/20 bg-white p-2 shadow-xl shadow-black/10 transition focus-within:border-black/40 sm:flex-row sm:items-center sm:rounded-full"
+                          >
+                            <label htmlFor="refresh-input" className="sr-only">
+                              Your website address or business name
+                            </label>
+                            <input
+                              id="refresh-input"
+                              type="text"
+                              inputMode="text"
+                              autoCapitalize="none"
+                              autoCorrect="off"
+                              spellCheck={false}
+                              placeholder={
+                                googleBusinessImportEnabled
+                                  ? "yourwebsite.co.uk — or type your business name"
+                                  : "yourwebsite.co.uk"
+                              }
+                              value={url}
+                              onChange={(event) => {
+                                setUrl(event.target.value);
+                                setForceUrlRefresh(false);
+                                setSelectedGbpPlace(null);
+                                setSelectedGbpPhotoNames([]);
+                              }}
+                              className="h-12 w-full rounded-full bg-transparent px-5 text-base outline-none placeholder:text-black/30 sm:flex-1"
+                            />
+                            {!user ? (
+                              <TurnstileWidget
+                                className="shrink-0"
+                                onVerify={setTurnstileToken}
+                                onExpire={clearTurnstileToken}
+                              />
+                            ) : null}
+                            <button
+                              type="submit"
+                              disabled={refreshSubmitDisabled}
+                              className="h-12 shrink-0 rounded-full bg-kiwi-green px-6 text-sm font-bold transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {isBusinessSearchInput
+                                ? "Choose listing"
+                                : "Refresh it →"}
+                            </button>
+                          </form>
+
+                          {isBusinessSearchInput ? (
+                            <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-30 overflow-hidden rounded-3xl border border-black/10 bg-white shadow-2xl shadow-black/15">
+                              {isSearchingPlaces ? (
+                                <p className="px-4 py-3 text-sm font-medium text-black/45">
+                                  Finding Google listings…
+                                </p>
+                              ) : placeSuggestions.length > 0 ? (
+                                <>
+                                  {placeSuggestions.map((suggestion) => (
+                                    <button
+                                      key={suggestion.placeId}
+                                      type="button"
+                                      onClick={() => {
+                                        void handleSelectPlace(suggestion);
+                                      }}
+                                      className="block w-full border-b border-black/5 px-4 py-3 text-left transition hover:bg-[#faf8f1]"
+                                    >
+                                      <span className="block text-sm font-semibold text-black">
+                                        {suggestion.name}
+                                      </span>
+                                      {suggestion.address ? (
+                                        <span className="mt-0.5 block text-xs leading-5 text-black/50">
+                                          {suggestion.address}
+                                        </span>
+                                      ) : null}
+                                    </button>
+                                  ))}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setForceUrlRefresh(true);
+                                      setPlaceSuggestions([]);
+                                    }}
+                                    className="block w-full px-4 py-3 text-left text-xs font-semibold text-black/45 transition hover:bg-[#faf8f1] hover:text-black"
+                                  >
+                                    Use &quot;{url.trim()}&quot; as a web address
+                                    anyway
+                                  </button>
+                                </>
+                              ) : (
+                                <p className="px-4 py-3 text-sm font-medium text-black/45">
+                                  No Google listings yet — try adding your town
+                                  or postcode.
+                                </p>
+                              )}
+                            </div>
+                          ) : null}
+                        </div>
+                      )}
+                      {googleBusinessImportEnabled && !selectedGbpPlace ? (
+                        <p className="mt-3 text-xs leading-5 text-black/40">
+                          No website? Type your business name and town — we&apos;ll
+                          find your Google listing.
+                        </p>
                       ) : null}
-                      <button
-                        type="submit"
-                        disabled={!url.trim()}
-                        className="h-12 shrink-0 rounded-full bg-kiwi-green px-6 text-sm font-bold transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        Refresh it →
-                      </button>
-                    </form>
+                      {isLoadingPlaceDetails ? (
+                        <p className="mt-3 text-xs font-medium text-black/45">
+                          Loading that Google listing…
+                        </p>
+                      ) : null}
+                    </div>
                   ) : null}
                 </div>
 
@@ -2526,7 +2998,7 @@ export default function RefreshPage({
                           I want to refresh my website
                         </span>
                         <span className="mt-1.5 block text-sm leading-6 text-black/55 sm:mt-2">
-                          I already have a website and want a better version.
+                          I have a website or Google listing and want a better version.
                         </span>
                         <span className="mt-3 inline-flex text-sm font-bold text-black transition group-hover:translate-x-1 sm:mt-4">
                           Refresh my site →

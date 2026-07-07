@@ -5,6 +5,7 @@ Refresh Kiwi is a Next.js SaaS app for generating small-business website preview
 Users can either:
 
 - paste an existing website URL to get a refreshed version, or
+- find their Google Business Profile listing when they do not have a website, or
 - describe a new site and optionally upload images/logo assets.
 
 The app stores jobs in Postgres, runs Cursor cloud agents to generate static website files in a separate sites repo, syncs those files into local preview storage and Cloudflare R2, then lets users claim, edit, publish, and connect custom domains for the generated sites.
@@ -43,6 +44,7 @@ Important API entry points:
 
 - `app/api/refresh/route.ts` - creates URL-refresh jobs.
 - `app/api/fresh/route.ts` - creates prompt-based fresh-site jobs.
+- `app/api/places/**` and `app/api/import/gbp/route.ts` - Google Business Profile search/details/import via Places API.
 - `app/api/refresh/[jobId]/route.ts` - polls job status.
 - `app/api/websites/**` - website ownership, edits, images, pages, publishing, screenshots, and domains.
 - `app/api/auth/**` and `app/api/account/**` - custom auth/account flows.
@@ -196,6 +198,35 @@ Image functionality includes:
 - image replacement/revert history,
 - placement instructions for generated edits.
 
+### Google Business Profile imports
+
+Core files:
+
+- `lib/google/places.ts`
+- `lib/google/brief.ts`
+- `app/api/places/search/route.ts`
+- `app/api/places/details/route.ts`
+- `app/api/import/gbp/route.ts`
+
+This flow uses the official Google Places API (New), not scraping. The landing
+page keeps one Refresh input: URL-looking text goes through `/api/refresh`, while
+business-name text searches Google listings and lets the user confirm details and
+select photos.
+
+GBP imports are stored as `generationMode = "fresh"` jobs. The imported listing
+data becomes `creationPrompt`, selected Google photos are downloaded and seeded
+through `seedWebsiteAssets`, and the existing `fresh-homepage` worker task builds
+the site. Keep it this way so later edit/page flows use the brief and local
+assets instead of trying to crawl Google Maps pages.
+
+Manual Google Cloud setup:
+
+1. Create or choose a Google Cloud project.
+2. Enable billing and **Places API (New)**.
+3. Create an API key restricted to Places API (New).
+4. Set `GOOGLE_PLACES_API_KEY` on the web service.
+5. Add quota caps and a budget alert. The worker does not need this key.
+
 ### Billing
 
 Core files:
@@ -258,6 +289,7 @@ Do not reintroduce Next.js `after()` for long-running work. Enqueue a `backgroun
 This app depends on several external systems:
 
 - Cursor cloud agents - generated site creation.
+- Google Places API (New) - Google Business Profile search/import.
 - External generated-sites GitHub repo - stores `sites/{slug}/` outputs.
 - Postgres - application data.
 - Cloudflare R2 - durable preview and asset storage.
