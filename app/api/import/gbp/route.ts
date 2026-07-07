@@ -31,15 +31,30 @@ type GbpImportBody = {
   turnstileToken?: string;
 };
 
-function selectedPhotoNames(value: unknown): string[] {
+/**
+ * Google photo resource names are short-lived handles that can differ between
+ * Place Details calls, so we must not re-check them against a fresh details
+ * response — that intersection can silently come back empty. Instead we
+ * validate the shape (places/{placeId}/photos/{token}) against the place the
+ * user picked and let the download step surface expired names as a hard error.
+ */
+function selectedPhotoNames(value: unknown, placeIds: string[]): string[] {
   if (!Array.isArray(value)) {
     return [];
   }
 
+  const validPrefixes = placeIds
+    .filter(Boolean)
+    .map((placeId) => `places/${placeId}/photos/`);
+
   return value
     .filter((item): item is string => typeof item === "string")
     .map((item) => item.trim())
-    .filter(Boolean)
+    .filter(
+      (item) =>
+        /^places\/[^/]+\/photos\/[^/]+$/.test(item) &&
+        validPrefixes.some((prefix) => item.startsWith(prefix)),
+    )
     .slice(0, MAX_SELECTED_PHOTOS);
 }
 
@@ -121,15 +136,18 @@ export async function POST(request: Request) {
     }
 
     const place = await getPlaceDetails(placeId);
-    const allowedPhotoNames = new Set(place.photos.map((photo) => photo.name));
-    const requestedPhotoNames = selectedPhotoNames(body.selectedPhotoNames).filter(
-      (photoName) => allowedPhotoNames.has(photoName),
-    );
+    const requestedPhotoNames = selectedPhotoNames(body.selectedPhotoNames, [
+      placeId,
+      place.placeId,
+    ]);
     const seedAssets = (
       await Promise.all(requestedPhotoNames.map((photoName) => photoToSeedAsset(photoName)))
     ).filter((asset): asset is SeedAssetInput => Boolean(asset));
 
     if (requestedPhotoNames.length > 0 && seedAssets.length === 0) {
+      console.error(
+        `[refresh-kiwi] gbp import: all ${requestedPhotoNames.length} selected photos failed to download placeId=${placeId}`,
+      );
       return NextResponse.json(
         {
           error:
@@ -139,7 +157,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const prompt = buildGoogleBusinessBrief(place);
+    const prompt = buildGoogleBusinessBrief(place, {
+      hasSelectedPhotos: seedAssets.length > 0,
+    });
     const job = await createGbpJob(
       { creationPrompt: prompt, businessName: place.name },
       currentUser?.id ?? null,
