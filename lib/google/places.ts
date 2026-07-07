@@ -28,7 +28,58 @@ const DETAILS_FIELD_MASK = [
   "photos",
   "googleMapsUri",
   "primaryTypeDisplayName",
+  "types",
 ].join(",");
+
+const GENERIC_CATEGORIES = new Set([
+  "establishment",
+  "manufacturer",
+  "point of interest",
+  "store",
+]);
+
+const CATEGORY_HINTS: Array<{ pattern: RegExp; label: string }> = [
+  { pattern: /\b(carpentry|carpenter|joinery|joiner)\b/i, label: "Carpentry" },
+  { pattern: /\b(plumb|boiler|heating)\b/i, label: "Plumbing and heating" },
+  { pattern: /\b(electric|electrical|electrician)\b/i, label: "Electrical" },
+  { pattern: /\b(roof|roofer|roofing)\b/i, label: "Roofing" },
+  { pattern: /\b(builder|building|construction|renovation)\b/i, label: "Building and renovation" },
+  { pattern: /\b(landscap|garden|gardener)\b/i, label: "Landscaping" },
+  { pattern: /\b(clean|cleaner|cleaning)\b/i, label: "Cleaning" },
+  { pattern: /\b(salon|hair|beauty|barber)\b/i, label: "Hair and beauty" },
+  { pattern: /\b(cafe|coffee|restaurant|bakery|bar)\b/i, label: "Hospitality" },
+  { pattern: /\b(garage|mechanic|mot|auto|car repair)\b/i, label: "Garage and vehicle services" },
+  { pattern: /\b(accountant|accounting|bookkeeping)\b/i, label: "Accountancy" },
+];
+
+function normalizeCategory(params: {
+  googleCategory?: string;
+  name?: string;
+  description?: string;
+  types?: string[];
+}): string | null {
+  const haystack = [
+    params.name,
+    params.description,
+    params.googleCategory,
+    ...(params.types ?? []),
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const hinted = CATEGORY_HINTS.find((hint) => hint.pattern.test(haystack));
+
+  if (hinted) {
+    return hinted.label;
+  }
+
+  const category = params.googleCategory?.trim();
+
+  if (!category || GENERIC_CATEGORIES.has(category.toLowerCase())) {
+    return null;
+  }
+
+  return category;
+}
 
 const AUTOCOMPLETE_FIELD_MASK = [
   "suggestions.placePrediction.placeId",
@@ -154,6 +205,7 @@ type PlaceDetailsResponse = {
   websiteUri?: string;
   googleMapsUri?: string;
   primaryTypeDisplayName?: { text?: string };
+  types?: string[];
   regularOpeningHours?: { weekdayDescriptions?: string[] };
   rating?: number;
   userRatingCount?: number;
@@ -188,18 +240,26 @@ export async function getPlaceDetails(placeId: string): Promise<PlaceDetails> {
 
   const data = (await response.json()) as PlaceDetailsResponse;
 
+  const name = data.displayName?.text ?? "";
+  const description = data.editorialSummary?.text ?? null;
+
   return {
     placeId: data.id ?? placeId,
-    name: data.displayName?.text ?? "",
+    name,
     address: data.formattedAddress ?? "",
     phone: data.nationalPhoneNumber ?? data.internationalPhoneNumber ?? null,
     websiteUri: data.websiteUri ?? null,
     googleMapsUri: data.googleMapsUri ?? null,
-    category: data.primaryTypeDisplayName?.text ?? null,
+    category: normalizeCategory({
+      googleCategory: data.primaryTypeDisplayName?.text,
+      name,
+      description: description ?? undefined,
+      types: data.types,
+    }),
     openingHours: data.regularOpeningHours?.weekdayDescriptions ?? [],
     rating: data.rating ?? null,
     reviewCount: data.userRatingCount ?? null,
-    description: data.editorialSummary?.text ?? null,
+    description,
     reviews: (data.reviews ?? [])
       .filter((review) => Boolean(review.text?.text))
       .map((review) => ({

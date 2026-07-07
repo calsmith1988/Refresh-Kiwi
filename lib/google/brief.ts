@@ -55,6 +55,7 @@ export function buildGoogleBusinessBrief(place: PlaceDetails): string {
     formatReviews(place),
     `## Website generation instructions
 - Build a polished small-business website from this Google Business Profile information and the provided photo assets.
+- The provided starter image assets are photos selected from this business's Google listing. Use them prominently as real business imagery in the hero, gallery, service, proof, or about sections where they fit. Do not ignore them in favour of generated/abstract imagery.
 - Include the business name, address/service area, phone number, opening hours, services/category, and Google social proof where available.
 - Treat the Google reviews above as testimonial source material. Keep excerpts short and clearly framed as customer reviews.
 - Do not invent contact details, awards, accreditations, prices, or legal/compliance claims.

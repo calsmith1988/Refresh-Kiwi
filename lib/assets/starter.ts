@@ -28,7 +28,8 @@ export async function generateStarterSeedAssets(
       const image = await generateWebsiteImage({
         prompt: [
           direction.prompt,
-          "No readable text, logos, UI chrome, watermarks, borders, contact details, or multiple unrelated scenes.",
+          "Make it a single simple photographic/naturalistic image, not an editorial graphic, poster, infographic, icon set, diagram, collage, brand board, or UI mockup.",
+          "No readable text, letters, numbers, icons, symbols, logos, UI chrome, watermarks, borders, contact details, or multiple unrelated scenes.",
           "Brief:",
           prompt,
         ].join(" "),

@@ -138,7 +138,7 @@ ${formatSeedAssets(seedAssets)}
 ## Images and logo
 
 - Use the provided logo in the header if a logo asset is listed above.
-- Use provided image assets as real site imagery where they fit: hero, services, gallery, team, product, or proof sections.
+- Use provided image assets as real site imagery where they fit: hero, services, gallery, team, product, or proof sections. If the brief says these are selected photos from a business listing, treat them as preferred real business photos and use several of them prominently instead of abstract/generated-looking imagery.
 - If multiple generated image assets are listed, use them as separate focused images in different sections. Do not visually combine them into one collage or describe them as one image.
 - Reference provided assets exactly by the public URLs listed above. Do not invent local image paths.
 - If no suitable image exists for a section, use refined CSS composition instead of stock-photo placeholders.

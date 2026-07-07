@@ -21,8 +21,9 @@ function buildGeneratePrompt(params: {
 
   return [
     `Create a premium website-ready visual${brandContext}.`,
-    "No readable text, captions, watermarks, logos, UI chrome, or borders.",
-    "Make it polished, realistic or tastefully illustrative as appropriate, with composition suitable for a modern small-business website.",
+    "Create a simple photographic or naturalistic scene, not an editorial poster, infographic, brand board, icon set, diagram, interface, flyer, or collage.",
+    "No readable text, captions, letters, numbers, icons, symbols, watermarks, logos, UI chrome, frames, labels, or borders.",
+    "Make it polished and realistic, with composition suitable for a modern small-business website.",
     `Creative direction: ${params.prompt}`,
   ].join(" ");
 }

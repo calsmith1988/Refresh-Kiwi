@@ -2354,7 +2354,7 @@ export default function RefreshPage({
       </header>
 
       {/* ───────────────────────── Hero / Theatre / Reveal ───────────────────────── */}
-      <section className="relative z-10 px-5 pb-8 pt-14 sm:px-8 sm:pb-10 sm:pt-20">
+      <section className="relative z-30 px-5 pb-8 pt-14 sm:px-8 sm:pb-10 sm:pt-20">
         <div className="mx-auto w-full max-w-6xl">
           {isRefreshing ? (
             <div className="flex min-h-[60vh] items-center justify-center">
@@ -2848,7 +2848,7 @@ export default function RefreshPage({
                           </form>
 
                           {isBusinessSearchInput ? (
-                            <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-30 overflow-hidden rounded-3xl border border-black/10 bg-white shadow-2xl shadow-black/15">
+                            <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-50 overflow-hidden rounded-3xl border border-black/10 bg-white shadow-2xl shadow-black/15">
                               {isSearchingPlaces ? (
                                 <p className="px-4 py-3 text-sm font-medium text-black/45">
                                   Finding Google listings…

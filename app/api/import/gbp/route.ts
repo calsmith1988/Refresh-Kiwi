@@ -129,6 +129,16 @@ export async function POST(request: Request) {
       await Promise.all(requestedPhotoNames.map((photoName) => photoToSeedAsset(photoName)))
     ).filter((asset): asset is SeedAssetInput => Boolean(asset));
 
+    if (requestedPhotoNames.length > 0 && seedAssets.length === 0) {
+      return NextResponse.json(
+        {
+          error:
+            "We couldn't download the Google photos you selected. Try again, or untick the photos and we'll create starter visuals instead.",
+        },
+        { status: 502 },
+      );
+    }
+
     const prompt = buildGoogleBusinessBrief(place);
     const job = await createGbpJob(
       { creationPrompt: prompt, businessName: place.name },
