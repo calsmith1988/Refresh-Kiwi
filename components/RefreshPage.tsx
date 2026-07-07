@@ -162,6 +162,7 @@ type BlogSnippet = {
 
 type FlowMode = "refresh" | "fresh";
 type GenerationSource = FlowMode | "gbp";
+type PendingGeneration = "refresh" | "fresh" | "gbp";
 
 type PlaceSuggestion = {
   placeId: string;
@@ -885,6 +886,9 @@ export default function RefreshPage({
   const [user, setUser] = useState<AuthUser | null>(null);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const clearTurnstileToken = useCallback(() => setTurnstileToken(null), []);
+  const [showVerification, setShowVerification] = useState(false);
+  const [pendingGeneration, setPendingGeneration] =
+    useState<PendingGeneration | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [authErrorMessage, setAuthErrorMessage] = useState<string | null>(null);
   const [accountMode, setAccountMode] = useState<"closed" | "signup" | "login">(
@@ -1690,6 +1694,9 @@ export default function RefreshPage({
     setIsSearchingPlaces(false);
     setIsLoadingPlaceDetails(false);
     setForceUrlRefresh(false);
+    setShowVerification(false);
+    setPendingGeneration(null);
+    setTurnstileToken(null);
     setFreshPrompt("");
     setFreshLogo(null);
     setFreshImages([]);
@@ -1767,7 +1774,18 @@ export default function RefreshPage({
     );
   };
 
-  const handleGbpImport = async () => {
+  const requireVerification = (generation: PendingGeneration): boolean => {
+    if (user || turnstileToken) {
+      return false;
+    }
+
+    setPendingGeneration(generation);
+    setShowVerification(true);
+    setErrorMessage(null);
+    return true;
+  };
+
+  const handleGbpImport = async (verificationToken = turnstileToken) => {
     if (!selectedGbpPlace || isRefreshing) {
       return;
     }
@@ -1792,10 +1810,12 @@ export default function RefreshPage({
           placeId: selectedGbpPlace.placeId,
           selectedPhotoNames: selectedGbpPhotoNames,
           metaEventId,
-          turnstileToken: turnstileToken ?? undefined,
+          turnstileToken: verificationToken ?? undefined,
         }),
       });
       setTurnstileToken(null);
+      setShowVerification(false);
+      setPendingGeneration(null);
 
       const payload = await response.json();
 
@@ -1831,18 +1851,7 @@ export default function RefreshPage({
     }
   };
 
-  const handleRefresh = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (selectedGbpPlace) {
-      await handleGbpImport();
-      return;
-    }
-
-    if (!url.trim() || isRefreshing) {
-      return;
-    }
-
+  const submitRefreshJob = async (verificationToken = turnstileToken) => {
     setIsRefreshing(true);
     setGenerationSource("refresh");
     setJob(null);
@@ -1862,11 +1871,13 @@ export default function RefreshPage({
         body: JSON.stringify({
           url,
           metaEventId,
-          turnstileToken: turnstileToken ?? undefined,
+          turnstileToken: verificationToken ?? undefined,
         }),
       });
       // Turnstile tokens are single-use; drop it so the widget re-challenges.
       setTurnstileToken(null);
+      setShowVerification(false);
+      setPendingGeneration(null);
 
       const payload = await response.json();
 
@@ -1900,13 +1911,30 @@ export default function RefreshPage({
     }
   };
 
-  const handleFresh = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleRefresh = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!freshPrompt.trim() || isRefreshing) {
+    if (selectedGbpPlace) {
+      if (requireVerification("gbp")) {
+        return;
+      }
+
+      await handleGbpImport();
       return;
     }
 
+    if (!url.trim() || isRefreshing) {
+      return;
+    }
+
+    if (requireVerification("refresh")) {
+      return;
+    }
+
+    await submitRefreshJob();
+  };
+
+  const submitFreshJob = async (verificationToken = turnstileToken) => {
     setIsRefreshing(true);
     setGenerationSource("fresh");
     setJob(null);
@@ -1936,8 +1964,8 @@ export default function RefreshPage({
         body.append("generateStarterVisuals", "1");
       }
 
-      if (turnstileToken) {
-        body.append("turnstileToken", turnstileToken);
+      if (verificationToken) {
+        body.append("turnstileToken", verificationToken);
       }
 
       const response = await fetch("/api/fresh", {
@@ -1948,6 +1976,8 @@ export default function RefreshPage({
       setTurnstileToken(null);
 
       const payload = await response.json();
+      setShowVerification(false);
+      setPendingGeneration(null);
 
       if (!response.ok) {
         throw new Error(payload.error ?? "Failed to start website creation");
@@ -1976,6 +2006,38 @@ export default function RefreshPage({
       setErrorMessage(
         error instanceof Error ? error.message : "Failed to start website creation",
       );
+    }
+  };
+
+  const handleFresh = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!freshPrompt.trim() || isRefreshing) {
+      return;
+    }
+
+    if (requireVerification("fresh")) {
+      return;
+    }
+
+    await submitFreshJob();
+  };
+
+  const handleTurnstileVerify = (token: string) => {
+    setTurnstileToken(token);
+
+    if (!pendingGeneration || isRefreshing) {
+      return;
+    }
+
+    const generation = pendingGeneration;
+
+    if (generation === "gbp") {
+      void handleGbpImport(token);
+    } else if (generation === "fresh") {
+      void submitFreshJob(token);
+    } else {
+      void submitRefreshJob(token);
     }
   };
 
@@ -2711,12 +2773,19 @@ export default function RefreshPage({
                             </div>
                           ) : null}
 
-                          {!user ? (
-                            <TurnstileWidget
-                              className="mt-3"
-                              onVerify={setTurnstileToken}
-                              onExpire={clearTurnstileToken}
-                            />
+                          {!user &&
+                          showVerification &&
+                          pendingGeneration === "gbp" ? (
+                            <div className="mt-3 rounded-3xl border border-black/10 bg-[#faf8f1] p-3">
+                              <p className="mb-2 text-xs font-semibold text-black/55">
+                                One quick security check, then we&apos;ll start.
+                              </p>
+                              <TurnstileWidget
+                                className="overflow-hidden rounded-2xl"
+                                onVerify={handleTurnstileVerify}
+                                onExpire={clearTurnstileToken}
+                              />
+                            </div>
                           ) : null}
                           <button
                             type="submit"
@@ -2756,13 +2825,6 @@ export default function RefreshPage({
                               }}
                               className="h-12 w-full rounded-full bg-transparent px-5 text-base outline-none placeholder:text-black/30 sm:flex-1"
                             />
-                            {!user ? (
-                              <TurnstileWidget
-                                className="shrink-0"
-                                onVerify={setTurnstileToken}
-                                onExpire={clearTurnstileToken}
-                              />
-                            ) : null}
                             <button
                               type="submit"
                               disabled={refreshSubmitDisabled}
@@ -2819,6 +2881,20 @@ export default function RefreshPage({
                                   or postcode.
                                 </p>
                               )}
+                            </div>
+                          ) : null}
+                          {!user &&
+                          showVerification &&
+                          pendingGeneration === "refresh" ? (
+                            <div className="mt-3 rounded-3xl border border-black/10 bg-white p-3 shadow-xl shadow-black/5">
+                              <p className="mb-2 text-xs font-semibold text-black/55">
+                                One quick security check, then we&apos;ll start.
+                              </p>
+                              <TurnstileWidget
+                                className="overflow-hidden rounded-2xl"
+                                onVerify={handleTurnstileVerify}
+                                onExpire={clearTurnstileToken}
+                              />
                             </div>
                           ) : null}
                         </div>
@@ -2933,12 +3009,17 @@ export default function RefreshPage({
                         />
                       </label>
                     </div>
-                    {!user ? (
-                      <TurnstileWidget
-                        className="mt-3"
-                        onVerify={setTurnstileToken}
-                        onExpire={clearTurnstileToken}
-                      />
+                    {!user && showVerification && pendingGeneration === "fresh" ? (
+                      <div className="mt-3 rounded-3xl border border-black/10 bg-[#faf8f1] p-3">
+                        <p className="mb-2 text-xs font-semibold text-black/55">
+                          One quick security check, then we&apos;ll start.
+                        </p>
+                        <TurnstileWidget
+                          className="overflow-hidden rounded-2xl"
+                          onVerify={handleTurnstileVerify}
+                          onExpire={clearTurnstileToken}
+                        />
+                      </div>
                     ) : null}
                     <button
                       type="submit"
