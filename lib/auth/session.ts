@@ -43,6 +43,22 @@ export async function setSessionCookie(token: string): Promise<void> {
   });
 }
 
+/**
+ * Session rotation: invalidate whatever session token the browser presented
+ * before issuing a fresh one at authentication time. Prevents a previously
+ * captured or fixated token from remaining valid across a new login.
+ */
+export async function invalidateCurrentSession(): Promise<void> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(SESSION_COOKIE)?.value;
+
+  if (token) {
+    await getDb()
+      .delete(sessions)
+      .where(eq(sessions.tokenHash, hashToken(token)));
+  }
+}
+
 export async function clearSessionCookie(): Promise<void> {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;

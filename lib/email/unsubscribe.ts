@@ -7,11 +7,25 @@ import { getDb, schema } from "@/lib/db";
 const { users } = schema;
 
 function getUnsubscribeSecret(): string {
-  return (
-    process.env.EMAIL_UNSUBSCRIBE_SECRET?.trim() ||
-    process.env.STRIPE_WEBHOOK_SECRET?.trim() ||
-    "refresh-kiwi-local-unsubscribe"
-  );
+  const secret = process.env.EMAIL_UNSUBSCRIBE_SECRET?.trim();
+
+  if (secret) {
+    if (secret.length < 16) {
+      throw new Error(
+        "EMAIL_UNSUBSCRIBE_SECRET must be at least 16 characters",
+      );
+    }
+
+    return secret;
+  }
+
+  // Tokens signed with a guessable secret would let anyone unsubscribe (or
+  // probe) arbitrary user IDs, so production must configure a real secret.
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("EMAIL_UNSUBSCRIBE_SECRET is not configured");
+  }
+
+  return "refresh-kiwi-local-unsubscribe";
 }
 
 function signatureForUser(userId: string): string {

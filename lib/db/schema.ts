@@ -277,17 +277,32 @@ export const websites = pgTable(
   }),
 );
 
-export const emailEvents = pgTable("email_events", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
-  websiteId: uuid("website_id").references(() => websites.id, {
-    onDelete: "set null",
+export const emailEvents = pgTable(
+  "email_events",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    websiteId: uuid("website_id").references(() => websites.id, {
+      onDelete: "set null",
+    }),
+    type: text("type").notNull(),
+    // "type:userId:websiteId" — set on every insert. A plain unique index on
+    // the nullable FK columns wouldn't dedupe (NULLs compare distinct), and it
+    // must survive user deletion (FKs are SET NULL), so the key is its own
+    // column rather than an expression over the FKs.
+    dedupeKey: text("dedupe_key"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    dedupeKeyIdx: uniqueIndex("email_events_dedupe_key_idx").on(
+      table.dedupeKey,
+    ),
   }),
-  type: text("type").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+);
 
 export const jobPages = pgTable("job_pages", {
   id: uuid("id").defaultRandom().primaryKey(),

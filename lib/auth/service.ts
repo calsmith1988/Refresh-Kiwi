@@ -4,6 +4,7 @@ import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import {
   clearUserSessions,
   createSession,
+  invalidateCurrentSession,
   setSessionCookie,
 } from "@/lib/auth/session";
 import {
@@ -95,7 +96,11 @@ export async function signUp(params: {
     .limit(1);
 
   if (existing.length > 0) {
-    throw new Error("An account already exists for this email");
+    // Deliberately vague: confirming "this email already has an account"
+    // turns signup into an email-enumeration oracle.
+    throw new Error(
+      "Unable to create an account with those details. If you've signed up before, log in or reset your password.",
+    );
   }
 
   const [user] = await db
@@ -107,6 +112,7 @@ export async function signUp(params: {
     })
     .returning();
 
+  await invalidateCurrentSession();
   const token = await createSession(user.id);
   await setSessionCookie(token);
   const verificationToken = await createEmailVerificationToken(user.id);
@@ -138,6 +144,7 @@ export async function login(params: { email: string; password: string }) {
     };
   }
 
+  await invalidateCurrentSession();
   const token = await createSession(user.id);
   await setSessionCookie(token);
 
@@ -180,6 +187,7 @@ export async function completeTwoFactorLogin(params: {
   }
 
   await markTwoFactorChallengeUsed(challenge.id);
+  await invalidateCurrentSession();
   const token = await createSession(user.id);
   await setSessionCookie(token);
 

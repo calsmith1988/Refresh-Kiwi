@@ -13,6 +13,10 @@ const OPTIMIZABLE_TYPES = new Set(["image/png", "image/jpeg"]);
 const MAX_DIMENSION = 1920;
 const WEBP_QUALITY = 80;
 
+// Decompression-bomb guard: a tiny PNG can decode to gigabytes of pixels.
+// 50 megapixels comfortably covers real photos (8K is ~33MP).
+const MAX_INPUT_PIXELS = 50_000_000;
+
 export type OptimizedImage = {
   buffer: Buffer;
   contentType: string;
@@ -29,7 +33,10 @@ export async function optimizeImage(
   }
 
   try {
-    const optimized = await sharp(buffer, { failOn: "none" })
+    const optimized = await sharp(buffer, {
+      failOn: "none",
+      limitInputPixels: MAX_INPUT_PIXELS,
+    })
       .autoOrient()
       .resize({
         width: MAX_DIMENSION,
