@@ -27,7 +27,7 @@ export default function LegalPage({ page }: LegalPageProps) {
                 aria-hidden
                 className="shrink-0 rounded-full"
               />
-              <span className="inline-block truncate font-roboto text-xl font-medium leading-none tracking-tight">
+              <span className="inline-block truncate font-roboto text-[34px] font-[350] leading-none tracking-tight">
                 refresh kiwi
               </span>
             </Link>

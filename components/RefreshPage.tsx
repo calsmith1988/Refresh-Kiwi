@@ -2227,7 +2227,7 @@ export default function RefreshPage({
               aria-hidden
               className="rounded-full"
             />
-            <span className="hidden truncate font-roboto text-xl font-medium leading-none tracking-tight min-[400px]:inline-block">
+            <span className="hidden truncate font-roboto text-[30px] font-[350] leading-none tracking-tight min-[400px]:inline-block">
               refresh kiwi
             </span>
           </Link>
@@ -3582,7 +3582,7 @@ export default function RefreshPage({
                     aria-hidden
                     className="rounded-full"
                   />
-                  <span className="inline-block font-roboto text-xl font-medium leading-none tracking-tight">
+                  <span className="inline-block font-roboto text-[32px] font-[350] leading-none tracking-tight">
                     refresh kiwi
                   </span>
                 </Link>
