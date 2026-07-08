@@ -51,7 +51,7 @@ export async function checkRefreshLimit(params: {
         ok: false,
         message: params.isPro
           ? "You've reached today's refresh limit. It resets within 24 hours — if you regularly need more, get in touch."
-          : "You've used today's free refreshes. Try again tomorrow, or go Pro (£10/month) for more.",
+          : "You've used today's free refreshes. Try again tomorrow, or go Pro for more.",
       };
     }
 

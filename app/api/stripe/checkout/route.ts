@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
-    let body: { metaEventId?: string } = {};
+    let body: { metaEventId?: string; currency?: string } = {};
 
     try {
       body = await request.json();
@@ -17,6 +17,7 @@ export async function POST(request: Request) {
     const url = await createProCheckoutSession({
       request,
       metaEventId: body.metaEventId,
+      currency: body.currency,
     });
 
     return NextResponse.json({ url });

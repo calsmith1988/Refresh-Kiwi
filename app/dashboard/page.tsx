@@ -4,6 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
+import CurrencySelector from "@/components/CurrencySelector";
+import { usePricing } from "@/components/usePricing";
 import kiwiGroupBackground from "../../kiwi-group-background.png";
 import {
   createMetaEventId,
@@ -493,6 +495,7 @@ function websiteState(website: Website, isPro: boolean) {
 }
 
 export default function DashboardPage() {
+  const { pricing, selectedCurrency, selectPricingCurrency } = usePricing();
   const [user, setUser] = useState<User | null>(null);
   const [websites, setWebsites] = useState<Website[]>([]);
   const [activeRefreshJobs, setActiveRefreshJobs] = useState<ActiveRefreshJob[]>([]);
@@ -837,6 +840,14 @@ export default function DashboardPage() {
   };
 
   const startBillingFlow = async (kind: "checkout" | "portal") => {
+    if (kind === "checkout" && !pricing.checkoutAllowed) {
+      setShowProSheet(false);
+      setErrorMessage(
+        pricing.checkoutUnavailableMessage ?? "Kiwi Pro is not available yet.",
+      );
+      return;
+    }
+
     setBillingAction(kind);
     setErrorMessage(null);
     const metaEventId =
@@ -848,7 +859,9 @@ export default function DashboardPage() {
         {
           method: "POST",
           headers: metaEventId ? { "Content-Type": "application/json" } : undefined,
-          body: metaEventId ? JSON.stringify({ metaEventId }) : undefined,
+          body: metaEventId
+            ? JSON.stringify({ metaEventId, currency: selectedCurrency })
+            : undefined,
         },
       );
       const payload = await response.json();
@@ -863,7 +876,7 @@ export default function DashboardPage() {
           eventId: metaEventId,
           customData: {
             content_name: "Kiwi Pro",
-            currency: "GBP",
+            currency: pricing.currency,
           },
         });
       }
@@ -2247,8 +2260,8 @@ export default function DashboardPage() {
                               >
                                 <DashboardIcon name="rocket" />
                                 {state.label === "Expired preview"
-                                  ? "Go live again — £10/mo"
-                                  : "Put it online — £10/mo"}
+                                  ? `Go live again — ${pricing.proPriceShort}`
+                                  : `Put it online — ${pricing.proPriceShort}`}
                               </button>
                             ) : null}
                             {state.canEdit ? (
@@ -3982,7 +3995,7 @@ export default function DashboardPage() {
           <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
             <div className="flex items-start justify-between gap-4">
               <h2 className="font-fraunces text-2xl font-semibold tracking-tight">
-                Kiwi Pro — £10/month
+                Kiwi Pro — {pricing.proPriceMonthly}
               </h2>
               <button
                 type="button"
@@ -4002,13 +4015,24 @@ export default function DashboardPage() {
               Cancel anytime — no contracts, no hidden fees. Payment is handled
               securely by Stripe.
             </p>
+            <CurrencySelector
+              currency={pricing.currency}
+              options={pricing.options}
+              onChange={selectPricingCurrency}
+              className="mt-5 flex items-center justify-between gap-3 rounded-2xl border border-black/10 bg-[#faf8f1] px-4 py-3 text-xs font-semibold text-black/60"
+            />
+            {!pricing.checkoutAllowed ? (
+              <p className="mt-3 rounded-2xl bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900">
+                {pricing.checkoutUnavailableMessage}
+              </p>
+            ) : null}
             <button
               type="button"
               onClick={() => {
                 setShowProSheet(false);
                 void startBillingFlow("checkout");
               }}
-              disabled={billingAction !== null}
+              disabled={billingAction !== null || !pricing.checkoutAllowed}
               className="mt-5 h-12 w-full rounded-full border border-black bg-kiwi-green px-5 text-sm font-semibold text-black transition hover:bg-kiwi-green-hover disabled:opacity-50"
             >
               Continue to secure payment

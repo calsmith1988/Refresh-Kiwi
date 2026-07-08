@@ -20,7 +20,9 @@ import engineerBeforePreview from "../before-preview2.png";
 import kiwiGroupBackground from "../kiwi-group-background.png";
 import ActivityToast from "@/components/ActivityToast";
 import CookieSettingsButton from "@/components/CookieSettingsButton";
+import CurrencySelector from "@/components/CurrencySelector";
 import TurnstileWidget from "@/components/TurnstileWidget";
+import { usePricing } from "@/components/usePricing";
 import type { JobResponse } from "@/lib/jobs/types";
 import {
   createMetaEventId,
@@ -867,6 +869,7 @@ export default function RefreshPage({
   blogSnippets?: BlogSnippet[];
   googleBusinessImportEnabled?: boolean;
 }) {
+  const { pricing, selectedCurrency, selectPricingCurrency } = usePricing();
   const [flowMode, setFlowMode] = useState<FlowMode>("refresh");
   const [generationSource, setGenerationSource] =
     useState<GenerationSource>("refresh");
@@ -1484,6 +1487,14 @@ export default function RefreshPage({
   };
 
   const startCheckout = async () => {
+    if (!pricing.checkoutAllowed) {
+      setShowProSheet(false);
+      setErrorMessage(
+        pricing.checkoutUnavailableMessage ?? "Kiwi Pro is not available yet.",
+      );
+      return;
+    }
+
     setIsStartingCheckout(true);
     const metaEventId = createMetaEventId("checkout");
 
@@ -1491,7 +1502,7 @@ export default function RefreshPage({
       const response = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ metaEventId }),
+        body: JSON.stringify({ metaEventId, currency: selectedCurrency }),
       });
       const payload = await response.json();
 
@@ -1504,7 +1515,7 @@ export default function RefreshPage({
         eventId: metaEventId,
         customData: {
           content_name: "Kiwi Pro",
-          currency: "GBP",
+          currency: pricing.currency,
         },
       });
       window.location.href = payload.url;
@@ -2524,7 +2535,7 @@ export default function RefreshPage({
                       }}
                       className="inline-flex h-12 items-center justify-center rounded-full bg-kiwi-green px-5 text-sm font-bold transition hover:bg-kiwi-green-hover"
                     >
-                      Put it online — £10/mo
+                      Put it online — {pricing.proPriceShort}
                     </button>
                   </div>
                 ) : (
@@ -2554,7 +2565,7 @@ export default function RefreshPage({
                           }}
                           className="rounded-full bg-kiwi-green px-4 py-2 text-xs font-bold transition hover:bg-kiwi-green-hover"
                         >
-                          Put it online — £10/mo
+                          Put it online — {pricing.proPriceShort}
                         </button>
                       </div>
                     </div>
@@ -3196,7 +3207,7 @@ export default function RefreshPage({
                       {
                         n: "03",
                         title: "Go live when you're happy",
-                        body: "£10/month puts it online with as many changes as you need — just ask normally.",
+                        body: `${pricing.proPriceMonthly} puts it online with as many changes as you need — just ask normally.`,
                       },
                     ]
                 ).map((step) => (
@@ -3308,11 +3319,20 @@ export default function RefreshPage({
                   : "No credits, no tokens, no surprises. An affordable website redesign starts free, and you only pay when you want your new website online."}
               </p>
 
+              <div className="mt-5 flex justify-center">
+                <CurrencySelector
+                  currency={pricing.currency}
+                  options={pricing.options}
+                  onChange={selectPricingCurrency}
+                  className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-black/60 shadow-sm"
+                />
+              </div>
+
               <div className="mt-10 grid gap-4 md:grid-cols-2">
                 <div className="rounded-3xl border border-black/10 bg-white p-8">
                   <h3 className="text-lg font-bold">Try for free</h3>
                   <p className="mt-2 font-fraunces text-4xl font-semibold">
-                    £0
+                    {pricing.freePrice}
                   </p>
                   <ul className="mt-6 space-y-3 text-sm leading-6 text-black/60">
                     <li>
@@ -3339,7 +3359,7 @@ export default function RefreshPage({
                   </span>
                   <h3 className="text-lg font-bold">Kiwi Pro</h3>
                   <p className="mt-2 font-fraunces text-4xl font-semibold">
-                    £10
+                    {pricing.proPrice}
                     <span className="text-lg font-normal text-white/45">
                       /month
                     </span>
@@ -3397,7 +3417,7 @@ export default function RefreshPage({
                       },
                       {
                         q: "What does it cost?",
-                        a: "You can see your new website for free. If you want it live online, Kiwi Pro is £10/month with changes included and no long contract.",
+                        a: `You can see your new website for free. If you want it live online, Kiwi Pro is ${pricing.proPriceMonthly} with changes included and no long contract.`,
                       },
                       {
                         q: "How is this different from local web design companies?",
@@ -3408,7 +3428,7 @@ export default function RefreshPage({
                         a: "Yes. You describe what you want in normal everyday language. If you want a change later, type it like you would say it.",
                       },
                       {
-                        q: "What happens after I pay £10/month?",
+                        q: `What happens after I pay ${pricing.proPriceMonthly}?`,
                         a: "Your website goes live on the internet and we host it for you. You can ask for changes, add extra pages, and connect your own web address. Cancel anytime.",
                       },
                       {
@@ -3431,14 +3451,14 @@ export default function RefreshPage({
                       },
                       {
                         q: "What is the website redesign cost?",
-                        a: "You can see the redesign for free. If you want the redesigned website live online, Kiwi Pro is £10/month with changes included and no long contract.",
+                        a: `You can see the redesign for free. If you want the redesigned website live online, Kiwi Pro is ${pricing.proPriceMonthly} with changes included and no long contract.`,
                       },
                       {
                         q: "I'm not good with computers. Is this for me?",
                         a: "Yes. You paste your web address and press one button. If you want a change later, type it like you would say it, such as \"make the phone number bigger\".",
                       },
                       {
-                        q: "What happens after I pay £10/month?",
+                        q: `What happens after I pay ${pricing.proPriceMonthly}?`,
                         a: "Your new website goes live on the internet and we host it for you. You can ask for changes and connect your own web address. Cancel anytime.",
                       },
                       {
@@ -3688,7 +3708,7 @@ export default function RefreshPage({
           <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
             <div className="flex items-start justify-between gap-4">
               <h2 className="font-fraunces text-2xl font-semibold tracking-tight">
-                Kiwi Pro — £10/month
+                Kiwi Pro — {pricing.proPriceMonthly}
               </h2>
               <button
                 type="button"
@@ -3708,12 +3728,23 @@ export default function RefreshPage({
               Cancel anytime — no contracts, no hidden fees. Payment is handled
               securely by Stripe.
             </p>
+            <CurrencySelector
+              currency={pricing.currency}
+              options={pricing.options}
+              onChange={selectPricingCurrency}
+              className="mt-5 flex items-center justify-between gap-3 rounded-2xl border border-black/10 bg-[#faf8f1] px-4 py-3 text-xs font-semibold text-black/60"
+            />
+            {!pricing.checkoutAllowed ? (
+              <p className="mt-3 rounded-2xl bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900">
+                {pricing.checkoutUnavailableMessage}
+              </p>
+            ) : null}
             <button
               type="button"
               onClick={() => {
                 void startCheckout();
               }}
-              disabled={isStartingCheckout}
+              disabled={isStartingCheckout || !pricing.checkoutAllowed}
               className="mt-5 h-12 w-full rounded-full bg-kiwi-green px-5 text-sm font-bold transition hover:bg-kiwi-green-hover disabled:opacity-50"
             >
               {isStartingCheckout ? "Opening…" : "Continue to secure payment"}

@@ -10,7 +10,16 @@ import {
   sendUpgradeSuccessEmail,
 } from "@/lib/email/service";
 import { metaUserDataFromRequest, sendMetaEvent } from "@/lib/meta/events";
-import { getAppUrl, getStripeProPriceId, getStripeSecretKey } from "@/lib/stripe/config";
+import { resolveCountryCodeFromRequest } from "@/lib/pricing/geo";
+import {
+  buildPricingResponse,
+  normalizeSupportedCurrency,
+} from "@/lib/pricing/regions";
+import {
+  getAppUrl,
+  getStripeProPriceId,
+  getStripeSecretKey,
+} from "@/lib/stripe/config";
 
 const { users, websites } = schema;
 
@@ -166,6 +175,7 @@ export function getStripeClient(): Stripe {
 export async function createProCheckoutSession(params?: {
   request?: Request;
   metaEventId?: string | null;
+  currency?: string | null;
 }): Promise<string> {
   const user = await getCurrentUser();
 
@@ -175,6 +185,18 @@ export async function createProCheckoutSession(params?: {
 
   const stripe = getStripeClient();
   let customerId = user.stripeCustomerId;
+  const countryCode = resolveCountryCodeFromRequest(params?.request);
+  const selectedCurrency = normalizeSupportedCurrency(params?.currency);
+  const pricing = buildPricingResponse({
+    countryCode,
+    currency: selectedCurrency,
+  });
+
+  if (!pricing.checkoutAllowed) {
+    throw new Error(
+      pricing.checkoutUnavailableMessage ?? "Kiwi Pro is not available yet.",
+    );
+  }
 
   if (!customerId) {
     const customer = await stripe.customers.create({
@@ -193,18 +215,35 @@ export async function createProCheckoutSession(params?: {
 
   const appUrl = getAppUrl();
   const metaEventId = params?.metaEventId || `checkout.${user.id}.${Date.now()}`;
-  const session = await stripe.checkout.sessions.create({
+  const checkoutParams: Stripe.Checkout.SessionCreateParams & {
+    adaptive_pricing?: { enabled: boolean };
+    currency?: string;
+  } = {
     mode: "subscription",
     customer: customerId,
     line_items: [{ price: getStripeProPriceId(), quantity: 1 }],
     success_url: `${appUrl}/dashboard?upgraded=1`,
     cancel_url: `${appUrl}/dashboard?upgrade_cancelled=1`,
-    metadata: { userId: user.id, metaEventId },
+    metadata: {
+      userId: user.id,
+      metaEventId,
+      currency: pricing.currency,
+      countryCode,
+    },
     subscription_data: {
-      metadata: { userId: user.id, metaEventId },
+      metadata: {
+        userId: user.id,
+        metaEventId,
+        currency: pricing.currency,
+        countryCode,
+      },
     },
     allow_promotion_codes: true,
-  });
+    adaptive_pricing: { enabled: true },
+    ...(selectedCurrency ? { currency: selectedCurrency.toLowerCase() } : {}),
+  };
+
+  const session = await stripe.checkout.sessions.create(checkoutParams);
 
   if (!session.url) {
     throw new Error("Stripe did not return a checkout URL");
@@ -219,7 +258,7 @@ export async function createProCheckoutSession(params?: {
       : { email: user.email },
     customData: {
       content_name: "Kiwi Pro",
-      currency: "GBP",
+      currency: pricing.currency,
     },
   });
 

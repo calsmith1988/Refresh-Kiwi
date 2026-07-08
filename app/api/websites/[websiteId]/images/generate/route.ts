@@ -97,7 +97,7 @@ export async function POST(request: Request, context: RouteContext) {
 
   if (isExpiredPreview) {
     return NextResponse.json(
-      { error: "This free preview has ended. Go Pro (£10/month) to bring it back and keep making changes." },
+      { error: "This free preview has ended. Go Pro to bring it back and keep making changes." },
       { status: 402 },
     );
   }
@@ -109,7 +109,7 @@ export async function POST(request: Request, context: RouteContext) {
 
   if (!hasPro && freeEditsRemaining <= 0) {
     return NextResponse.json(
-      { error: "You've used your 3 free changes. Go Pro (£10/month) for unlimited AI images and changes." },
+      { error: "You've used your 3 free changes. Go Pro for unlimited AI images and changes." },
       { status: 402 },
     );
   }
