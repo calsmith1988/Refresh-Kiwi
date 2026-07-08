@@ -45,7 +45,7 @@ export default function ChangeEmailPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#faf8f1] px-5 text-[#141811]">
       <div className="w-full max-w-md rounded-[2rem] border border-black/10 bg-white p-7 text-center shadow-xl">
-        <p className="font-fraunces text-xl font-semibold">Refresh Kiwi</p>
+        <p className="font-roboto text-xl font-medium tracking-tight">refresh kiwi</p>
         <h1 className="mt-6 font-fraunces text-3xl font-semibold tracking-tight">
           Email change
         </h1>

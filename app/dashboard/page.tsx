@@ -382,10 +382,7 @@ function websiteAddress(website: Website): string {
     return `https://${website.customDomain}`;
   }
 
-  const origin =
-    typeof window !== "undefined" ? window.location.origin : "https://refresh.kiwi";
-
-  return `${origin}/preview/${website.slug}/`;
+  return previewHref(website.slug);
 }
 
 function sourceHostname(sourceUrl: string | null): string {
@@ -1642,8 +1639,8 @@ export default function DashboardPage() {
               aria-hidden
               className="shrink-0 rounded-full"
             />
-            <span className="hidden translate-y-[2px] truncate font-marhey text-xl font-normal leading-tight min-[380px]:inline-block">
-              Refresh Kiwi
+            <span className="hidden truncate font-roboto text-xl font-medium leading-tight tracking-tight min-[380px]:inline-block">
+              refresh kiwi
             </span>
           </Link>
           <div className="hidden items-center gap-2 md:flex">

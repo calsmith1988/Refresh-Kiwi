@@ -420,8 +420,8 @@ export default function AccountPage() {
               aria-hidden
               className="shrink-0 rounded-full"
             />
-            <span className="inline-block translate-y-[3px] truncate font-marhey text-2xl font-normal leading-none">
-              Refresh Kiwi
+            <span className="inline-block truncate font-roboto text-2xl font-medium leading-none tracking-tight">
+              refresh kiwi
             </span>
           </Link>
           <div className="flex flex-wrap items-center gap-2">

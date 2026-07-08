@@ -37,9 +37,9 @@ export default function BlogIndexPage() {
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4">
           <Link
             href="/"
-            className="inline-block translate-y-[3px] font-marhey text-base font-normal leading-none"
+            className="inline-block font-roboto text-base font-medium leading-none tracking-tight"
           >
-            Refresh Kiwi
+            refresh kiwi
           </Link>
           <Link
             href="/"

@@ -2227,8 +2227,8 @@ export default function RefreshPage({
               aria-hidden
               className="rounded-full"
             />
-            <span className="hidden translate-y-[3px] font-marhey text-xl font-normal leading-none min-[400px]:inline-block">
-              Refresh Kiwi
+            <span className="hidden truncate font-roboto text-xl font-medium leading-none tracking-tight min-[400px]:inline-block">
+              refresh kiwi
             </span>
           </Link>
           <nav
@@ -3582,8 +3582,8 @@ export default function RefreshPage({
                     aria-hidden
                     className="rounded-full"
                   />
-                  <span className="inline-block translate-y-[3px] font-marhey text-xl font-normal leading-none">
-                    Refresh Kiwi
+                  <span className="inline-block font-roboto text-xl font-medium leading-none tracking-tight">
+                    refresh kiwi
                   </span>
                 </Link>
                 <p className="mt-3 text-xs leading-5 text-black/60">
