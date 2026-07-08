@@ -543,6 +543,44 @@ export async function getWebsiteAccessByCustomDomain(hostname: string) {
   };
 }
 
+export async function getWebsiteContactTarget(slug: string) {
+  const [website] = await getDb()
+    .select({
+      id: websites.id,
+      slug: websites.slug,
+      brandName: websites.brandName,
+      status: websites.status,
+      customDomain: websites.customDomain,
+      customDomainStatus: websites.customDomainStatus,
+      user: {
+        email: users.email,
+        plan: users.plan,
+        subscriptionStatus: users.subscriptionStatus,
+      },
+    })
+    .from(websites)
+    .leftJoin(users, eq(websites.userId, users.id))
+    .where(eq(websites.slug, slug))
+    .limit(1);
+
+  if (!website) {
+    return null;
+  }
+
+  return {
+    websiteId: website.id,
+    slug: website.slug,
+    brandName: website.brandName,
+    status: website.status,
+    customDomain: website.customDomain,
+    customDomainStatus: website.customDomainStatus,
+    ownerEmail: website.user?.email ?? null,
+    ownerPlan: website.user?.plan ?? null,
+    subscriptionStatus: website.user?.subscriptionStatus ?? null,
+    ownerIsPro: website.user ? isProUser(website.user) : false,
+  };
+}
+
 export async function listOwnedWebsites(userId: string) {
   return getDb()
     .select()

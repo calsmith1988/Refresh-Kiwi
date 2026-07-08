@@ -27,6 +27,57 @@ export interface LegalPagesPromptParams extends PromptParams {
   existingLegalSummary: string;
 }
 
+function buildFormRules(slug: string): string {
+  return [
+    "## Contact forms",
+    "",
+    "- Do not add contact forms by default. Only add a contact form when the user explicitly asks for one.",
+    "- When a contact form is requested, use Refresh Kiwi's form relay pattern below. Do not build custom backends, third-party form services, mailto form actions, or fake success alerts.",
+    "- The form posts root-relative JSON to /api/site-contact so it works on both previews and custom domains. Keep the hidden slug value exactly as shown.",
+    "",
+    "```html",
+    '<form data-refresh-kiwi-contact>',
+    `  <input type="hidden" name="slug" value="${slug}" />`,
+    '  <p style="position:absolute;left:-9999px" aria-hidden="true">',
+    '    <label>Website <input name="website" tabindex="-1" autocomplete="off" /></label>',
+    "  </p>",
+    '  <label>Name <input name="name" autocomplete="name" required /></label>',
+    '  <label>Email <input name="email" type="email" autocomplete="email" required /></label>',
+    '  <label>Message <textarea name="message" rows="5" required></textarea></label>',
+    '  <button type="submit">Send message</button>',
+    '  <p data-refresh-kiwi-contact-status role="status" aria-live="polite"></p>',
+    "</form>",
+    "<script>",
+    "document.querySelectorAll('[data-refresh-kiwi-contact]').forEach(function (form) {",
+    "  form.addEventListener('submit', async function (event) {",
+    "    event.preventDefault();",
+    "    var status = form.querySelector('[data-refresh-kiwi-contact-status]');",
+    "    var button = form.querySelector('button[type=\"submit\"]');",
+    "    var data = Object.fromEntries(new FormData(form).entries());",
+    "    if (status) status.textContent = 'Sending...';",
+    "    if (button) button.disabled = true;",
+    "    try {",
+    "      var response = await fetch('/api/site-contact', {",
+    "        method: 'POST',",
+    "        headers: { 'Content-Type': 'application/json' },",
+    "        body: JSON.stringify(data)",
+    "      });",
+    "      var result = await response.json();",
+    "      if (!response.ok || !result.ok) throw new Error(result.error || 'Could not send message.');",
+    "      form.reset();",
+    "      if (status) status.textContent = 'Thanks - your message has been sent.';",
+    "    } catch (error) {",
+    "      if (status) status.textContent = error.message || 'Could not send message. Please try again.';",
+    "    } finally {",
+    "      if (button) button.disabled = false;",
+    "    }",
+    "  });",
+    "});",
+    "</script>",
+    "```",
+  ].join("\n");
+}
+
 export function buildHomepagePrompt({ sourceUrl, slug }: PromptParams): string {
   if (!sourceUrl) {
     throw new Error("Refresh homepage prompt requires a source URL");
@@ -83,6 +134,8 @@ Create a proper landing page redesign:
 - Include only the strongest content: services, trust proof, coverage/location, offer, testimonials, contact CTA.
 - Add micro-interactions, hover states, or subtle scroll animations if useful, but keep it static and fast.
 - Do not use emoji as UI icons; use inline SVG if icons are needed.
+
+${buildFormRules(slug)}
 
 Avoid:
 - A wall of text.
@@ -154,6 +207,8 @@ Create a proper small-business landing page:
 - Add micro-interactions, hover states, or subtle scroll animations if useful, but keep it static and fast.
 - Do not use emoji as UI icons; use inline SVG if icons are needed.
 
+${buildFormRules(slug)}
+
 Avoid:
 - A wall of text.
 - A generic Tailwind/AI landing page look.
@@ -196,6 +251,8 @@ The homepage already exists. Your job is to expand it into a small multi-page we
    - discoveredPages: []
 8. Commit the finished multi-page site to the repo.
 
+${buildFormRules(slug)}
+
 ## Quality bar
 
 - These should be real pages, not lock placeholders.
@@ -230,6 +287,8 @@ The homepage already exists. Your job is to crawl the source website for importa
    - pages: include "/" plus each generated page with path, title, and gated false
    - discoveredPages: include any meaningful internal pages you found but did not generate
 10. Commit the finished multi-page site to the repo.
+
+${buildFormRules(slug)}
 
 ## Quality bar
 
@@ -280,6 +339,8 @@ ${legalDraft}
    - discoveredPages: include any meaningful pages discovered but not generated
 9. Commit the finished legal pages to the repo.
 
+${buildFormRules(slug)}
+
 ## Quality bar
 
 - These pages should feel part of the refreshed website, not pasted legal boilerplate.
@@ -324,6 +385,8 @@ USER REQUEST: ${editPrompt}
 6. Videos may appear as YouTube/Vimeo iframes or hotlinked <video> tags pointing at the original site — preserve them as-is. If the edit asks for a new video, only use an embed or URL that exists on the source site or that the user provided; never download video files or invent video URLs.
 7. Update site.json only if the edit changes metadata, page titles, or page structure.
 8. Commit the finished edit to the repo.
+
+${buildFormRules(slug)}
 
 ## Quality bar
 

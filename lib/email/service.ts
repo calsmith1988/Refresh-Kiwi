@@ -5,6 +5,7 @@ async function sendEmail(params: {
   subject: string;
   text: string;
   html: string;
+  replyTo?: string;
 }) {
   const apiKey = getResendApiKey();
 
@@ -23,7 +24,11 @@ async function sendEmail(params: {
     },
     body: JSON.stringify({
       from: getEmailFrom(),
-      ...params,
+      to: params.to,
+      subject: params.subject,
+      text: params.text,
+      html: params.html,
+      reply_to: params.replyTo,
     }),
   });
 
@@ -62,6 +67,10 @@ function button(url: string, label: string): string {
   return `<a href="${escapeHtml(url)}" style="display:inline-block;background:#c5e66a;color:#111;padding:12px 18px;border-radius:999px;text-decoration:none;font-weight:700">${escapeHtml(label)}</a>`;
 }
 
+function preserveLineBreaks(value: string): string {
+  return escapeHtml(value).replaceAll("\n", "<br />");
+}
+
 function previewReadyCopy(brandName?: string | null) {
   const name = brandName?.trim();
 
@@ -97,6 +106,44 @@ export async function sendWelcomeEmail(params: {
       <p>Welcome to Refresh Kiwi. Paste your current website and we'll help you turn it into a fresher preview.</p>
       <p>${button(buildAppUrl("/"), "Start a refresh")}</p>
     `),
+  });
+}
+
+export async function sendContactEnquiryEmail(params: {
+  to: string;
+  siteName: string;
+  visitorName: string;
+  visitorEmail: string;
+  message: string;
+}) {
+  const siteName = params.siteName.trim() || "your website";
+  const subject = `New enquiry from ${siteName}`;
+
+  await sendEmail({
+    to: params.to,
+    replyTo: params.visitorEmail,
+    subject,
+    text: [
+      `You received a new enquiry from ${siteName}.`,
+      "",
+      `Name: ${params.visitorName}`,
+      `Email: ${params.visitorEmail}`,
+      "",
+      "Message:",
+      params.message,
+    ].join("\n"),
+    html: shell(
+      `
+      <h1 style="font-size:22px;line-height:1.25;margin:0 0 16px">New enquiry from ${escapeHtml(siteName)}</h1>
+      <p><strong>Name:</strong> ${escapeHtml(params.visitorName)}</p>
+      <p><strong>Email:</strong> ${escapeHtml(params.visitorEmail)}</p>
+      <div style="margin-top:18px;padding:16px;border:1px solid #e5e5e5;border-radius:16px;background:#fafafa">
+        <p style="margin:0 0 8px;font-weight:700">Message</p>
+        <p style="margin:0">${preserveLineBreaks(params.message)}</p>
+      </div>
+      `,
+      "You received this because this website is live on Refresh Kiwi.",
+    ),
   });
 }
 
