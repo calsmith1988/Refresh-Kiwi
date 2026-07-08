@@ -39,15 +39,24 @@ async function sendEmail(params: {
   }
 }
 
-function shell(content: string, footer?: string): string {
+function shell(
+  content: string,
+  footer?: string,
+  options?: { showBrandHeader?: boolean },
+): string {
   const logoUrl = buildAppUrl("/refresh-kiwi-favicon-v2.png");
+  const showBrandHeader = options?.showBrandHeader ?? true;
 
   return `
     <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111;max-width:560px;margin:0 auto;padding:24px">
-      <div style="display:flex;align-items:center;gap:10px;margin:0 0 20px">
+      ${
+        showBrandHeader
+          ? `<div style="display:flex;align-items:center;gap:10px;margin:0 0 20px">
         <img src="${logoUrl}" alt="" width="32" height="32" style="display:block;border-radius:999px" />
         <div style="font-size:20px;font-weight:700;letter-spacing:-0.02em">Refresh Kiwi</div>
-      </div>
+      </div>`
+          : ""
+      }
       ${content}
       <p style="font-size:12px;color:#666;margin-top:32px">${footer ?? "You received this because you have a Refresh Kiwi account."}</p>
     </div>
@@ -117,14 +126,16 @@ export async function sendContactEnquiryEmail(params: {
   message: string;
 }) {
   const siteName = params.siteName.trim() || "your website";
-  const subject = `New enquiry from ${siteName}`;
+  const subject = "New enquiry through your website contact form";
 
   await sendEmail({
     to: params.to,
     replyTo: params.visitorEmail,
     subject,
     text: [
-      `You received a new enquiry from ${siteName}.`,
+      "You've received a new enquiry through your website contact form.",
+      "",
+      `Website: ${siteName}`,
       "",
       `Name: ${params.visitorName}`,
       `Email: ${params.visitorEmail}`,
@@ -134,7 +145,8 @@ export async function sendContactEnquiryEmail(params: {
     ].join("\n"),
     html: shell(
       `
-      <h1 style="font-size:22px;line-height:1.25;margin:0 0 16px">New enquiry from ${escapeHtml(siteName)}</h1>
+      <h1 style="font-size:22px;line-height:1.25;margin:0 0 16px">You've received a new enquiry through your website contact form.</h1>
+      <p style="margin:0 0 18px;color:#555">Website: <strong>${escapeHtml(siteName)}</strong></p>
       <p><strong>Name:</strong> ${escapeHtml(params.visitorName)}</p>
       <p><strong>Email:</strong> ${escapeHtml(params.visitorEmail)}</p>
       <div style="margin-top:18px;padding:16px;border:1px solid #e5e5e5;border-radius:16px;background:#fafafa">
@@ -142,7 +154,8 @@ export async function sendContactEnquiryEmail(params: {
         <p style="margin:0">${preserveLineBreaks(params.message)}</p>
       </div>
       `,
-      "You received this because this website is live on Refresh Kiwi.",
+      "This enquiry was sent through your website contact form. Powered by Refresh Kiwi.",
+      { showBrandHeader: false },
     ),
   });
 }
