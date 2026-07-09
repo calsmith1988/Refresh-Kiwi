@@ -937,6 +937,10 @@ export default function RefreshPage({
 
   const handleHeroPointerMove = useCallback(
     (event: ReactPointerEvent<HTMLElement>) => {
+      if (showVerification) {
+        return;
+      }
+
       if (heroPointerFrameRef.current !== null) {
         window.cancelAnimationFrame(heroPointerFrameRef.current);
       }
@@ -953,7 +957,7 @@ export default function RefreshPage({
         });
       });
     },
-    [],
+    [showVerification],
   );
 
   const chooseHeroMode = useCallback((mode: FlowMode) => {
@@ -1812,6 +1816,10 @@ export default function RefreshPage({
       return false;
     }
 
+    if (heroPointerFrameRef.current !== null) {
+      window.cancelAnimationFrame(heroPointerFrameRef.current);
+      heroPointerFrameRef.current = null;
+    }
     setPendingGeneration(generation);
     setShowVerification(true);
     setErrorMessage(null);

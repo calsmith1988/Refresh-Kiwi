@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /**
  * Cloudflare Turnstile challenge. Renders only when
@@ -46,7 +46,11 @@ function loadTurnstileScript(): Promise<void> {
       script.async = true;
       script.defer = true;
       script.onload = () => resolve();
-      script.onerror = () => reject(new Error("Failed to load Turnstile"));
+      script.onerror = () => {
+        window.__turnstileScriptLoading = undefined;
+        script.remove();
+        reject(new Error("Failed to load Turnstile"));
+      };
       document.head.appendChild(script);
     });
   }
@@ -66,6 +70,17 @@ export default function TurnstileWidget({
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
   const containerRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<string | null>(null);
+  const onVerifyRef = useRef(onVerify);
+  const onExpireRef = useRef(onExpire);
+  const [status, setStatus] = useState<"loading" | "checking" | "error">(
+    "loading",
+  );
+  const [retryKey, setRetryKey] = useState(0);
+
+  useEffect(() => {
+    onVerifyRef.current = onVerify;
+    onExpireRef.current = onExpire;
+  }, [onExpire, onVerify]);
 
   useEffect(() => {
     if (!siteKey || !containerRef.current) {
@@ -74,6 +89,8 @@ export default function TurnstileWidget({
 
     let cancelled = false;
     const container = containerRef.current;
+    setStatus("loading");
+    container.replaceChildren();
 
     void loadTurnstileScript()
       .then(() => {
@@ -83,15 +100,23 @@ export default function TurnstileWidget({
 
         widgetIdRef.current = window.turnstile.render(container, {
           sitekey: siteKey,
-          callback: (token) => onVerify(token),
-          "expired-callback": () => onExpire?.(),
-          "error-callback": () => onExpire?.(),
+          callback: (token) => onVerifyRef.current(token),
+          "expired-callback": () => {
+            setStatus("error");
+            onExpireRef.current?.();
+          },
+          "error-callback": () => {
+            setStatus("error");
+            onExpireRef.current?.();
+          },
           theme: "auto",
         });
+        setStatus("checking");
       })
       .catch(() => {
-        // Network/script failure — the server gate will reject with a retry
-        // message, so we don't need to surface anything extra here.
+        if (!cancelled) {
+          setStatus("error");
+        }
       });
 
     return () => {
@@ -102,11 +127,37 @@ export default function TurnstileWidget({
         widgetIdRef.current = null;
       }
     };
-  }, [siteKey, onVerify, onExpire]);
+  }, [retryKey, siteKey]);
 
   if (!siteKey) {
     return null;
   }
 
-  return <div ref={containerRef} className={className} />;
+  return (
+    <div className={className}>
+      <div ref={containerRef} className="flex min-h-[65px] justify-center" />
+      {status === "loading" ? (
+        <p className="pb-2 text-center text-xs font-medium text-black/45">
+          Loading secure check…
+        </p>
+      ) : status === "checking" ? (
+        <p className="pb-2 text-center text-xs font-medium text-black/45">
+          Checking…
+        </p>
+      ) : (
+        <div className="pb-2 text-center">
+          <p className="text-xs font-medium text-red-700">
+            The security check could not load.
+          </p>
+          <button
+            type="button"
+            onClick={() => setRetryKey((current) => current + 1)}
+            className="mt-1 text-xs font-semibold text-black underline underline-offset-4"
+          >
+            Try again
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
