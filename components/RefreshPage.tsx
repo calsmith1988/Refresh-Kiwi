@@ -2227,8 +2227,8 @@ export default function RefreshPage({
               aria-hidden
               className="rounded-full"
             />
-            <span className="hidden truncate font-roboto text-[30px] font-[350] leading-none tracking-tight min-[400px]:inline-block">
-              refresh kiwi
+            <span className="hidden truncate font-dosis text-[27px] font-medium leading-none tracking-tight min-[400px]:inline-block">
+              Refresh Kiwi
             </span>
           </Link>
           <nav

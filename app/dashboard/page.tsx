@@ -1672,8 +1672,8 @@ export default function DashboardPage() {
               aria-hidden
               className="shrink-0 rounded-full"
             />
-            <span className="hidden truncate font-roboto text-[34px] font-[350] leading-tight tracking-tight min-[380px]:inline-block">
-              refresh kiwi
+            <span className="hidden truncate font-dosis text-[27px] font-medium leading-tight tracking-tight min-[380px]:inline-block">
+              Refresh Kiwi
             </span>
           </Link>
           <div className="hidden items-center gap-2 md:flex">
