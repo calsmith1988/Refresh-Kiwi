@@ -922,6 +922,7 @@ export default function RefreshPage({
   const [elapsedMs, setElapsedMs] = useState(0);
   const [statusMessageIndex, setStatusMessageIndex] = useState(0);
   const [isPreviewMenuOpen, setIsPreviewMenuOpen] = useState(false);
+  const [showStartAnotherWarning, setShowStartAnotherWarning] = useState(false);
   const editPollTimerRef = useRef<number | null>(null);
   const pollTimerRef = useRef<number | null>(null);
   const pollFailuresRef = useRef(0);
@@ -1743,6 +1744,17 @@ export default function RefreshPage({
     setIsRefreshing(false);
   };
 
+  const requestStartFresh = () => {
+    setIsPreviewMenuOpen(false);
+
+    if (job && !job.isClaimed) {
+      setShowStartAnotherWarning(true);
+      return;
+    }
+
+    startFresh();
+  };
+
   const handleSelectPromptStarter = (starter: PromptStarter) => {
     const prompt = promptFromStarter(starter);
 
@@ -2292,7 +2304,7 @@ export default function RefreshPage({
             {showReveal ? (
               <button
                 type="button"
-                onClick={startFresh}
+                onClick={requestStartFresh}
                 className="rounded-full bg-[#141811] px-4 py-2 text-sm font-semibold text-white transition hover:bg-black sm:px-5"
               >
                 Start another
@@ -2371,10 +2383,7 @@ export default function RefreshPage({
                   ) : null}
                   <button
                     type="button"
-                    onClick={() => {
-                      setIsPreviewMenuOpen(false);
-                      startFresh();
-                    }}
+                    onClick={requestStartFresh}
                     className="mt-1 block w-full rounded-2xl bg-[#141811] px-4 py-3 text-left text-sm font-semibold text-white transition hover:bg-black"
                   >
                     Start another
@@ -3708,6 +3717,66 @@ export default function RefreshPage({
             </div>
           </footer>
         </>
+      ) : null}
+
+      {showStartAnotherWarning ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="start-another-warning-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-5 backdrop-blur-sm"
+        >
+          <div className="w-full max-w-md rounded-3xl border border-black/10 bg-white p-6 text-center shadow-2xl sm:p-8">
+            <Image
+              src="/refresh-kiwi-favicon-v2.png"
+              alt=""
+              width={44}
+              height={44}
+              aria-hidden
+              className="mx-auto rounded-full"
+            />
+            <h2
+              id="start-another-warning-title"
+              className="mt-4 font-fraunces text-2xl font-semibold tracking-tight"
+            >
+              Keep this website before starting another?
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-black/55">
+              This preview is not saved to an account. Starting another will
+              remove it from this browser.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setShowStartAnotherWarning(false);
+                handleOpenAccount();
+              }}
+              className="mt-6 h-12 w-full rounded-full bg-kiwi-green px-5 text-sm font-bold transition hover:bg-kiwi-green-hover"
+            >
+              Keep it free for 7 days
+            </button>
+            <p className="mt-2 text-xs leading-5 text-black/45">
+              Free account · 3 free changes included
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setShowStartAnotherWarning(false);
+                startFresh();
+              }}
+              className="mt-4 text-sm font-medium text-black/50 underline decoration-black/20 underline-offset-4 transition hover:text-black"
+            >
+              Start another anyway
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowStartAnotherWarning(false)}
+              className="mt-3 block w-full text-sm font-medium text-black/50 transition hover:text-black"
+            >
+              Go back
+            </button>
+          </div>
+        </div>
       ) : null}
 
       {showVerification && !user && pendingGeneration ? (
