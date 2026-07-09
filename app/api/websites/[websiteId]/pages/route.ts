@@ -17,12 +17,39 @@ export const runtime = "nodejs";
 const { jobs } = schema;
 
 type PageGenerationBody = {
-  type?: "business" | "legal";
+  type?: "business" | "legal" | "custom";
   answers?: unknown;
+  title?: unknown;
+  brief?: unknown;
 };
 
 interface RouteContext {
   params: Promise<{ websiteId: string }>;
+}
+
+const CUSTOM_PAGE_TITLE_MAX_LENGTH = 80;
+const CUSTOM_PAGE_BRIEF_MAX_LENGTH = 2000;
+
+function readRequiredString(
+  value: unknown,
+  fieldName: string,
+  maxLength: number,
+): string {
+  if (typeof value !== "string") {
+    throw new Error(`${fieldName} is required.`);
+  }
+
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    throw new Error(`${fieldName} is required.`);
+  }
+
+  if (trimmed.length > maxLength) {
+    throw new Error(`${fieldName} must be ${maxLength} characters or fewer.`);
+  }
+
+  return trimmed;
 }
 
 export async function POST(request: Request, context: RouteContext) {
@@ -51,12 +78,29 @@ export async function POST(request: Request, context: RouteContext) {
     rawBody && typeof rawBody === "object"
       ? (rawBody as PageGenerationBody)
       : {};
-  const generationType = body.type === "legal" ? "legal" : "business";
+  const generationType =
+    body.type === "legal" || body.type === "custom" ? body.type : "business";
   let legalAnswers: LegalAnswers | null = null;
+  let customPage: { title: string; brief: string } | null = null;
 
   try {
     legalAnswers =
       generationType === "legal" ? validateLegalAnswers(body.answers) : null;
+    customPage =
+      generationType === "custom"
+        ? {
+            title: readRequiredString(
+              body.title,
+              "Page name",
+              CUSTOM_PAGE_TITLE_MAX_LENGTH,
+            ),
+            brief: readRequiredString(
+              body.brief,
+              "Page description",
+              CUSTOM_PAGE_BRIEF_MAX_LENGTH,
+            ),
+          }
+        : null;
   } catch (error) {
     return NextResponse.json(
       {
@@ -107,13 +151,21 @@ export async function POST(request: Request, context: RouteContext) {
 
   await enqueueBackgroundTask({
     type: "additional-pages",
-    payload: legalAnswers
-      ? {
-          websiteId: website.id,
-          type: "legal",
-          answers: legalAnswers as unknown as Record<string, unknown>,
-        }
-      : { websiteId: website.id, type: "business" },
+    payload:
+      generationType === "legal" && legalAnswers
+        ? {
+            websiteId: website.id,
+            type: "legal",
+            answers: legalAnswers as unknown as Record<string, unknown>,
+          }
+        : generationType === "custom" && customPage
+          ? {
+              websiteId: website.id,
+              type: "custom",
+              title: customPage.title,
+              brief: customPage.brief,
+            }
+          : { websiteId: website.id, type: "business" },
   });
 
   const pages = await listPagesForJob(job.id);
@@ -123,6 +175,8 @@ export async function POST(request: Request, context: RouteContext) {
     message:
       generationType === "legal"
         ? "Legal page generation started."
+        : generationType === "custom"
+          ? "New page generation started."
         : "Additional page generation started.",
     pages: pages.map(toPageResponse),
   });

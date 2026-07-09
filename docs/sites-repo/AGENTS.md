@@ -62,8 +62,13 @@ If the design includes a thin announcement or promo bar above the main header:
 - Wire the burger toggle with plain vanilla JavaScript in the site's own files (inline or `script.js`). No frameworks, no external libraries, no CDN scripts.
 - If the toggle lives in `script.js`, confirm every page that shows the header actually loads that script, and that the selectors in the script match the markup you shipped.
 - The button must toggle `aria-expanded`, the menu must close when a nav link is clicked, and the page must never get stuck with the menu open or the body scroll-locked.
+- **The close control must stay visible and tappable while the menu is open.** This is the most common shipped bug. Use one of exactly two patterns:
+  1. The same burger button stays in place above the open panel (give it a higher `z-index` than the panel, and never let the panel or a full-screen overlay cover it), swapping its icon to an X via a class both states actually define; or
+  2. The open panel contains its own clearly visible X close button inside it.
+  After wiring it, trace the open-then-close path in the code: clicking the toggle (or panel X) with the menu open must remove the open class, restore the burger icon, and reset `aria-expanded`.
+- If the icon swap uses two separate elements (burger SVG and X SVG), verify the CSS shows exactly one of them in each state — a missing rule here is what makes the X "disappear".
 - The menu must work without any hover-only interaction (touch devices) and must not be hidden behind the header or announcement bar when open.
-- Check the header at a ~375px viewport: logo, burger, and any CTA must fit on one line without wrapping or overflow.
+- Check the header at a ~375px viewport: logo, burger, and any CTA must fit on one line without wrapping or overflow. Then check the open-menu state at the same width: the close control must be visible without scrolling.
 
 ## Final self-check before finishing
 

@@ -63,6 +63,7 @@ export type BackgroundTaskPayload =
       type?: "business" | "legal";
       answers?: Record<string, unknown>;
     }
+  | { websiteId: string; type: "custom"; title: string; brief: string }
   | { slug: string };
 
 export const users = pgTable(

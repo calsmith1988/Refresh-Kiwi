@@ -84,14 +84,22 @@ async function processTask(task: BackgroundTask): Promise<void> {
     case "additional-pages": {
       const payload = payloadValue<{
         websiteId: string;
-        type?: "business" | "legal";
+        type?: "business" | "legal" | "custom";
         answers?: Record<string, unknown>;
+        title?: string;
+        brief?: string;
       }>(task.payload);
 
       await processAdditionalPages(
         payload.websiteId,
         payload.type === "legal"
           ? { type: "legal", answers: payload.answers as LegalAnswers }
+          : payload.type === "custom"
+            ? {
+                type: "custom",
+                title: payload.title ?? "",
+                brief: payload.brief ?? "",
+              }
           : { type: "business" },
       );
       break;

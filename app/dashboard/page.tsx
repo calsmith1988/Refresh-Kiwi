@@ -190,7 +190,7 @@ type WebsiteImagesState =
   | { status: "error" }
   | { status: "ready"; images: WebsiteImage[] };
 
-type PageGenerationType = "business" | "legal";
+type PageGenerationType = "business" | "legal" | "custom";
 type WebsiteActionModalType =
   | "edit"
   | "images"
@@ -237,6 +237,11 @@ type LegalBooleanField = {
   label: string;
 };
 
+type CustomPageRequestState = {
+  title: string;
+  brief: string;
+};
+
 const DEFAULT_LEGAL_ANSWERS: LegalAnswersState = {
   businessLegalName: "",
   tradingName: "",
@@ -252,6 +257,11 @@ const DEFAULT_LEGAL_ANSWERS: LegalAnswersState = {
   embedsMapsOrVideos: true,
   hasExistingLegalPages: false,
   notes: "",
+};
+
+const DEFAULT_CUSTOM_PAGE_REQUEST: CustomPageRequestState = {
+  title: "",
+  brief: "",
 };
 
 const LEGAL_BOOLEAN_FIELDS: LegalBooleanField[] = [
@@ -521,6 +531,8 @@ export default function DashboardPage() {
   );
   const [legalAnswers, setLegalAnswers] =
     useState<LegalAnswersState>(DEFAULT_LEGAL_ANSWERS);
+  const [customPageRequest, setCustomPageRequest] =
+    useState<CustomPageRequestState>(DEFAULT_CUSTOM_PAGE_REQUEST);
   const [activePagesModalWebsiteId, setActivePagesModalWebsiteId] = useState<
     string | null
   >(null);
@@ -646,8 +658,12 @@ export default function DashboardPage() {
     : null;
   const canSubmitPageGeneration =
     pageGenerationType === "business" ||
-    (legalAnswers.businessLegalName.trim().length >= 2 &&
-      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(legalAnswers.privacyEmail.trim()));
+    (pageGenerationType === "legal" &&
+      legalAnswers.businessLegalName.trim().length >= 2 &&
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(legalAnswers.privacyEmail.trim())) ||
+    (pageGenerationType === "custom" &&
+      customPageRequest.title.trim().length > 0 &&
+      customPageRequest.brief.trim().length > 0);
 
   const loadDashboard = async (cancelled?: () => boolean) => {
     try {
@@ -812,6 +828,7 @@ export default function DashboardPage() {
       tradingName: website.brandName ?? "",
       privacyEmail: user?.email ?? "",
     });
+    setCustomPageRequest(DEFAULT_CUSTOM_PAGE_REQUEST);
     setPageChooserWebsiteId(website.id);
     setWebsiteActionModal(null);
     setErrorMessage(null);
@@ -822,6 +839,16 @@ export default function DashboardPage() {
     value: LegalAnswersState[Key],
   ) => {
     setLegalAnswers((current) => ({
+      ...current,
+      [key]: value,
+    }));
+  };
+
+  const updateCustomPageRequest = <Key extends keyof CustomPageRequestState>(
+    key: Key,
+    value: CustomPageRequestState[Key],
+  ) => {
+    setCustomPageRequest((current) => ({
       ...current,
       [key]: value,
     }));
@@ -1031,6 +1058,12 @@ export default function DashboardPage() {
         body: JSON.stringify(
           type === "legal"
             ? { type, answers: legalAnswers }
+            : type === "custom"
+              ? {
+                  type,
+                  title: customPageRequest.title,
+                  brief: customPageRequest.brief,
+                }
             : { type: "business" },
         ),
       });
@@ -2495,14 +2528,14 @@ export default function DashboardPage() {
                             <div className="mt-4 grid gap-3 sm:grid-cols-2">
                               <button
                                 type="button"
-                                onClick={() =>
-                                  isPro
-                                    ? void generateAdditionalPages(
-                                        website.id,
-                                        "business",
-                                      )
-                                    : openProSheet()
-                                }
+                                onClick={() => {
+                                  if (!isPro) {
+                                    openProSheet();
+                                    return;
+                                  }
+
+                                  openPageChooser(website);
+                                }}
                                 disabled={
                                   isGeneratingPages ||
                                   generatingPagesWebsiteId === website.id
@@ -3585,7 +3618,7 @@ export default function DashboardPage() {
           aria-labelledby="page-chooser-title"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-5 backdrop-blur-sm"
         >
-          <div className="preview-pop max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-black/10 bg-white p-6 shadow-2xl sm:p-8">
+          <div className="preview-pop max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-black/10 bg-white p-6 shadow-2xl sm:p-8">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-black/40">
@@ -3598,8 +3631,8 @@ export default function DashboardPage() {
                   What should we build?
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-black/55">
-                  Choose normal business pages, or create starter legal pages
-                  from a short questionnaire.
+                  Choose normal business pages, create starter legal pages, or
+                  describe a brand-new page from scratch.
                 </p>
               </div>
               <button
@@ -3611,7 +3644,7 @@ export default function DashboardPage() {
               </button>
             </div>
 
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <div className="mt-6 grid gap-3 sm:grid-cols-3">
               {[
                 {
                   type: "business" as const,
@@ -3624,6 +3657,12 @@ export default function DashboardPage() {
                   title: "Legal pages",
                   description:
                     "Starter privacy, cookie and terms pages. This is not legal advice.",
+                },
+                {
+                  type: "custom" as const,
+                  title: "A brand-new page",
+                  description:
+                    "Describe a page that does not exist yet and we will build it to match your site.",
                 },
               ].map((option) => (
                 <button
@@ -3741,6 +3780,44 @@ export default function DashboardPage() {
               </div>
             ) : null}
 
+            {pageGenerationType === "custom" ? (
+              <div className="mt-6 rounded-3xl bg-[#faf8f1] p-4 sm:p-5">
+                <p className="text-sm font-semibold text-black">
+                  New page details
+                </p>
+                <p className="mt-1 text-xs leading-5 text-black/45">
+                  Tell us what page to add and what it should cover. We&apos;ll
+                  build one page that matches this site.
+                </p>
+
+                <label className="mt-4 block text-xs font-semibold text-black/55">
+                  Page name
+                  <input
+                    value={customPageRequest.title}
+                    onChange={(event) =>
+                      updateCustomPageRequest("title", event.target.value)
+                    }
+                    maxLength={80}
+                    placeholder="Careers"
+                    className="mt-1 h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm font-medium text-black outline-none focus:border-black/30"
+                  />
+                </label>
+
+                <label className="mt-4 block text-xs font-semibold text-black/55">
+                  What should be on it?
+                  <textarea
+                    value={customPageRequest.brief}
+                    onChange={(event) =>
+                      updateCustomPageRequest("brief", event.target.value)
+                    }
+                    maxLength={2000}
+                    placeholder="Describe the page sections, key details, tone, and any facts we should include."
+                    className="mt-1 min-h-28 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm font-medium text-black outline-none focus:border-black/30"
+                  />
+                </label>
+              </div>
+            ) : null}
+
             <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
               <button
                 type="button"
@@ -3767,7 +3844,9 @@ export default function DashboardPage() {
                   ? "Starting..."
                   : pageGenerationType === "legal"
                     ? "Generate legal pages"
-                    : "Generate my other pages"}
+                    : pageGenerationType === "custom"
+                      ? "Create my new page"
+                      : "Generate my other pages"}
               </button>
             </div>
           </div>

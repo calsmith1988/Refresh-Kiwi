@@ -32,6 +32,11 @@ export interface LegalPagesPromptParams extends PromptParams {
   existingLegalSummary: string;
 }
 
+export interface CustomPagePromptParams extends PromptParams {
+  title: string;
+  brief: string;
+}
+
 function buildFormRules(slug: string): string {
   return [
     "## Contact forms",
@@ -311,6 +316,66 @@ ${buildFormRules(slug)}
 - Avoid rebuilding the homepage from scratch unless a small nav/footer update is needed.
 
 Stop when the generated pages and updated site.json are complete.`;
+}
+
+export function buildCustomPagePrompt({
+  sourceUrl,
+  slug,
+  generationMode,
+  creationPrompt,
+  title,
+  brief,
+}: CustomPagePromptParams): string {
+  const sourceContext =
+    generationMode === "fresh" || !sourceUrl
+      ? `ORIGINAL USER BRIEF: ${creationPrompt ?? "Not available. Infer cautiously from the existing site files."}`
+      : `SOURCE: ${sourceUrl}`;
+
+  const imageRules =
+    generationMode === "fresh" || !sourceUrl
+      ? "Use existing uploaded/local assets from assets/ where they fit. Do not crawl the web, download third-party images, or invent image paths."
+      : "You may use real images from the source site by hotlinking their absolute https URLs, exactly like the homepage does. Do not download images and never invent image paths.";
+
+  return `Create one brand-new custom page for an existing Refresh Kiwi static website.
+
+${sourceContext}
+SITE: sites/${slug}/
+REQUESTED PAGE: ${title}
+
+## User brief for this page
+
+${brief}
+
+## Goal
+
+The homepage already exists. Your job is to add exactly one polished page that matches the current site and satisfies the user's page brief.
+
+## Scope
+
+1. Work only inside sites/${slug}/.
+2. Read the existing files first, especially index.html, styles.css, script.js if present, and site.json.
+3. Build exactly ONE page for "${title}". Choose a sensible root-relative path derived from the title, such as /careers for "Careers". If a page already exists at that path, update that page instead of creating a duplicate.
+4. Ground copy in the user's page brief, the original/source context, and the existing site. Do not invent addresses, phone numbers, awards, testimonials, prices, policies, or compliance claims.
+5. ${imageRules}
+6. Match the homepage design system: same brand colours and palette, spacing, typography, visual style, header/nav/footer, and responsive behavior.
+7. Update the homepage navigation or footer to link to the new page in a natural place.
+8. Update site.json with:
+   - pages: include "/" plus all existing pages and the new page with path, title, and gated false
+   - discoveredPages: preserve existing discoveredPages when present
+9. Commit the finished custom page to the repo.
+
+${buildFormRules(slug)}
+
+## Quality bar
+
+- The new page should feel like part of the same website, not a pasted template.
+- Make the page useful and specific to the user's brief, but stay conservative when facts are missing.
+- Every generated page must load shared CSS and assets correctly from preview subpaths. Prefer root-relative preview paths like /preview/${slug}/styles.css, /preview/${slug}/script.js, /preview/${slug}/assets/file.png, and /preview/${slug}/page-path for navigation links.
+- Do not use href="styles.css" or src="assets/..." on nested pages, because those relative paths can break in previews.
+- Never use localhost, 127.0.0.1, or port-based preview origins anywhere in links, scripts, forms, canonical tags, Open Graph URLs, or base tags.
+- Avoid rebuilding the homepage from scratch unless a small nav/footer update is needed.
+
+Stop when the custom page and updated site.json are complete.`;
 }
 
 export function buildLegalPagesPrompt({

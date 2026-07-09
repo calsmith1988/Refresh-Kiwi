@@ -7,6 +7,7 @@ import { localizeWebsiteImages } from "@/lib/assets/localize";
 import {
   isCursorStartupError,
   runAdditionalPagesPhase,
+  runCustomPagePhase,
   runLegalPagesPhase,
 } from "@/lib/cursor/agent";
 import { getDb, schema } from "@/lib/db";
@@ -31,7 +32,8 @@ type SiteJson = {
 
 type PageGenerationOptions =
   | { type?: "business" }
-  | { type: "legal"; answers: LegalAnswers };
+  | { type: "legal"; answers: LegalAnswers }
+  | { type: "custom"; title: string; brief: string };
 
 const LEGAL_PAGE_PATTERN = /(privacy|cookie|cookies|terms|legal|gdpr)/i;
 
@@ -101,7 +103,10 @@ export async function processAdditionalPages(
   }
 
   try {
-    const generationType = options.type === "legal" ? "legal" : "business";
+    const generationType =
+      options.type === "legal" || options.type === "custom"
+        ? options.type
+        : "business";
     await updateJob(job.id, { status: "building_pages" });
     console.info(
       `[refresh-kiwi] ${generationType} pages started websiteId=${websiteId} slug=${website.slug}`,
@@ -143,6 +148,16 @@ export async function processAdditionalPages(
           })()
         : null;
 
+    const recordPagesRun = async (started: {
+      agentId: string;
+      runId: string;
+    }) => {
+      await updateJob(job.id, {
+        pagesAgentId: started.agentId,
+        pagesRunId: started.runId,
+      });
+    };
+
     const pagesRun =
       options.type === "legal"
         ? await runLegalPagesPhase(
@@ -156,28 +171,32 @@ export async function processAdditionalPages(
               legalDraft: legalDraft?.draft ?? "",
               existingLegalSummary: legalDraft?.summary ?? "",
             },
-            async (started) => {
-              await updateJob(job.id, {
-                pagesAgentId: started.agentId,
-                pagesRunId: started.runId,
-              });
-            },
+            recordPagesRun,
           )
-        : await runAdditionalPagesPhase(
-            {
-              sourceUrl: website.sourceUrl,
-              slug: website.slug,
-              agentId: job.homepageAgentId,
-              generationMode: website.generationMode,
-              creationPrompt: website.creationPrompt,
-            },
-            async (started) => {
-              await updateJob(job.id, {
-                pagesAgentId: started.agentId,
-                pagesRunId: started.runId,
-              });
-            },
-          );
+        : options.type === "custom"
+          ? await runCustomPagePhase(
+              {
+                sourceUrl:
+                  website.generationMode === "fresh" ? null : website.sourceUrl,
+                slug: website.slug,
+                agentId: job.homepageAgentId,
+                generationMode: website.generationMode,
+                creationPrompt: website.creationPrompt,
+                title: options.title,
+                brief: options.brief,
+              },
+              recordPagesRun,
+            )
+          : await runAdditionalPagesPhase(
+              {
+                sourceUrl: website.sourceUrl,
+                slug: website.slug,
+                agentId: job.homepageAgentId,
+                generationMode: website.generationMode,
+                creationPrompt: website.creationPrompt,
+              },
+              recordPagesRun,
+            );
 
     console.info(
       `[refresh-kiwi] ${generationType} pages sync starting websiteId=${websiteId} slug=${website.slug}`,
@@ -187,7 +206,7 @@ export async function processAdditionalPages(
       `[refresh-kiwi] ${generationType} pages sync complete websiteId=${websiteId} slug=${website.slug}`,
     );
 
-    // New pages hotlink images from the source site; bring them in-house.
+    // New pages may hotlink source images; bring them in-house.
     console.info(
       `[refresh-kiwi] ${generationType} pages image localisation starting websiteId=${websiteId} slug=${website.slug}`,
     );
@@ -208,7 +227,7 @@ export async function processAdditionalPages(
       .set({ updatedAt: new Date() })
       .where(eq(websites.id, website.id));
 
-    if (generationType === "business") {
+    if (generationType === "business" || generationType === "custom") {
       await tryCaptureHomepageScreenshot(website.slug);
     }
   } catch (error) {
