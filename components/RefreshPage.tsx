@@ -917,6 +917,7 @@ export default function RefreshPage({
   const [isCancellingRefresh, setIsCancellingRefresh] = useState(false);
   const [isCancellingEdit, setIsCancellingEdit] = useState(false);
   const [showProSheet, setShowProSheet] = useState(false);
+  const [pendingUpgrade, setPendingUpgrade] = useState(false);
   const [isStartingCheckout, setIsStartingCheckout] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [statusMessageIndex, setStatusMessageIndex] = useState(0);
@@ -1327,6 +1328,18 @@ export default function RefreshPage({
     }
   }, [job]);
 
+  const continueAfterAuthentication = async () => {
+    await claimCurrentWebsite();
+
+    if (pendingUpgrade) {
+      setPendingUpgrade(false);
+      setShowProSheet(true);
+      return;
+    }
+
+    window.location.href = "/dashboard?tour=1";
+  };
+
   const logout = async () => {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
@@ -1383,16 +1396,7 @@ export default function RefreshPage({
       setAccountMode("closed");
       setTwoFactorChallengeToken(null);
       setTwoFactorCode("");
-      if (accountMode === "login") {
-        await claimCurrentWebsite().catch((error) => {
-          console.warn("[refresh-kiwi] login claim skipped", error);
-        });
-        window.location.href = "/dashboard?tour=1";
-        return;
-      }
-
-      await claimCurrentWebsite();
-      window.location.href = "/dashboard?tour=1";
+      await continueAfterAuthentication();
     } catch (error) {
       setAuthErrorMessage(
         error instanceof Error ? error.message : "Account request failed",
@@ -1438,10 +1442,7 @@ export default function RefreshPage({
       setTwoFactorChallengeToken(null);
       setTwoFactorCode("");
       setAuthErrorMessage(null);
-      await claimCurrentWebsite().catch((error) => {
-        console.warn("[refresh-kiwi] 2FA login claim skipped", error);
-      });
-      window.location.href = "/dashboard?tour=1";
+      await continueAfterAuthentication();
     } catch (error) {
       setAuthErrorMessage(
         error instanceof Error ? error.message : "Invalid two-factor code",
@@ -1453,6 +1454,7 @@ export default function RefreshPage({
 
   const handleOpenAccount = () => {
     setAuthErrorMessage(null);
+    setPendingUpgrade(false);
 
     if (user) {
       void claimCurrentWebsite()
@@ -1471,13 +1473,23 @@ export default function RefreshPage({
   };
 
   const handleUpgrade = async () => {
+    if (!pricing.checkoutAllowed) {
+      setErrorMessage(
+        pricing.checkoutUnavailableMessage ?? "Kiwi Pro is not available yet.",
+      );
+      return;
+    }
+
     if (!user) {
+      setPendingUpgrade(true);
+      setAuthErrorMessage(null);
       setAccountMode("signup");
       return;
     }
 
     try {
       await claimCurrentWebsite();
+      setPendingUpgrade(false);
       setShowProSheet(true);
     } catch (error) {
       setErrorMessage(
@@ -2052,6 +2064,8 @@ export default function RefreshPage({
     }
 
     const generation = pendingGeneration;
+    setShowVerification(false);
+    setPendingGeneration(null);
 
     if (generation === "gbp") {
       void handleGbpImport(token);
@@ -2483,8 +2497,8 @@ export default function RefreshPage({
                       ? `Saved to your account — yours free until ${expiryLabel}.`
                       : "Saved to your account."
                     : expiryLabel
-                      ? `This preview is yours free until ${expiryLabel}. Like it? Save it and ask for changes in plain English.`
-                      : "This preview is yours free for 7 days. Like it? Save it and ask for changes in plain English."}
+                      ? `Like it? Take it online now, or keep the preview free until ${expiryLabel} while you decide.`
+                      : "Like it? Take it online now, or keep the preview free for 7 days while you decide."}
                 </p>
               </div>
 
@@ -2512,31 +2526,55 @@ export default function RefreshPage({
 
               <div className="mx-auto mt-7 max-w-2xl">
                 {!job?.isClaimed ? (
-                  <div className="grid gap-3 sm:grid-cols-3">
+                  <div>
+                    <div
+                      className={`grid gap-3 ${
+                        pricing.checkoutAllowed ? "sm:grid-cols-2" : ""
+                      }`}
+                    >
+                      {pricing.checkoutAllowed ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void handleUpgrade();
+                          }}
+                          className="flex min-h-24 flex-col items-center justify-center rounded-3xl bg-kiwi-green px-6 py-4 text-center transition hover:bg-kiwi-green-hover"
+                        >
+                          <span className="text-sm font-bold">
+                            Make this my website — {pricing.proPriceShort}
+                          </span>
+                          <span className="mt-1 text-xs leading-5 text-black/60">
+                            We host it online, with unlimited changes and your own
+                            web address.
+                          </span>
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={handleOpenAccount}
+                        className="flex min-h-24 flex-col items-center justify-center rounded-3xl border border-black/15 bg-white px-6 py-4 text-center transition hover:border-black/30"
+                      >
+                        <span className="text-sm font-semibold">
+                          Not sure yet? Keep it free for 7 days
+                        </span>
+                        <span className="mt-1 text-xs leading-5 text-black/50">
+                          Free account · 3 free changes · decide anytime
+                        </span>
+                      </button>
+                    </div>
+                    {!pricing.checkoutAllowed ? (
+                      <p className="mt-3 text-center text-xs leading-5 text-black/45">
+                        {pricing.checkoutUnavailableMessage}
+                      </p>
+                    ) : null}
                     <Link
                       href={previewHref}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex h-12 items-center justify-center rounded-full border border-black/15 bg-white px-5 text-sm font-semibold transition hover:border-black/30"
+                      className="mx-auto mt-4 block w-fit text-sm font-semibold text-black/55 underline decoration-black/20 underline-offset-4 transition hover:text-black"
                     >
                       Open full screen
                     </Link>
-                    <button
-                      type="button"
-                      onClick={handleOpenAccount}
-                      className="inline-flex h-12 items-center justify-center rounded-full bg-[#141811] px-5 text-sm font-semibold text-white transition hover:bg-black"
-                    >
-                      Save it &amp; make changes
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        void handleUpgrade();
-                      }}
-                      className="inline-flex h-12 items-center justify-center rounded-full bg-kiwi-green px-5 text-sm font-bold transition hover:bg-kiwi-green-hover"
-                    >
-                      Put it online — {pricing.proPriceShort}
-                    </button>
                   </div>
                 ) : (
                   <div className="rounded-3xl border border-black/10 bg-white p-5 shadow-xl shadow-black/5 sm:p-6">
@@ -2558,15 +2596,17 @@ export default function RefreshPage({
                         >
                           Open full screen
                         </Link>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            void handleUpgrade();
-                          }}
-                          className="rounded-full bg-kiwi-green px-4 py-2 text-xs font-bold transition hover:bg-kiwi-green-hover"
-                        >
-                          Put it online — {pricing.proPriceShort}
-                        </button>
+                        {pricing.checkoutAllowed ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void handleUpgrade();
+                            }}
+                            className="rounded-full bg-kiwi-green px-4 py-2 text-xs font-bold transition hover:bg-kiwi-green-hover"
+                          >
+                            Take my website online — {pricing.proPriceShort}
+                          </button>
+                        ) : null}
                       </div>
                     </div>
 
@@ -2794,20 +2834,6 @@ export default function RefreshPage({
                             </div>
                           ) : null}
 
-                          {!user &&
-                          showVerification &&
-                          pendingGeneration === "gbp" ? (
-                            <div className="mt-3 rounded-3xl border border-black/10 bg-[#faf8f1] p-3">
-                              <p className="mb-2 text-xs font-semibold text-black/55">
-                                One quick security check, then we&apos;ll start.
-                              </p>
-                              <TurnstileWidget
-                                className="overflow-hidden rounded-2xl"
-                                onVerify={handleTurnstileVerify}
-                                onExpire={clearTurnstileToken}
-                              />
-                            </div>
-                          ) : null}
                           <button
                             type="submit"
                             disabled={refreshSubmitDisabled}
@@ -2909,20 +2935,6 @@ export default function RefreshPage({
                               )}
                             </div>
                           ) : null}
-                          {!user &&
-                          showVerification &&
-                          pendingGeneration === "refresh" ? (
-                            <div className="mt-3 rounded-3xl border border-black/10 bg-white p-3 shadow-xl shadow-black/5">
-                              <p className="mb-2 text-xs font-semibold text-black/55">
-                                One quick security check, then we&apos;ll start.
-                              </p>
-                              <TurnstileWidget
-                                className="overflow-hidden rounded-2xl"
-                                onVerify={handleTurnstileVerify}
-                                onExpire={clearTurnstileToken}
-                              />
-                            </div>
-                          ) : null}
                         </div>
                       )}
                       {googleBusinessImportEnabled && !selectedGbpPlace ? (
@@ -2958,7 +2970,7 @@ export default function RefreshPage({
                   {[
                     "Free to try",
                     "No signup needed",
-                    "No changes to your live site",
+                    "No changes to your current site",
                   ].map((item) => (
                     <span key={item} className="inline-flex items-center gap-1.5">
                       <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#C5E66A] text-[10px] font-black leading-none text-black">
@@ -3035,18 +3047,6 @@ export default function RefreshPage({
                         />
                       </label>
                     </div>
-                    {!user && showVerification && pendingGeneration === "fresh" ? (
-                      <div className="mt-3 rounded-3xl border border-black/10 bg-[#faf8f1] p-3">
-                        <p className="mb-2 text-xs font-semibold text-black/55">
-                          One quick security check, then we&apos;ll start.
-                        </p>
-                        <TurnstileWidget
-                          className="overflow-hidden rounded-2xl"
-                          onVerify={handleTurnstileVerify}
-                          onExpire={clearTurnstileToken}
-                        />
-                      </div>
-                    ) : null}
                     <button
                       type="submit"
                       disabled={!freshPrompt.trim()}
@@ -3189,7 +3189,7 @@ export default function RefreshPage({
                       },
                       {
                         n: "03",
-                        title: "Go live when you're happy",
+                        title: "Take it online when you're happy",
                         body: "Save it, ask for changes in normal everyday language, add pages, and put it online when you're ready.",
                       },
                     ]
@@ -3206,7 +3206,7 @@ export default function RefreshPage({
                       },
                       {
                         n: "03",
-                        title: "Go live when you're happy",
+                        title: "Take it online when you're happy",
                         body: `${pricing.proPriceMonthly} puts it online with as many changes as you need — just ask normally.`,
                       },
                     ]
@@ -3368,8 +3368,8 @@ export default function RefreshPage({
                     <li>
                       ✓{" "}
                       {flowMode === "fresh"
-                        ? "Your new website live online — we host it"
-                        : "Your redesigned website live online — we host it"}
+                        ? "Your new website online — we host it"
+                        : "Your redesigned website online — we host it"}
                     </li>
                     <li>✓ Ask for as many changes as you need</li>
                     <li>✓ Your own web address (www.yourbusiness.com)</li>
@@ -3413,11 +3413,11 @@ export default function RefreshPage({
                       },
                       {
                         q: "Is this a full new website?",
-                        a: "Yes. You get a new website you can save, change, add pages to, and publish online when you're ready.",
+                        a: "Yes. You get a new website you can save, change, add pages to, and take online when you're ready.",
                       },
                       {
                         q: "What does it cost?",
-                        a: `You can see your new website for free. If you want it live online, Kiwi Pro is ${pricing.proPriceMonthly} with changes included and no long contract.`,
+                        a: `You can see your new website for free. If you want it online, Kiwi Pro is ${pricing.proPriceMonthly} with changes included and no long contract.`,
                       },
                       {
                         q: "How is this different from local web design companies?",
@@ -3429,7 +3429,7 @@ export default function RefreshPage({
                       },
                       {
                         q: `What happens after I pay ${pricing.proPriceMonthly}?`,
-                        a: "Your website goes live on the internet and we host it for you. You can ask for changes, add extra pages, and connect your own web address. Cancel anytime.",
+                        a: "Your website goes online and we host it for you. You can ask for changes, add extra pages, and connect your own web address. Cancel anytime.",
                       },
                       {
                         q: "What if I don't like the result?",
@@ -3447,11 +3447,11 @@ export default function RefreshPage({
                       },
                       {
                         q: "Is this a web redesign service or a full new build?",
-                        a: "Refresh Kiwi is a web redesign service. We use your existing site as the starting point, then create a fresher version you can preview, edit and publish.",
+                        a: "Refresh Kiwi is a web redesign service. We use your existing site as the starting point, then create a fresher version you can preview, edit and take online.",
                       },
                       {
                         q: "What is the website redesign cost?",
-                        a: `You can see the redesign for free. If you want the redesigned website live online, Kiwi Pro is ${pricing.proPriceMonthly} with changes included and no long contract.`,
+                        a: `You can see the redesign for free. If you want the redesigned website online, Kiwi Pro is ${pricing.proPriceMonthly} with changes included and no long contract.`,
                       },
                       {
                         q: "I'm not good with computers. Is this for me?",
@@ -3459,7 +3459,7 @@ export default function RefreshPage({
                       },
                       {
                         q: `What happens after I pay ${pricing.proPriceMonthly}?`,
-                        a: "Your new website goes live on the internet and we host it for you. You can ask for changes and connect your own web address. Cancel anytime.",
+                        a: "Your new website goes online and we host it for you. You can ask for changes and connect your own web address. Cancel anytime.",
                       },
                       {
                         q: "What if I don't like the result?",
@@ -3554,7 +3554,7 @@ export default function RefreshPage({
               </h2>
               <p className="relative mx-auto mt-4 max-w-md text-base font-medium leading-7 text-[#11150f]/65">
                 {flowMode === "fresh"
-                  ? "Describe your business and get a fresh website you can save, change, and publish when you're ready."
+                  ? "Describe your business and get a fresh website you can save, change, and take online when you're ready."
                   : "Revamping website design? Try it for free. It takes about 2 minutes, and nothing changes until you say so."}
               </p>
               <a
@@ -3702,6 +3702,54 @@ export default function RefreshPage({
         </>
       ) : null}
 
+      {showVerification && !user && pendingGeneration ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="security-check-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-5 backdrop-blur-sm"
+        >
+          <div className="w-full max-w-sm rounded-3xl border border-black/10 bg-white p-6 text-center shadow-2xl sm:p-8">
+            <Image
+              src="/refresh-kiwi-favicon-v2.png"
+              alt=""
+              width={44}
+              height={44}
+              aria-hidden
+              className="mx-auto rounded-full"
+            />
+            <h2
+              id="security-check-title"
+              className="mt-4 font-fraunces text-2xl font-semibold tracking-tight"
+            >
+              Quick security check
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-black/55">
+              This just confirms you&apos;re a real person. It usually takes a
+              second.
+            </p>
+            <div className="mt-5 flex min-h-16 items-center justify-center overflow-hidden rounded-2xl bg-[#faf8f1] p-2">
+              <TurnstileWidget
+                className="overflow-hidden rounded-xl"
+                onVerify={handleTurnstileVerify}
+                onExpire={clearTurnstileToken}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setShowVerification(false);
+                setPendingGeneration(null);
+                clearTurnstileToken();
+              }}
+              className="mt-4 text-sm font-medium text-black/50 underline decoration-black/20 underline-offset-4 transition hover:text-black"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {/* ───────────────────────── Pro sheet ───────────────────────── */}
       {showProSheet ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-5 backdrop-blur-sm">
@@ -3719,7 +3767,7 @@ export default function RefreshPage({
               </button>
             </div>
             <ul className="mt-5 space-y-2.5 text-sm leading-6 text-black/60">
-              <li>✓ Your new website live on the internet — we host it</li>
+              <li>✓ Your new website online — we host it</li>
               <li>✓ Unlimited changes, just ask in plain English</li>
               <li>✓ Your own web address (like www.yourbusiness.com)</li>
               <li>✓ Extra pages built for you</li>
@@ -3771,20 +3819,27 @@ export default function RefreshPage({
                     ? "Enter your 2FA code"
                     : accountMode === "login"
                       ? "Log in"
-                      : "Save your new website"}
+                      : pendingUpgrade
+                        ? "Take your website online"
+                        : "Keep your preview"}
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-black/60">
                   {twoFactorChallengeToken
                     ? "Open your authenticator app, or use one of your recovery codes."
                     : accountMode === "login"
-                    ? "Welcome back — pick up where you left off."
-                    : "Save it to a free account so it's still here tomorrow — and get 3 free changes included."}
+                      ? pendingUpgrade
+                        ? "Log in to continue taking your website online."
+                        : "Welcome back — pick up where you left off."
+                      : pendingUpgrade
+                        ? "Create your account, then review Kiwi Pro before secure payment."
+                        : "Not ready to decide? Keep it free for 7 days and get 3 changes included."}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => {
                   setAccountMode("closed");
+                  setPendingUpgrade(false);
                   setAuthErrorMessage(null);
                 }}
                 className="rounded-full border border-black/10 px-3 py-1 text-sm text-black/60"
@@ -3869,7 +3924,9 @@ export default function RefreshPage({
                     ? "Please wait…"
                     : accountMode === "login"
                       ? "Log in"
-                      : "Create free account"}
+                      : pendingUpgrade
+                        ? "Create account & continue"
+                        : "Create free account"}
                 </button>
               </form>
             )}

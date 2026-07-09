@@ -319,7 +319,7 @@ const PAGE_PROGRESS_STAGES: Array<{ atMs: number; message: string }> = [
   { atMs: 0, message: "Checking your current site…" },
   { atMs: 20_000, message: "Writing page content…" },
   { atMs: 60_000, message: "Building pages…" },
-  { atMs: 130_000, message: "Publishing preview…" },
+  { atMs: 130_000, message: "Saving preview…" },
   { atMs: 210_000, message: "Nearly there — finishing touches…" },
 ];
 
@@ -452,40 +452,40 @@ function websiteState(website: Website, isPro: boolean) {
       description: "This website is archived.",
       canView: false,
       canEdit: false,
-      showKeepLive: false,
+      showUpgrade: false,
     };
   }
 
   if (isExpired) {
     return {
-      label: "Expired preview",
+      label: "Preview ended",
       badgeClass: "bg-red-50 text-red-700",
       description: `Expired on ${formatDate(website.expiresAt)}.`,
       canView: false,
       canEdit: false,
-      showKeepLive: true,
+      showUpgrade: true,
     };
   }
 
   if (isLive) {
     return {
-      label: "Live",
+      label: "Online",
       badgeClass: "bg-kiwi-green text-black",
-      description: isPro ? "" : "This website is currently live.",
+      description: isPro ? "" : "This website is online.",
       canView: true,
       canEdit: true,
-      showKeepLive: false,
+      showUpgrade: false,
     };
   }
 
   if (isPro) {
     return {
-      label: "Ready to publish",
-      badgeClass: "bg-[#f0f4e7] text-black/70",
-      description: "Publish this preview to keep it live.",
+      label: "Online",
+      badgeClass: "bg-kiwi-green text-black",
+      description: "",
       canView: true,
       canEdit: true,
-      showKeepLive: true,
+      showUpgrade: false,
     };
   }
 
@@ -497,7 +497,7 @@ function websiteState(website: Website, isPro: boolean) {
     description: `${daysLeft} ${pluralise(daysLeft, "day")} left in your free preview.`,
     canView: true,
     canEdit: true,
-    showKeepLive: true,
+    showUpgrade: true,
   };
 }
 
@@ -520,7 +520,6 @@ export default function DashboardPage() {
   const [cancellingEditRequestId, setCancellingEditRequestId] = useState<
     string | null
   >(null);
-  const [publishingWebsiteId, setPublishingWebsiteId] = useState<string | null>(null);
   const [generatingPagesWebsiteId, setGeneratingPagesWebsiteId] = useState<string | null>(
     null,
   );
@@ -953,31 +952,6 @@ export default function DashboardPage() {
       );
     } finally {
       setSubmittingEditId(null);
-    }
-  };
-
-  const publishWebsite = async (websiteId: string) => {
-    setPublishingWebsiteId(websiteId);
-    setErrorMessage(null);
-
-    try {
-      const response = await fetch(`/api/websites/${websiteId}/publish`, {
-        method: "POST",
-      });
-      const payload = await response.json();
-
-      if (!response.ok) {
-        throw new Error(payload.error ?? "Failed to keep website live");
-      }
-
-      await loadDashboard();
-      closeWebsiteActionModal();
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : "Failed to keep website live",
-      );
-    } finally {
-      setPublishingWebsiteId(null);
     }
   };
 
@@ -1763,9 +1737,8 @@ export default function DashboardPage() {
                 You&apos;re on Kiwi Pro! 🥝
               </p>
               <p className="mt-1 text-sm leading-6 text-black/60">
-                Your website is going live now. You&apos;ve got unlimited
-                changes, extra pages, and you can connect your own web address
-                below.
+                Your website is online. You&apos;ve got unlimited changes,
+                extra pages, and you can connect your own web address below.
               </p>
             </div>
             <button
@@ -1965,7 +1938,7 @@ export default function DashboardPage() {
               {[
                 {
                   title: "Your website card",
-                  body: "This shows the website you just made, its web address, free changes left, and whether it is live or still a free preview.",
+                  body: "This shows the website you just made, its web address, free changes left, and whether it is online or still a free preview.",
                 },
                 {
                   title: "Edit website",
@@ -2239,7 +2212,7 @@ export default function DashboardPage() {
                                   name="rocket"
                                   className="h-3.5 w-3.5"
                                 />
-                                Published: {formatDate(website.publishedAt)}
+                                Online since {formatDate(website.publishedAt)}
                               </span>
                             ) : null}
                             {!isPro ? (
@@ -2262,36 +2235,21 @@ export default function DashboardPage() {
                                 className="inline-flex items-center gap-2 rounded-2xl bg-[#141811] px-4 py-2 text-xs font-semibold text-white transition hover:bg-black"
                               >
                                 <DashboardIcon name="external" />
-                                {website.status === "live"
+                                {website.status === "live" || isPro
                                   ? "View website"
                                   : "View preview"}
                               </Link>
                             ) : null}
-                            {isPro && state.showKeepLive ? (
-                              <button
-                                type="button"
-                                onClick={() => void publishWebsite(website.id)}
-                                disabled={publishingWebsiteId === website.id}
-                                className="inline-flex items-center gap-2 rounded-2xl bg-kiwi-green px-4 py-2 text-xs font-semibold text-black transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-50"
-                              >
-                                <DashboardIcon name="rocket" />
-                                {publishingWebsiteId === website.id
-                                  ? "Publishing…"
-                                  : state.label === "Expired preview"
-                                    ? "Restore live"
-                                    : "Publish live"}
-                              </button>
-                            ) : null}
-                            {!isPro && state.showKeepLive ? (
+                            {!isPro && state.showUpgrade ? (
                               <button
                                 type="button"
                                 onClick={openProSheet}
                                 className="inline-flex items-center gap-2 rounded-2xl bg-kiwi-green px-4 py-2 text-xs font-semibold text-black transition hover:bg-kiwi-green-hover"
                               >
                                 <DashboardIcon name="rocket" />
-                                {state.label === "Expired preview"
-                                  ? `Go live again — ${pricing.proPriceShort}`
-                                  : `Put it online — ${pricing.proPriceShort}`}
+                                {state.label === "Preview ended"
+                                  ? `Take it online again — ${pricing.proPriceShort}`
+                                  : `Take it online — ${pricing.proPriceShort}`}
                               </button>
                             ) : null}
                             {state.canEdit ? (
@@ -2652,7 +2610,7 @@ export default function DashboardPage() {
                             </h2>
                             <p className="mt-1 text-xs text-black/45">
                               Swap any photo for your own, or let AI recreate
-                              it. Changes go live straight away — and we keep
+                              it. Changes appear online straight away — and we keep
                               every old version so you can always go back.
                             </p>
                           </div>
@@ -3692,7 +3650,7 @@ export default function DashboardPage() {
                 </p>
                 <p className="mt-1 text-xs leading-5 text-black/45">
                   These answers help draft a better starter template. Review it
-                  before publishing.
+                  before putting them online.
                 </p>
 
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -4082,7 +4040,7 @@ export default function DashboardPage() {
               </button>
             </div>
             <ul className="mt-5 space-y-2.5 text-sm leading-6 text-black/60">
-              <li>Your new website live on the internet — we host it</li>
+              <li>Your new website online — we host it</li>
               <li>Unlimited changes, just ask in plain English</li>
               <li>Your own web address (like www.yourbusiness.com)</li>
               <li>Extra pages built for you</li>

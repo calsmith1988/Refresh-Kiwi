@@ -44,9 +44,9 @@ function blockedPreviewResponse(kind: "expired" | "removed") {
       : {
           title: "Preview expired | Refresh Kiwi",
           heading: "This preview has had its 7 days.",
-          body: "Good news: your refreshed website is saved and we can bring it back in one click. Go Pro and it goes live again — fresher than ever.",
+          body: "Good news: your refreshed website is saved. Go Pro and we can put it back online in one click — fresher than ever.",
           ctaHref: "/dashboard",
-          ctaLabel: "Bring my website back",
+          ctaLabel: "Take my website online",
         };
 
   return new NextResponse(

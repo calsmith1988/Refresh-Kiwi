@@ -207,6 +207,8 @@ export async function createWebsiteFromJob(jobId: string) {
     return existing[0];
   }
 
+  const ownerIsPro = job.userId ? await userHasProPlan(job.userId) : false;
+  const now = new Date();
   const [website] = await db
     .insert(websites)
     .values({
@@ -217,7 +219,8 @@ export async function createWebsiteFromJob(jobId: string) {
       creationPrompt: job.creationPrompt,
       slug: job.slug,
       brandName: job.brandName,
-      status: "preview",
+      status: ownerIsPro ? "live" : "preview",
+      publishedAt: ownerIsPro ? now : null,
       expiresAt: previewExpiresAt(),
     })
     .returning();
@@ -262,15 +265,22 @@ export async function claimWebsite(params: { jobId: string; userId: string }) {
   // claim (website owned but job still anonymous, or vice versa) breaks
   // ownership checks and quota accounting.
   const updated = await db.transaction(async (tx) => {
+    const claimedAt = new Date();
+    const ownerIsPro = isProUser(user);
     const [claimedWebsite] = await tx
       .update(websites)
-      .set({ userId: params.userId, updatedAt: new Date() })
+      .set({
+        userId: params.userId,
+        status: ownerIsPro ? "live" : website.status,
+        publishedAt: ownerIsPro ? (website.publishedAt ?? claimedAt) : website.publishedAt,
+        updatedAt: claimedAt,
+      })
       .where(eq(websites.id, website.id))
       .returning();
 
     await tx
       .update(jobs)
-      .set({ userId: params.userId, updatedAt: new Date() })
+      .set({ userId: params.userId, updatedAt: claimedAt })
       .where(eq(jobs.id, params.jobId));
 
     return claimedWebsite;
@@ -448,7 +458,7 @@ export async function archiveOwnedWebsite(params: {
   return updated;
 }
 
-export async function publishOwnedWebsite(params: {
+export async function setOwnedWebsiteOnline(params: {
   websiteId: string;
   userId: string;
 }) {

@@ -13,8 +13,8 @@ import {
   connectOwnedWebsiteDomain,
   getOwnedWebsite,
   normalizeCustomDomain,
-  publishOwnedWebsite,
   removeOwnedWebsiteDomain,
+  setOwnedWebsiteOnline,
   toWebsiteResponse,
   updateOwnedWebsiteDomainStatus,
   userHasProPlan,
@@ -86,7 +86,7 @@ export async function POST(request: Request, context: RouteContext) {
     });
 
     if (website.status !== "live") {
-      website = await publishOwnedWebsite({ websiteId, userId: auth.user.id });
+      website = await setOwnedWebsiteOnline({ websiteId, userId: auth.user.id });
       website = await connectOwnedWebsiteDomain({
         websiteId,
         userId: auth.user.id,

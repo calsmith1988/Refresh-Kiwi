@@ -18,7 +18,7 @@ const APP_HOSTS = new Set([
   "refresh-kiwi.onrender.com",
 ]);
 const FRIENDLY_INACTIVE_MESSAGE =
-  "This contact form will start working once the website goes live.";
+  "This contact form will start working once the website is online.";
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{0,79}$/;
 
