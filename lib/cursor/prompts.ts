@@ -1,3 +1,8 @@
+import {
+  buildDesignDirectionSection,
+  pickDesignDirection,
+} from "@/lib/cursor/design-directions";
+
 export interface PromptParams {
   sourceUrl: string | null;
   slug: string;
@@ -125,6 +130,8 @@ OUTPUT: sites/${slug}/
 - If there is no clear branding, or the colours are genuinely poor, choose your own tasteful modern palette instead.
 - Either way, make the wow factor come from layout, typography, spacing, and motion — not from swapping the brand's identity.
 
+${buildDesignDirectionSection(pickDesignDirection(slug))}
+
 ## Design bar
 
 Create a proper landing page redesign:
@@ -196,6 +203,8 @@ ${formatSeedAssets(seedAssets)}
 - Reference provided assets exactly by the public URLs listed above. Do not invent local image paths.
 - If no suitable image exists for a section, use refined CSS composition instead of stock-photo placeholders.
 - Do not download any images or embed third-party images unless the user explicitly included a URL in the brief.
+
+${buildDesignDirectionSection(pickDesignDirection(slug))}
 
 ## Design bar
 

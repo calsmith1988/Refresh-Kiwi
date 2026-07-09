@@ -1,6 +1,7 @@
 import { Agent, CursorAgentError } from "@cursor/sdk";
 
 import { getCursorApiKey, getSitesRepoUrl } from "@/lib/cursor/config";
+import { pickDesignDirection } from "@/lib/cursor/design-directions";
 import {
   buildAdditionalPagesPrompt,
   buildEditPrompt,
@@ -50,7 +51,7 @@ export async function runHomepagePhase(
     const started = { agentId: agent.agentId, runId: run.id };
 
     console.info(
-      `[refresh-kiwi] homepage agent started agentId=${started.agentId} runId=${started.runId} slug=${params.slug}`,
+      `[refresh-kiwi] homepage agent started agentId=${started.agentId} runId=${started.runId} slug=${params.slug} designDirection=${pickDesignDirection(params.slug).name}`,
     );
 
     await onStarted?.(started);
@@ -104,7 +105,7 @@ export async function runFreshHomepagePhase(
     const started = { agentId: agent.agentId, runId: run.id };
 
     console.info(
-      `[refresh-kiwi] fresh homepage agent started agentId=${started.agentId} runId=${started.runId} slug=${params.slug}`,
+      `[refresh-kiwi] fresh homepage agent started agentId=${started.agentId} runId=${started.runId} slug=${params.slug} designDirection=${pickDesignDirection(params.slug).name}`,
     );
 
     await onStarted?.(started);
