@@ -18,6 +18,7 @@ type TurnstileApi = {
       "expired-callback"?: () => void;
       "error-callback"?: () => void;
       theme?: "light" | "dark" | "auto";
+      appearance?: "always" | "execute" | "interaction-only";
     },
   ) => string;
   reset: (widgetId?: string) => void;
@@ -62,10 +63,19 @@ export default function TurnstileWidget({
   onVerify,
   onExpire,
   className,
+  background = false,
+  resetKey = 0,
 }: {
   onVerify: (token: string) => void;
   onExpire?: () => void;
   className?: string;
+  /**
+   * Runs the challenge invisibly (interaction-only) so a token can be
+   * fetched ahead of time. No status UI is shown in this mode.
+   */
+  background?: boolean;
+  /** Increment to reset the widget and fetch a fresh token. */
+  resetKey?: number;
 }) {
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -110,6 +120,7 @@ export default function TurnstileWidget({
             onExpireRef.current?.();
           },
           theme: "auto",
+          appearance: background ? "interaction-only" : "always",
         });
         setStatus("checking");
       })
@@ -127,10 +138,32 @@ export default function TurnstileWidget({
         widgetIdRef.current = null;
       }
     };
-  }, [retryKey, siteKey]);
+  }, [background, retryKey, siteKey]);
+
+  useEffect(() => {
+    if (resetKey === 0) {
+      return;
+    }
+
+    if (widgetIdRef.current && window.turnstile) {
+      window.turnstile.reset(widgetIdRef.current);
+      setStatus("checking");
+    }
+  }, [resetKey]);
 
   if (!siteKey) {
     return null;
+  }
+
+  if (background) {
+    return (
+      <div
+        aria-hidden
+        className="pointer-events-none fixed left-[-9999px] top-0"
+      >
+        <div ref={containerRef} />
+      </div>
+    );
   }
 
   return (

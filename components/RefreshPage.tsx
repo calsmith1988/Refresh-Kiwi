@@ -889,7 +889,14 @@ export default function RefreshPage({
   const [job, setJob] = useState<JobResponse | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileResetKey, setTurnstileResetKey] = useState(0);
   const clearTurnstileToken = useCallback(() => setTurnstileToken(null), []);
+  // Tokens are single-use, so after one is spent the background widget must
+  // re-run its challenge to have a fresh token ready for the next build.
+  const consumeTurnstileToken = useCallback(() => {
+    setTurnstileToken(null);
+    setTurnstileResetKey((current) => current + 1);
+  }, []);
   const [showVerification, setShowVerification] = useState(false);
   const [pendingGeneration, setPendingGeneration] =
     useState<PendingGeneration | null>(null);
@@ -1866,7 +1873,7 @@ export default function RefreshPage({
           turnstileToken: verificationToken ?? undefined,
         }),
       });
-      setTurnstileToken(null);
+      consumeTurnstileToken();
       setShowVerification(false);
       setPendingGeneration(null);
 
@@ -1927,8 +1934,7 @@ export default function RefreshPage({
           turnstileToken: verificationToken ?? undefined,
         }),
       });
-      // Turnstile tokens are single-use; drop it so the widget re-challenges.
-      setTurnstileToken(null);
+      consumeTurnstileToken();
       setShowVerification(false);
       setPendingGeneration(null);
 
@@ -2025,8 +2031,7 @@ export default function RefreshPage({
         method: "POST",
         body,
       });
-      // Turnstile tokens are single-use; drop it so the widget re-challenges.
-      setTurnstileToken(null);
+      consumeTurnstileToken();
 
       const payload = await response.json();
       setShowVerification(false);
@@ -3777,6 +3782,18 @@ export default function RefreshPage({
             </button>
           </div>
         </div>
+      ) : null}
+
+      {/* Pre-run the security check invisibly so anonymous visitors usually
+          have a token ready before they click build — the modal below then
+          only appears when Cloudflare insists on user interaction. */}
+      {!user && !showVerification ? (
+        <TurnstileWidget
+          background
+          resetKey={turnstileResetKey}
+          onVerify={handleTurnstileVerify}
+          onExpire={clearTurnstileToken}
+        />
       ) : null}
 
       {showVerification && !user && pendingGeneration ? (
