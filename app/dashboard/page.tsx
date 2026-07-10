@@ -46,7 +46,19 @@ type Website = {
   customDomainError: string | null;
   customDomainVerifiedAt: string | null;
   customDomainLastCheckedAt: string | null;
-  customDomainDnsTarget: string;
+  customDomainDnsRecords: Array<{
+    type: "A" | "CNAME";
+    name: "@" | "www";
+    value: string;
+    purpose: string;
+  }>;
+  customDomainProvider: {
+    id: string;
+    name: string;
+    loginUrl: string;
+    steps: string[];
+  };
+  customDomainHelpUrl: string | null;
   homepageScreenshotUrl: string;
   expiresAt: string;
   publishedAt: string | null;
@@ -558,6 +570,9 @@ export default function DashboardPage() {
   );
   const [revertingImageId, setRevertingImageId] = useState<string | null>(null);
   const [copiedWebsiteId, setCopiedWebsiteId] = useState<string | null>(null);
+  const [copiedDomainHelpWebsiteId, setCopiedDomainHelpWebsiteId] = useState<
+    string | null
+  >(null);
   const [deleteHoldWebsiteId, setDeleteHoldWebsiteId] = useState<string | null>(null);
   const [deleteHoldProgress, setDeleteHoldProgress] = useState(0);
   const deleteHoldFrameRef = useRef<number | null>(null);
@@ -1349,6 +1364,24 @@ export default function DashboardPage() {
       }, 2000);
     } catch {
       // Clipboard can be blocked — select-and-copy still works on the text.
+    }
+  };
+
+  const copyDomainHelpLink = async (website: Website) => {
+    if (!website.customDomainHelpUrl) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(website.customDomainHelpUrl);
+      setCopiedDomainHelpWebsiteId(website.id);
+      window.setTimeout(() => {
+        setCopiedDomainHelpWebsiteId((current) =>
+          current === website.id ? null : current,
+        );
+      }, 2000);
+    } catch {
+      // Clipboard can be blocked — the visible link can still be copied manually.
     }
   };
 
@@ -3377,39 +3410,110 @@ export default function DashboardPage() {
 
                           {website.customDomain ? (
                             <div className="mt-4 rounded-2xl border border-black/10 bg-white p-4">
-                              <p className="text-sm font-semibold text-black">
-                                One last step — point your domain at us
-                              </p>
-                              <ol className="mt-2 space-y-1 text-xs leading-5 text-black/55">
-                                <li>1. Log in where you bought the domain (GoDaddy, Namecheap, 123-reg, Cloudflare…).</li>
-                                <li>2. Find “DNS settings” or “Manage DNS”.</li>
-                                <li>3. Add this record exactly as shown:</li>
-                              </ol>
-                              <div className="mt-3 grid gap-2 rounded-2xl bg-[#fbfaf6] p-3 text-xs sm:grid-cols-3">
+                              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                 <div>
-                                  <p className="font-semibold text-black/40">Type</p>
-                                  <p className="mt-1 font-bold text-black">CNAME</p>
-                                </div>
-                                <div>
-                                  <p className="font-semibold text-black/40">Name</p>
-                                  <p className="mt-1 font-bold text-black">www</p>
-                                </div>
-                                <div>
-                                  <p className="font-semibold text-black/40">Points to</p>
-                                  <p className="mt-1 break-all font-bold text-black">
-                                    {website.customDomainDnsTarget}
+                                  <p className="text-sm font-semibold text-black">
+                                    One last step — point your domain at us
+                                  </p>
+                                  <p className="mt-1 text-xs leading-5 text-black/55">
+                                    Your domain looks like it&apos;s with{" "}
+                                    <span className="font-semibold text-black/70">
+                                      {website.customDomainProvider.name}
+                                    </span>
+                                    . Add these two records and Refresh Kiwi will
+                                    keep checking in the background.
                                   </p>
                                 </div>
+                                {website.customDomainProvider.loginUrl ? (
+                                  <a
+                                    href={website.customDomainProvider.loginUrl}
+                                    target="_blank"
+                                    className="rounded-full border border-black/10 bg-[#fbfaf6] px-4 py-2 text-center text-xs font-semibold text-black transition hover:border-black/25"
+                                  >
+                                    Open {website.customDomainProvider.name}
+                                  </a>
+                                ) : null}
+                              </div>
+                              <ol className="mt-3 space-y-1 text-xs leading-5 text-black/55">
+                                {website.customDomainProvider.steps.map((step, index) => (
+                                  <li key={step}>
+                                    {index + 1}. {step}
+                                  </li>
+                                ))}
+                              </ol>
+                              <div className="mt-3 overflow-hidden rounded-2xl border border-black/10 bg-[#fbfaf6] text-xs">
+                                {website.customDomainDnsRecords.map((record) => (
+                                  <div
+                                    key={`${record.type}-${record.name}`}
+                                    className="grid gap-2 border-b border-black/5 p-3 last:border-b-0 sm:grid-cols-[0.7fr_0.7fr_1.6fr]"
+                                  >
+                                    <div>
+                                      <p className="font-semibold text-black/40">Type</p>
+                                      <p className="mt-1 font-bold text-black">
+                                        {record.type}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <p className="font-semibold text-black/40">Name</p>
+                                      <p className="mt-1 font-bold text-black">
+                                        {record.name}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <p className="font-semibold text-black/40">
+                                        Points to
+                                      </p>
+                                      <p className="mt-1 break-all font-bold text-black">
+                                        {record.value}
+                                      </p>
+                                      <p className="mt-1 leading-4 text-black/45">
+                                        {record.purpose}
+                                      </p>
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
                               <p className="mt-2 text-xs leading-5 text-black/45">
-                                After saving, come back and press Check
-                                connection. It often works within minutes, but
-                                can take up to a day. Not comfortable with
-                                this? Send these three values to whoever looks
-                                after your domain — it&apos;s a 2-minute job
-                                for them.
+                                Not comfortable changing DNS? Send these
+                                instructions to whoever looks after your domain.
+                                They do not need access to your Refresh Kiwi
+                                account.
                               </p>
                               <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                                {website.customDomainHelpUrl ? (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => void copyDomainHelpLink(website)}
+                                      className="rounded-full border border-black/10 bg-white px-5 py-2.5 text-sm font-semibold text-black transition hover:border-black/25"
+                                    >
+                                      {copiedDomainHelpWebsiteId === website.id
+                                        ? "Copied link"
+                                        : "Copy instructions link"}
+                                    </button>
+                                    <a
+                                      href={`mailto:?subject=${encodeURIComponent(
+                                        `Please update DNS for ${website.customDomain}`,
+                                      )}&body=${encodeURIComponent(
+                                        [
+                                          `Please update the DNS records for ${website.customDomain}.`,
+                                          "",
+                                          "Refresh Kiwi has made a simple instruction page here:",
+                                          website.customDomainHelpUrl,
+                                          "",
+                                          "Records needed:",
+                                          ...website.customDomainDnsRecords.map(
+                                            (record) =>
+                                              `${record.type} ${record.name} -> ${record.value}`,
+                                          ),
+                                        ].join("\n"),
+                                      )}`}
+                                      className="rounded-full border border-black/10 bg-white px-5 py-2.5 text-center text-sm font-semibold text-black transition hover:border-black/25"
+                                    >
+                                      Email instructions
+                                    </a>
+                                  </>
+                                ) : null}
                                 <button
                                   type="button"
                                   onClick={() => void checkDomain(website)}

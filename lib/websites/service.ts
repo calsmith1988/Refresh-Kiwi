@@ -517,23 +517,30 @@ export async function getWebsiteAccessBySlug(slug: string) {
 
 export async function getWebsiteAccessByCustomDomain(hostname: string) {
   const domain = normalizeCustomDomain(hostname);
-  const [website] = await getDb()
-    .select({
-      id: websites.id,
-      status: websites.status,
-      slug: websites.slug,
-      expiresAt: websites.expiresAt,
-      customDomain: websites.customDomain,
-      customDomainStatus: websites.customDomainStatus,
-      user: {
-        plan: users.plan,
-        subscriptionStatus: users.subscriptionStatus,
-      },
-    })
-    .from(websites)
-    .leftJoin(users, eq(websites.userId, users.id))
-    .where(eq(websites.customDomain, domain))
-    .limit(1);
+  const findWebsite = async (customDomain: string) => {
+    const [website] = await getDb()
+      .select({
+        id: websites.id,
+        status: websites.status,
+        slug: websites.slug,
+        expiresAt: websites.expiresAt,
+        customDomain: websites.customDomain,
+        customDomainStatus: websites.customDomainStatus,
+        user: {
+          plan: users.plan,
+          subscriptionStatus: users.subscriptionStatus,
+        },
+      })
+      .from(websites)
+      .leftJoin(users, eq(websites.userId, users.id))
+      .where(eq(websites.customDomain, customDomain))
+      .limit(1);
+
+    return website;
+  };
+  const website =
+    (await findWebsite(domain)) ||
+    (!domain.startsWith("www.") ? await findWebsite(`www.${domain}`) : null);
 
   if (!website || website.customDomainStatus !== "connected") {
     return null;

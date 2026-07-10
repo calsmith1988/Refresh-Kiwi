@@ -309,6 +309,23 @@ export async function sendSubscriptionCanceledEmail(params: { to: string }) {
   });
 }
 
+export async function sendDomainConnectedEmail(params: {
+  to: string;
+  domain: string;
+}) {
+  const url = `https://${params.domain}`;
+
+  await sendEmail({
+    to: params.to,
+    subject: "Your domain is connected",
+    text: `Your Refresh Kiwi website is now connected to ${params.domain}.\n\nOpen your website: ${url}`,
+    html: shell(`
+      <p>Your Refresh Kiwi website is now connected to <strong>${escapeHtml(params.domain)}</strong>.</p>
+      <p>${button(url, "Open your website")}</p>
+    `),
+  });
+}
+
 export async function sendFreeFollowUpEmail(params: {
   to: string;
   unsubscribeToken: string;

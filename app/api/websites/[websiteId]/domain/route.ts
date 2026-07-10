@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth/session";
+import { createDomainHelpToken } from "@/lib/domains/help-token";
+import { detectDomainProvider } from "@/lib/domains/providers";
+import { buildDomainDnsRecords, ensureWwwDomain } from "@/lib/domains/records";
+import { buildAppUrl } from "@/lib/email/config";
 import {
   addRenderCustomDomain,
   deleteRenderCustomDomain,
-  getRenderDnsTarget,
   isRenderDomainVerified,
   RenderApiError,
   refreshRenderCustomDomain,
@@ -12,7 +15,6 @@ import {
 import {
   connectOwnedWebsiteDomain,
   getOwnedWebsite,
-  normalizeCustomDomain,
   removeOwnedWebsiteDomain,
   setOwnedWebsiteOnline,
   toWebsiteResponse,
@@ -50,6 +52,17 @@ async function requireProUser() {
   return { user };
 }
 
+async function domainResponseMetadata(websiteId: string, domain: string) {
+  const provider = await detectDomainProvider(domain);
+  const helpToken = createDomainHelpToken({ websiteId, domain });
+
+  return {
+    dns: buildDomainDnsRecords(),
+    provider,
+    helpUrl: buildAppUrl(`/domain-help/${encodeURIComponent(helpToken)}`),
+  };
+}
+
 export async function POST(request: Request, context: RouteContext) {
   const auth = await requireProUser();
 
@@ -65,17 +78,7 @@ export async function POST(request: Request, context: RouteContext) {
       return NextResponse.json({ error: "domain is required" }, { status: 400 });
     }
 
-    const domain = normalizeCustomDomain(body.domain);
-
-    if (!domain.startsWith("www.")) {
-      return NextResponse.json(
-        {
-          error:
-            "For now, enter the www version of your domain, like www.yourbusiness.com.",
-        },
-        { status: 400 },
-      );
-    }
+    const domain = ensureWwwDomain(body.domain);
 
     const renderDomain = await addRenderCustomDomain(domain);
     let website = await connectOwnedWebsiteDomain({
@@ -97,11 +100,7 @@ export async function POST(request: Request, context: RouteContext) {
 
     return NextResponse.json({
       website: toWebsiteResponse(website),
-      dns: {
-        type: "CNAME",
-        name: "www",
-        value: getRenderDnsTarget(),
-      },
+      ...(await domainResponseMetadata(website.id, domain)),
     });
   } catch (error) {
     const message =
@@ -144,11 +143,7 @@ export async function PATCH(_request: Request, context: RouteContext) {
     return NextResponse.json({
       website: toWebsiteResponse(updated),
       connected,
-      dns: {
-        type: "CNAME",
-        name: "www",
-        value: getRenderDnsTarget(),
-      },
+      ...(await domainResponseMetadata(updated.id, website.customDomain)),
     });
   } catch (error) {
     if (error instanceof RenderApiError && error.status === 404) {

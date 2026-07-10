@@ -2,8 +2,11 @@ import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth/session";
 import { getDb, schema } from "@/lib/db";
+import { createDomainHelpToken } from "@/lib/domains/help-token";
+import { detectDomainProvider, genericDomainProvider } from "@/lib/domains/providers";
+import { buildDomainDnsRecords } from "@/lib/domains/records";
+import { buildAppUrl } from "@/lib/email/config";
 import { STATUS_MESSAGES, type JobStatus } from "@/lib/jobs/types";
-import { getRenderDnsTarget } from "@/lib/render/domains";
 import { homepageScreenshotPath } from "@/lib/screenshots/paths";
 import {
   getLatestEditRequestsForUser,
@@ -78,6 +81,16 @@ export async function GET() {
   ]);
   const pagesByJob = new Map(pagesEntries);
   const statusByJob = new Map(jobEntries);
+  const domainDnsRecords = buildDomainDnsRecords();
+  const providerEntries = await Promise.all(
+    websites.map(async (website) => [
+      website.id,
+      website.customDomain
+        ? await detectDomainProvider(website.customDomain)
+        : genericDomainProvider(),
+    ] as const),
+  );
+  const providerByWebsite = new Map(providerEntries);
   const activeRefreshJobs = userJobs.filter(
     (job) => !websiteJobIds.has(job.id) && ACTIVE_REFRESH_STATUSES.has(job.status),
   );
@@ -104,7 +117,18 @@ export async function GET() {
         ...toWebsiteResponse(website),
         jobStatus: statusByJob.get(website.jobId),
         homepageScreenshotUrl: homepageScreenshotPath(website.slug),
-        customDomainDnsTarget: getRenderDnsTarget(),
+        customDomainDnsRecords: domainDnsRecords,
+        customDomainProvider: providerByWebsite.get(website.id) ?? genericDomainProvider(),
+        customDomainHelpUrl: website.customDomain
+          ? buildAppUrl(
+              `/domain-help/${encodeURIComponent(
+                createDomainHelpToken({
+                  websiteId: website.id,
+                  domain: website.customDomain,
+                }),
+              )}`,
+            )
+          : null,
         pages: pages.map(toPageResponse),
         latestEditRequest: latestEditRequest
           ? {

@@ -47,6 +47,10 @@ export function getRenderDnsTarget(): string {
   return target.replace(/^https?:\/\//, "").replace(/\/$/, "");
 }
 
+export function getRenderApexIp(): string {
+  return process.env.RENDER_APEX_IP?.trim() || "216.24.57.1";
+}
+
 async function renderRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   const response = await fetch(`${RENDER_API_BASE}${path}`, {
     ...init,
