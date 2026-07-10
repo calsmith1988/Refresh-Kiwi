@@ -1,4 +1,4 @@
-import { eq, type SQL } from "drizzle-orm";
+import { and, eq, ne, type SQL } from "drizzle-orm";
 import Stripe from "stripe";
 
 import { getCurrentUser } from "@/lib/auth/session";
@@ -25,6 +25,12 @@ const { users, websites } = schema;
 
 type Plan = typeof users.$inferSelect.plan;
 type SubscriptionStatus = typeof users.$inferSelect.subscriptionStatus;
+type SubscriptionEmailUser = {
+  id: string;
+  email: string;
+  previousPlan: Plan;
+  previousStripeSubscriptionId: string | null;
+};
 
 const PRO_SUBSCRIPTION_STATUSES = new Set<SubscriptionStatus>([
   "active",
@@ -82,22 +88,51 @@ async function updateUserSubscription(params: {
   // but sites still "live") mis-gates access and publishing.
   async function applyPlanChange(
     where: SQL,
-  ): Promise<{ id: string; email: string } | null> {
+  ): Promise<SubscriptionEmailUser | null> {
     return db.transaction(async (tx) => {
-      const [user] = await tx
+      const [currentUser] = await tx
+        .select({
+          id: users.id,
+          email: users.email,
+          plan: users.plan,
+          stripeSubscriptionId: users.stripeSubscriptionId,
+        })
+        .from(users)
+        .where(where)
+        .limit(1);
+
+      if (!currentUser) {
+        return null;
+      }
+
+      const [updatedUser] = await tx
         .update(users)
         .set(values)
-        .where(where)
+        .where(eq(users.id, currentUser.id))
         .returning({ id: users.id, email: users.email });
 
-      if (user) {
+      if (updatedUser) {
+        // Never resurrect soft-deleted sites: archived rows have had their R2
+        // files removed, so flipping them back to "live" creates zombie sites.
         await tx
           .update(websites)
           .set(websiteStatusValues)
-          .where(eq(websites.userId, user.id));
+          .where(
+            and(
+              eq(websites.userId, updatedUser.id),
+              ne(websites.status, "archived"),
+            ),
+          );
       }
 
-      return user ?? null;
+      return updatedUser
+        ? {
+            id: updatedUser.id,
+            email: updatedUser.email,
+            previousPlan: currentUser.plan,
+            previousStripeSubscriptionId: currentUser.stripeSubscriptionId,
+          }
+        : null;
     });
   }
 
@@ -109,6 +144,9 @@ async function updateUserSubscription(params: {
         userId: user.id,
         email: user.email,
         status: params.status,
+        stripeSubscriptionId: params.stripeSubscriptionId,
+        previousPlan: user.previousPlan,
+        previousStripeSubscriptionId: user.previousStripeSubscriptionId,
       });
     }
 
@@ -125,6 +163,9 @@ async function updateUserSubscription(params: {
         userId: user.id,
         email: user.email,
         status: params.status,
+        stripeSubscriptionId: params.stripeSubscriptionId,
+        previousPlan: user.previousPlan,
+        previousStripeSubscriptionId: user.previousStripeSubscriptionId,
       });
     }
 
@@ -141,6 +182,9 @@ async function updateUserSubscription(params: {
         userId: user.id,
         email: user.email,
         status: params.status,
+        stripeSubscriptionId: params.stripeSubscriptionId,
+        previousPlan: user.previousPlan,
+        previousStripeSubscriptionId: user.previousStripeSubscriptionId,
       });
     }
 
@@ -152,8 +196,17 @@ async function sendSubscriptionEmail(params: {
   userId: string;
   email: string;
   status: SubscriptionStatus;
+  stripeSubscriptionId?: string | null;
+  previousPlan: Plan;
+  previousStripeSubscriptionId: string | null;
 }) {
-  if (params.status === "active") {
+  const movedOntoPro =
+    params.status === "active" &&
+    params.previousPlan !== "pro" &&
+    (!params.stripeSubscriptionId ||
+      params.stripeSubscriptionId !== params.previousStripeSubscriptionId);
+
+  if (movedOntoPro) {
     await sendOnce({ type: "pro_started", userId: params.userId }, () =>
       sendUpgradeSuccessEmail({ to: params.email }),
     );
