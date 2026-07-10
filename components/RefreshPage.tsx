@@ -3495,7 +3495,7 @@ export default function RefreshPage({
                     </li>
                     <li>✓ Ask for as many changes as you need</li>
                     <li>✓ Your own web address (www.yourbusiness.com)</li>
-                    <li>✓ Extra pages built for you</li>
+                    <li>✓ Add extra pages whenever you need them</li>
                     <li>✓ Cancel anytime — no contracts</li>
                   </ul>
                   <a
@@ -3964,7 +3964,7 @@ export default function RefreshPage({
               <li>✓ Your new website online — we host it</li>
               <li>✓ Unlimited changes, just ask in plain English</li>
               <li>✓ Your own web address (like www.yourbusiness.com)</li>
-              <li>✓ Extra pages built for you</li>
+              <li>✓ Add extra pages whenever you need them</li>
             </ul>
             <p className="mt-4 text-xs leading-5 text-black/45">
               Cancel anytime — no contracts, no hidden fees. Payment is handled

@@ -1100,6 +1100,14 @@ export default function DashboardPage() {
     setConfirmRegenerateId(null);
   };
 
+  const closeWebsiteActionModalOnBackdrop = (
+    event: React.MouseEvent<HTMLDivElement>,
+  ) => {
+    if (event.target === event.currentTarget) {
+      closeWebsiteActionModal();
+    }
+  };
+
   useEffect(() => {
     return () => {
       if (deleteHoldFrameRef.current !== null) {
@@ -2422,7 +2430,8 @@ export default function DashboardPage() {
                         role="dialog"
                         aria-modal="true"
                         aria-labelledby={`pages-modal-${website.id}`}
-                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-5 backdrop-blur-sm"
+                        onMouseDown={closeWebsiteActionModalOnBackdrop}
+                        className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/35 px-5 py-4 backdrop-blur-sm sm:items-center"
                       >
                         <div className="preview-pop max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-black/10 bg-white p-6 shadow-2xl sm:p-8">
                           <div className="flex items-start justify-between gap-4">
@@ -2767,7 +2776,8 @@ export default function DashboardPage() {
                         role="dialog"
                         aria-modal="true"
                         aria-labelledby={`images-modal-${website.id}`}
-                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-5 backdrop-blur-sm"
+                        onMouseDown={closeWebsiteActionModalOnBackdrop}
+                        className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/35 px-5 py-4 backdrop-blur-sm sm:items-center"
                       >
                         <div
                           id={`images-panel-${website.id}`}
@@ -3274,7 +3284,8 @@ export default function DashboardPage() {
                         role="dialog"
                         aria-modal="true"
                         aria-labelledby={`domain-modal-${website.id}`}
-                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-5 backdrop-blur-sm"
+                        onMouseDown={closeWebsiteActionModalOnBackdrop}
+                        className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/35 px-5 py-4 backdrop-blur-sm sm:items-center"
                       >
                         <div
                           id={`manage-panel-${website.id}`}
@@ -3430,7 +3441,8 @@ export default function DashboardPage() {
                         role="dialog"
                         aria-modal="true"
                         aria-labelledby={`rename-modal-${website.id}`}
-                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-5 backdrop-blur-sm"
+                        onMouseDown={closeWebsiteActionModalOnBackdrop}
+                        className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/35 px-5 py-4 backdrop-blur-sm sm:items-center"
                       >
                         <div className="preview-pop w-full max-w-lg rounded-3xl border border-black/10 bg-white p-6 shadow-2xl sm:p-8">
                           <div className="flex items-start justify-between gap-4">
@@ -3506,9 +3518,10 @@ export default function DashboardPage() {
                         role="dialog"
                         aria-modal="true"
                         aria-labelledby={`delete-modal-${website.id}`}
-                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-5 backdrop-blur-sm"
+                        onMouseDown={closeWebsiteActionModalOnBackdrop}
+                        className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/35 px-5 py-4 backdrop-blur-sm sm:items-center"
                       >
-                        <div className="preview-pop w-full max-w-lg rounded-3xl border border-red-100 bg-white p-6 shadow-2xl sm:p-8">
+                        <div className="preview-pop max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-3xl border border-red-100 bg-white p-6 shadow-2xl sm:p-8">
                           <div className="flex items-start justify-between gap-4">
                             <div>
                               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-red-500/70">
@@ -3544,6 +3557,7 @@ export default function DashboardPage() {
                             <button
                               type="button"
                               onPointerDown={(event) => {
+                                event.preventDefault();
                                 event.currentTarget.setPointerCapture(
                                   event.pointerId,
                                 );
@@ -3570,7 +3584,13 @@ export default function DashboardPage() {
                               aria-label={`Press and hold to delete ${
                                 website.brandName || website.slug
                               }`}
-                              className="relative mt-4 h-12 w-full touch-none overflow-hidden rounded-full border border-red-700 bg-red-600 px-5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                              draggable={false}
+                              style={{
+                                WebkitTouchCallout: "none",
+                                WebkitUserSelect: "none",
+                                userSelect: "none",
+                              }}
+                              className="relative mt-4 h-12 w-full touch-none select-none overflow-hidden rounded-full border border-red-700 bg-red-600 px-5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                               <span
                                 aria-hidden
@@ -3601,7 +3621,8 @@ export default function DashboardPage() {
                         role="dialog"
                         aria-modal="true"
                         aria-labelledby={`edit-modal-${website.id}`}
-                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-5 backdrop-blur-sm"
+                        onMouseDown={closeWebsiteActionModalOnBackdrop}
+                        className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/35 px-5 py-4 backdrop-blur-sm sm:items-center"
                       >
                         <form
                           id={`edit-panel-${website.id}`}
@@ -3988,8 +4009,15 @@ export default function DashboardPage() {
       ) : null}
 
       {showProSheet ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-5 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
+        <div
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setShowProSheet(false);
+            }
+          }}
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/35 px-5 py-4 backdrop-blur-sm sm:items-center"
+        >
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
             <div className="flex items-start justify-between gap-4">
               <h2 className="font-fraunces text-2xl font-semibold tracking-tight">
                 Kiwi Pro — {pricing.proPriceMonthly}
@@ -4006,7 +4034,7 @@ export default function DashboardPage() {
               <li>Your new website online — we host it</li>
               <li>Unlimited changes, just ask in plain English</li>
               <li>Your own web address (like www.yourbusiness.com)</li>
-              <li>Extra pages built for you</li>
+              <li>Add extra pages whenever you need them</li>
             </ul>
             <p className="mt-4 text-xs leading-5 text-black/45">
               Cancel anytime — no contracts, no hidden fees. Payment is handled
