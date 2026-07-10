@@ -163,6 +163,7 @@ type BlogSnippet = {
 };
 
 type FlowMode = "refresh" | "fresh";
+type FreshEntry = "describe" | "google";
 type GenerationSource = FlowMode | "gbp";
 type PendingGeneration = "refresh" | "fresh" | "gbp";
 
@@ -875,6 +876,8 @@ export default function RefreshPage({
     useState<GenerationSource>("refresh");
   const [hasChosenHeroMode, setHasChosenHeroMode] = useState(false);
   const [url, setUrl] = useState("");
+  const [freshEntry, setFreshEntry] = useState<FreshEntry>("describe");
+  const [gbpQuery, setGbpQuery] = useState("");
   const [freshPrompt, setFreshPrompt] = useState("");
   const [freshLogo, setFreshLogo] = useState<File | null>(null);
   const [freshImages, setFreshImages] = useState<File[]>([]);
@@ -975,16 +978,27 @@ export default function RefreshPage({
     setErrorMessage(null);
 
     if (mode === "fresh") {
+      setFreshEntry("describe");
       setPlaceSuggestions([]);
       setSelectedGbpPlace(null);
       setSelectedGbpPhotoNames([]);
       setForceUrlRefresh(false);
+    } else {
+      setFreshEntry("describe");
+      setGbpQuery("");
+      setPlaceSuggestions([]);
+      setSelectedGbpPlace(null);
+      setSelectedGbpPhotoNames([]);
     }
 
     window.setTimeout(() => {
-      document
-        .getElementById(mode === "fresh" ? "fresh-input" : "refresh-input")
-        ?.focus();
+      const target = document.getElementById(
+        mode === "fresh" ? "fresh-input" : "refresh-input",
+      );
+
+      if (target instanceof HTMLElement) {
+        target.focus();
+      }
     }, 0);
   }, []);
 
@@ -997,12 +1011,17 @@ export default function RefreshPage({
   }, []);
 
   useEffect(() => {
+    const refreshSearchActive =
+      flowMode === "refresh" &&
+      !forceUrlRefresh &&
+      !looksLikeWebAddress(url);
+    const freshSearchActive = flowMode === "fresh" && freshEntry === "google";
+    const query = (freshSearchActive ? gbpQuery : url).trim();
+
     if (
       !googleBusinessImportEnabled ||
-      flowMode !== "refresh" ||
       selectedGbpPlace ||
-      forceUrlRefresh ||
-      looksLikeWebAddress(url)
+      (!refreshSearchActive && !freshSearchActive)
     ) {
       setPlaceSuggestions([]);
       setIsSearchingPlaces(false);
@@ -1010,7 +1029,6 @@ export default function RefreshPage({
       return;
     }
 
-    const query = url.trim();
     if (query.length < 3) {
       setPlaceSuggestions([]);
       setIsSearchingPlaces(false);
@@ -1063,8 +1081,10 @@ export default function RefreshPage({
       window.clearTimeout(timer);
     };
   }, [
+    freshEntry,
     flowMode,
     forceUrlRefresh,
+    gbpQuery,
     googleBusinessImportEnabled,
     selectedGbpPlace,
     url,
@@ -1731,6 +1751,8 @@ export default function RefreshPage({
     clearStoredJob();
     setJob(null);
     setUrl("");
+    setFreshEntry("describe");
+    setGbpQuery("");
     setGenerationSource("refresh");
     setPlaceSuggestions([]);
     setSelectedGbpPlace(null);
@@ -1767,6 +1789,7 @@ export default function RefreshPage({
 
     setFlowMode("fresh");
     setGenerationSource("fresh");
+    setFreshEntry("describe");
     setErrorMessage(null);
     setFreshPrompt((current) => {
       const trimmed = current.trim();
@@ -1806,6 +1829,10 @@ export default function RefreshPage({
       setSelectedGbpPhotoNames(payload.place.photos.map((photo) => photo.name));
       setPlaceSuggestions([]);
       setUrl(payload.place.name);
+      setGbpQuery(payload.place.name);
+      setFlowMode("fresh");
+      setFreshEntry("google");
+      setHasChosenHeroMode(true);
       setGenerationSource("gbp");
     } catch (error) {
       setErrorMessage(
@@ -1819,7 +1846,8 @@ export default function RefreshPage({
   const handleBackToPlaceSearch = () => {
     setSelectedGbpPlace(null);
     setSelectedGbpPhotoNames([]);
-    setGenerationSource("refresh");
+    setGenerationSource("fresh");
+    setFreshEntry("google");
   };
 
   const toggleSelectedGbpPhoto = (photoName: string) => {
@@ -1973,15 +2001,6 @@ export default function RefreshPage({
   const handleRefresh = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (selectedGbpPlace) {
-      if (requireVerification("gbp")) {
-        return;
-      }
-
-      await handleGbpImport();
-      return;
-    }
-
     if (!url.trim() || isRefreshing) {
       return;
     }
@@ -1991,6 +2010,20 @@ export default function RefreshPage({
     }
 
     await submitRefreshJob();
+  };
+
+  const handleGbpSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!selectedGbpPlace || isRefreshing) {
+      return;
+    }
+
+    if (requireVerification("gbp")) {
+      return;
+    }
+
+    await handleGbpImport();
   };
 
   const submitFreshJob = async (verificationToken = turnstileToken) => {
@@ -2140,6 +2173,11 @@ export default function RefreshPage({
     url.trim().length >= 3 &&
     !refreshInputLooksLikeUrl &&
     !selectedGbpPlace;
+  const isFreshGoogleSearchInput =
+    googleBusinessImportEnabled &&
+    flowMode === "fresh" &&
+    freshEntry === "google" &&
+    !selectedGbpPlace;
   const refreshSubmitDisabled =
     !url.trim() ||
     isLoadingPlaceDetails ||
@@ -2152,6 +2190,57 @@ export default function RefreshPage({
       heroPointer.y * 100
     }%, rgba(191, 226, 98, 0.18), transparent 70%)`,
   };
+  const renderPlaceSuggestions = (showUrlFallback = false) => (
+    <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-50 overflow-hidden rounded-3xl border border-black/10 bg-white shadow-2xl shadow-black/15">
+      {isSearchingPlaces ? (
+        <p className="px-4 py-3 text-sm font-medium text-black/45">
+          Finding Google listings…
+        </p>
+      ) : placesSearchError ? (
+        <p className="px-4 py-3 text-sm font-medium text-black/55">
+          {placesSearchError}
+        </p>
+      ) : placeSuggestions.length > 0 ? (
+        <>
+          {placeSuggestions.map((suggestion) => (
+            <button
+              key={suggestion.placeId}
+              type="button"
+              onClick={() => {
+                void handleSelectPlace(suggestion);
+              }}
+              className="block w-full border-b border-black/5 px-4 py-3 text-left transition hover:bg-[#faf8f1]"
+            >
+              <span className="block text-sm font-semibold text-black">
+                {suggestion.name}
+              </span>
+              {suggestion.address ? (
+                <span className="mt-0.5 block text-xs leading-5 text-black/50">
+                  {suggestion.address}
+                </span>
+              ) : null}
+            </button>
+          ))}
+          {showUrlFallback ? (
+            <button
+              type="button"
+              onClick={() => {
+                setForceUrlRefresh(true);
+                setPlaceSuggestions([]);
+              }}
+              className="block w-full px-4 py-3 text-left text-xs font-semibold text-black/45 transition hover:bg-[#faf8f1] hover:text-black"
+            >
+              Use &quot;{url.trim()}&quot; as a web address anyway
+            </button>
+          ) : null}
+        </>
+      ) : (
+        <p className="px-4 py-3 text-sm font-medium text-black/45">
+          No Google listings yet — try adding your town or postcode.
+        </p>
+      )}
+    </div>
+  );
 
   useEffect(() => {
     if (!showReveal) {
@@ -2768,26 +2857,163 @@ export default function RefreshPage({
                   {flowMode === "fresh"
                     ? "Describe your business, add a logo or photos if you have them, and get a polished website from a website creation company built for small businesses."
                     : googleBusinessImportEnabled
-                      ? "Input your web address, or find your Google listing if you do not have a site yet. In about 2 minutes, we rebuild your business online with a fresh, modern design."
+                      ? "Input your web address. In about 2 minutes, we rebuild your business online with a fresh, modern design."
                       : "Input your web address. In about 2 minutes, our website redesign service rebuilds your site with a fresh, modern design — your words, your photos, your business."}
                 </p>
 
                 <div className="mt-8 max-w-lg">
                   {flowMode === "refresh" ? (
                     <div className="mt-3">
-                      {selectedGbpPlace ? (
-                        <form
-                          onSubmit={handleRefresh}
-                          className="rounded-[1.75rem] border-2 border-black/20 bg-white p-4 shadow-xl shadow-black/10"
-                        >
+                      <div className="relative">
+                          <form
+                            onSubmit={handleRefresh}
+                            className="flex flex-col gap-2 rounded-[1.75rem] border-2 border-black/20 bg-white p-2 shadow-xl shadow-black/10 transition focus-within:border-black/40 sm:flex-row sm:items-center sm:rounded-full"
+                          >
+                            <label htmlFor="refresh-input" className="sr-only">
+                              Your website address or business name
+                            </label>
+                            <input
+                              id="refresh-input"
+                              type="text"
+                              inputMode="text"
+                              autoCapitalize="none"
+                              autoCorrect="off"
+                              spellCheck={false}
+                              placeholder={
+                                googleBusinessImportEnabled
+                                  ? "yourwebsite.co.uk — or type your business name"
+                                  : "yourwebsite.co.uk"
+                              }
+                              value={url}
+                              onChange={(event) => {
+                                setUrl(event.target.value);
+                                setForceUrlRefresh(false);
+                                setSelectedGbpPlace(null);
+                                setSelectedGbpPhotoNames([]);
+                                setPlacesSearchError(null);
+                              }}
+                              className="h-12 w-full rounded-full bg-transparent px-5 text-base outline-none placeholder:text-black/30 sm:flex-1"
+                            />
+                            <button
+                              type="submit"
+                              disabled={refreshSubmitDisabled}
+                              className="h-12 shrink-0 rounded-full bg-kiwi-green px-6 text-sm font-bold transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {isBusinessSearchInput
+                                ? "Choose listing"
+                                : "Refresh it →"}
+                            </button>
+                          </form>
+
+                          {isBusinessSearchInput ? (
+                            renderPlaceSuggestions(true)
+                          ) : null}
+                        </div>
+                      {googleBusinessImportEnabled && !selectedGbpPlace ? (
+                        <p className="mt-3 text-xs leading-5 text-black/40">
+                          No website? Type your business name and town — we&apos;ll
+                          find your Google listing and start a fresh website.
+                        </p>
+                      ) : null}
+                      {isLoadingPlaceDetails ? (
+                        <p className="mt-3 text-xs font-medium text-black/45">
+                          Loading that Google listing…
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+
+                {errorMessage ? (
+                  <div
+                    className="mt-5 max-w-lg rounded-2xl border border-black/10 bg-white p-4"
+                    role="alert"
+                  >
+                    <p className="text-sm font-semibold">
+                      That didn&apos;t work this time
+                    </p>
+                    <p className="mt-1 text-sm leading-6 text-black/55">
+                      {errorMessage}
+                    </p>
+                  </div>
+                ) : null}
+
+                <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-medium text-black/50">
+                  {[
+                    "Free to try",
+                    "No signup needed",
+                    "No changes to your current site",
+                  ].map((item) => (
+                    <span key={item} className="inline-flex items-center gap-1.5">
+                      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#C5E66A] text-[10px] font-black leading-none text-black">
+                        ✓
+                      </span>
+                      {item}
+                    </span>
+                  ))}
+                </div>
+                </div>
+
+                {flowMode === "fresh" ? (
+                  <div
+                    key="fresh-hero-form"
+                    className="relative mx-auto w-full max-w-xl min-w-0 lg:max-w-none"
+                  >
+                  <div className="pointer-events-none absolute -inset-8 rounded-full bg-[radial-gradient(circle_at_58%_30%,rgba(191,226,98,0.32),transparent_58%)] blur-2xl" />
+                  <div className="relative min-w-0 overflow-hidden rounded-[2rem] border-2 border-black/20 bg-white p-4 shadow-2xl shadow-black/10 transition focus-within:border-black/40 sm:p-5">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <h2 className="font-fraunces text-2xl font-semibold tracking-tight">
+                          {freshEntry === "google"
+                            ? "Find your business on Google"
+                            : "Describe the website you want"}
+                        </h2>
+                        <p className="mt-1 text-sm leading-6 text-black/45">
+                          {freshEntry === "google"
+                            ? "Use your Google listing details and photos to create a new website."
+                            : "Start from a simple brief, then add a logo or photos if you have them."}
+                        </p>
+                      </div>
+                      {googleBusinessImportEnabled ? (
+                        <div className="inline-flex shrink-0 rounded-full border border-black/10 bg-[#faf8f1] p-1">
+                          {(["describe", "google"] as const).map((entry) => (
+                            <button
+                              key={entry}
+                              type="button"
+                              onClick={() => {
+                                setFreshEntry(entry);
+                                setGenerationSource("fresh");
+                                setPlaceSuggestions([]);
+                                setPlacesSearchError(null);
+                                setSelectedGbpPlace(null);
+                                setSelectedGbpPhotoNames([]);
+                              }}
+                              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                                freshEntry === entry
+                                  ? "bg-[#141811] text-white"
+                                  : "text-black/50 hover:text-black"
+                              }`}
+                            >
+                              {entry === "google"
+                                ? "Use Google listing"
+                                : "Describe it"}
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+
+                    {freshEntry === "google" && googleBusinessImportEnabled ? (
+                      selectedGbpPlace ? (
+                        <form onSubmit={handleGbpSubmit} className="mt-5">
                           <div className="flex items-start justify-between gap-3">
                             <div>
                               <p className="text-xs font-bold uppercase tracking-[0.16em] text-black/35">
                                 Google listing
                               </p>
-                              <h2 className="mt-1 font-fraunces text-2xl font-semibold tracking-tight">
+                              <h3 className="mt-1 font-fraunces text-2xl font-semibold tracking-tight">
                                 {selectedGbpPlace.name}
-                              </h2>
+                              </h3>
                               <p className="mt-1 text-sm leading-6 text-black/55">
                                 {selectedGbpPlace.address}
                               </p>
@@ -2858,229 +3084,102 @@ export default function RefreshPage({
 
                           <button
                             type="submit"
-                            disabled={refreshSubmitDisabled}
+                            disabled={isRefreshing}
                             className="mt-3 h-12 w-full rounded-full bg-kiwi-green px-6 text-sm font-bold transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             Build my website →
                           </button>
                         </form>
                       ) : (
-                        <div className="relative">
-                          <form
-                            onSubmit={handleRefresh}
-                            className="flex flex-col gap-2 rounded-[1.75rem] border-2 border-black/20 bg-white p-2 shadow-xl shadow-black/10 transition focus-within:border-black/40 sm:flex-row sm:items-center sm:rounded-full"
-                          >
-                            <label htmlFor="refresh-input" className="sr-only">
-                              Your website address or business name
-                            </label>
-                            <input
-                              id="refresh-input"
-                              type="text"
-                              inputMode="text"
-                              autoCapitalize="none"
-                              autoCorrect="off"
-                              spellCheck={false}
-                              placeholder={
-                                googleBusinessImportEnabled
-                                  ? "yourwebsite.co.uk — or type your business name"
-                                  : "yourwebsite.co.uk"
-                              }
-                              value={url}
-                              onChange={(event) => {
-                                setUrl(event.target.value);
-                                setForceUrlRefresh(false);
-                                setSelectedGbpPlace(null);
-                                setSelectedGbpPhotoNames([]);
-                                setPlacesSearchError(null);
-                              }}
-                              className="h-12 w-full rounded-full bg-transparent px-5 text-base outline-none placeholder:text-black/30 sm:flex-1"
-                            />
-                            <button
-                              type="submit"
-                              disabled={refreshSubmitDisabled}
-                              className="h-12 shrink-0 rounded-full bg-kiwi-green px-6 text-sm font-bold transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              {isBusinessSearchInput
-                                ? "Choose listing"
-                                : "Refresh it →"}
-                            </button>
-                          </form>
-
-                          {isBusinessSearchInput ? (
-                            <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-50 overflow-hidden rounded-3xl border border-black/10 bg-white shadow-2xl shadow-black/15">
-                              {isSearchingPlaces ? (
-                                <p className="px-4 py-3 text-sm font-medium text-black/45">
-                                  Finding Google listings…
-                                </p>
-                              ) : placesSearchError ? (
-                                <p className="px-4 py-3 text-sm font-medium text-black/55">
-                                  {placesSearchError}
-                                </p>
-                              ) : placeSuggestions.length > 0 ? (
-                                <>
-                                  {placeSuggestions.map((suggestion) => (
-                                    <button
-                                      key={suggestion.placeId}
-                                      type="button"
-                                      onClick={() => {
-                                        void handleSelectPlace(suggestion);
-                                      }}
-                                      className="block w-full border-b border-black/5 px-4 py-3 text-left transition hover:bg-[#faf8f1]"
-                                    >
-                                      <span className="block text-sm font-semibold text-black">
-                                        {suggestion.name}
-                                      </span>
-                                      {suggestion.address ? (
-                                        <span className="mt-0.5 block text-xs leading-5 text-black/50">
-                                          {suggestion.address}
-                                        </span>
-                                      ) : null}
-                                    </button>
-                                  ))}
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setForceUrlRefresh(true);
-                                      setPlaceSuggestions([]);
-                                    }}
-                                    className="block w-full px-4 py-3 text-left text-xs font-semibold text-black/45 transition hover:bg-[#faf8f1] hover:text-black"
-                                  >
-                                    Use &quot;{url.trim()}&quot; as a web address
-                                    anyway
-                                  </button>
-                                </>
-                              ) : (
-                                <p className="px-4 py-3 text-sm font-medium text-black/45">
-                                  No Google listings yet — try adding your town
-                                  or postcode.
-                                </p>
-                              )}
-                            </div>
+                        <div className="relative mt-5">
+                          <label htmlFor="fresh-google-input" className="sr-only">
+                            Your business name
+                          </label>
+                          <input
+                            id="fresh-google-input"
+                            type="text"
+                            value={gbpQuery}
+                            onChange={(event) => {
+                              setGbpQuery(event.target.value);
+                              setPlacesSearchError(null);
+                            }}
+                            placeholder="Business name and town or postcode"
+                            className="h-14 w-full rounded-full bg-[#faf8f1] px-5 text-base outline-none placeholder:text-black/30"
+                          />
+                          {isFreshGoogleSearchInput && gbpQuery.trim().length >= 3
+                            ? renderPlaceSuggestions()
+                            : null}
+                          {isLoadingPlaceDetails ? (
+                            <p className="mt-3 text-xs font-medium text-black/45">
+                              Loading that Google listing…
+                            </p>
                           ) : null}
                         </div>
-                      )}
-                      {googleBusinessImportEnabled && !selectedGbpPlace ? (
-                        <p className="mt-3 text-xs leading-5 text-black/40">
-                          No website? Type your business name and town — we&apos;ll
-                          find your Google listing.
-                        </p>
-                      ) : null}
-                      {isLoadingPlaceDetails ? (
-                        <p className="mt-3 text-xs font-medium text-black/45">
-                          Loading that Google listing…
-                        </p>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </div>
-
-                {errorMessage ? (
-                  <div
-                    className="mt-5 max-w-lg rounded-2xl border border-black/10 bg-white p-4"
-                    role="alert"
-                  >
-                    <p className="text-sm font-semibold">
-                      That didn&apos;t work this time
-                    </p>
-                    <p className="mt-1 text-sm leading-6 text-black/55">
-                      {errorMessage}
-                    </p>
-                  </div>
-                ) : null}
-
-                <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-medium text-black/50">
-                  {[
-                    "Free to try",
-                    "No signup needed",
-                    "No changes to your current site",
-                  ].map((item) => (
-                    <span key={item} className="inline-flex items-center gap-1.5">
-                      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#C5E66A] text-[10px] font-black leading-none text-black">
-                        ✓
-                      </span>
-                      {item}
-                    </span>
-                  ))}
-                </div>
-                </div>
-
-                {flowMode === "fresh" ? (
-                  <div
-                    key="fresh-hero-form"
-                    className="relative mx-auto w-full max-w-xl min-w-0 lg:max-w-none"
-                  >
-                  <div className="pointer-events-none absolute -inset-8 rounded-full bg-[radial-gradient(circle_at_58%_30%,rgba(191,226,98,0.32),transparent_58%)] blur-2xl" />
-                  <form
-                    onSubmit={handleFresh}
-                    className="relative min-w-0 overflow-hidden rounded-[2rem] border-2 border-black/20 bg-white p-4 shadow-2xl shadow-black/10 transition focus-within:border-black/40 sm:p-5"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <h2 className="font-fraunces text-2xl font-semibold tracking-tight">
+                      )
+                    ) : (
+                      <form onSubmit={handleFresh} className="mt-4">
+                        <label htmlFor="fresh-input" className="sr-only">
                           Describe the website you want
-                        </h2>
-                      </div>
-                    </div>
-                    <label htmlFor="fresh-input" className="sr-only">
-                      Describe the website you want
-                    </label>
-                    <PromptStarterCarousel onSelect={handleSelectPromptStarter} />
-                    <textarea
-                      ref={freshInputRef}
-                      id="fresh-input"
-                      rows={3}
-                      value={freshPrompt}
-                      onChange={(event) => setFreshPrompt(event.target.value)}
-                      placeholder="Tell us the business name, what you sell, who it is for, the style you like, and any must-have sections..."
-                      className="mt-4 w-full resize-none rounded-3xl bg-[#faf8f1] px-5 py-4 text-base leading-7 outline-none placeholder:text-black/30"
-                    />
-                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                      <label className="flex cursor-pointer flex-col rounded-2xl border border-black/10 px-4 py-3 text-sm font-semibold transition hover:border-black/25">
-                        <span>Logo</span>
-                        <span className="mt-1 truncate text-xs font-normal text-black/45">
-                          {freshLogo?.name ?? "Optional PNG, JPG, SVG..."}
-                        </span>
-                        <input
-                          type="file"
-                          accept="image/png,image/jpeg,image/webp,image/gif,image/avif,image/svg+xml"
-                          className="hidden"
-                          onChange={(event) => {
-                            setFreshLogo(event.target.files?.[0] ?? null);
-                          }}
+                        </label>
+                        <PromptStarterCarousel onSelect={handleSelectPromptStarter} />
+                        <textarea
+                          ref={freshInputRef}
+                          id="fresh-input"
+                          rows={3}
+                          value={freshPrompt}
+                          onChange={(event) => setFreshPrompt(event.target.value)}
+                          placeholder="Tell us the business name, what you sell, who it is for, the style you like, and any must-have sections..."
+                          className="mt-4 w-full resize-none rounded-3xl bg-[#faf8f1] px-5 py-4 text-base leading-7 outline-none placeholder:text-black/30"
                         />
-                      </label>
-                      <label className="flex cursor-pointer flex-col rounded-2xl border border-black/10 px-4 py-3 text-sm font-semibold transition hover:border-black/25">
-                        <span>Photos</span>
-                        <span className="mt-1 truncate text-xs font-normal text-black/45">
-                          {freshImages.length > 0
-                            ? `${freshImages.length} selected`
-                            : "Optional, up to 8 images"}
-                        </span>
-                        <input
-                          type="file"
-                          accept="image/png,image/jpeg,image/webp,image/gif,image/avif,image/svg+xml"
-                          multiple
-                          className="hidden"
-                          onChange={(event) => {
-                            setFreshImages(
-                              Array.from(event.target.files ?? []).slice(0, 8),
-                            );
-                          }}
-                        />
-                      </label>
-                    </div>
-                    <button
-                      type="submit"
-                      disabled={!freshPrompt.trim()}
-                      className="mt-3 h-12 w-full rounded-full bg-kiwi-green px-6 text-sm font-bold transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      Create it →
-                    </button>
-                    <p className="mt-3 text-center text-xs leading-5 text-black/40">
-                      Tip: include your audience, services, location, tone, and any
-                      must-have sections.
-                    </p>
-                    </form>
+                        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                          <label className="flex cursor-pointer flex-col rounded-2xl border border-black/10 px-4 py-3 text-sm font-semibold transition hover:border-black/25">
+                            <span>Logo</span>
+                            <span className="mt-1 truncate text-xs font-normal text-black/45">
+                              {freshLogo?.name ?? "Optional PNG, JPG, SVG..."}
+                            </span>
+                            <input
+                              type="file"
+                              accept="image/png,image/jpeg,image/webp,image/gif,image/avif,image/svg+xml"
+                              className="hidden"
+                              onChange={(event) => {
+                                setFreshLogo(event.target.files?.[0] ?? null);
+                              }}
+                            />
+                          </label>
+                          <label className="flex cursor-pointer flex-col rounded-2xl border border-black/10 px-4 py-3 text-sm font-semibold transition hover:border-black/25">
+                            <span>Photos</span>
+                            <span className="mt-1 truncate text-xs font-normal text-black/45">
+                              {freshImages.length > 0
+                                ? `${freshImages.length} selected`
+                                : "Optional, up to 8 images"}
+                            </span>
+                            <input
+                              type="file"
+                              accept="image/png,image/jpeg,image/webp,image/gif,image/avif,image/svg+xml"
+                              multiple
+                              className="hidden"
+                              onChange={(event) => {
+                                setFreshImages(
+                                  Array.from(event.target.files ?? []).slice(0, 8),
+                                );
+                              }}
+                            />
+                          </label>
+                        </div>
+                        <button
+                          type="submit"
+                          disabled={!freshPrompt.trim()}
+                          className="mt-3 h-12 w-full rounded-full bg-kiwi-green px-6 text-sm font-bold transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          Create it →
+                        </button>
+                        <p className="mt-3 text-center text-xs leading-5 text-black/40">
+                          Tip: include your audience, services, location, tone, and
+                          any must-have sections.
+                        </p>
+                      </form>
+                    )}
+                  </div>
                   </div>
                 ) : (
                   <div
@@ -3127,7 +3226,7 @@ export default function RefreshPage({
                           I want to refresh my website
                         </span>
                         <span className="mt-1.5 block text-sm leading-6 text-black/55 sm:mt-2">
-                          I have a website or Google listing and want a better version.
+                          I have a website and want a better version.
                         </span>
                         <span className="mt-3 inline-flex text-sm font-bold text-black transition group-hover:translate-x-1 sm:mt-4">
                           Refresh my site →
@@ -3146,7 +3245,8 @@ export default function RefreshPage({
                           I want to create a fresh website
                         </span>
                         <span className="mt-1.5 block text-sm leading-6 text-black/55 sm:mt-2">
-                          I&apos;m starting from scratch and need a new website.
+                          I&apos;m starting from scratch — describe it or build
+                          from my Google listing.
                         </span>
                         <span className="mt-3 inline-flex text-sm font-bold text-black transition group-hover:translate-x-1 sm:mt-4">
                           Create my site →
