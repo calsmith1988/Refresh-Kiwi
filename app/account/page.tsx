@@ -15,8 +15,13 @@ interface AuthUser {
   subscriptionStatus: string;
 }
 
+type WebsiteSummary = {
+  id: string;
+};
+
 export default function AccountPage() {
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [websiteCount, setWebsiteCount] = useState<number | null>(null);
   const [name, setName] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -42,13 +47,37 @@ export default function AccountPage() {
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
 
   useEffect(() => {
-    void fetch("/api/auth/me")
-      .then((response) => response.json())
-      .then((payload: { user: AuthUser | null }) => {
-        setUser(payload.user);
-        setName(payload.user?.name ?? "");
-      })
-      .finally(() => setIsLoading(false));
+    let cancelled = false;
+
+    void Promise.all([
+      fetch("/api/auth/me").then((response) => response.json()),
+      fetch("/api/websites")
+        .then((response) => (response.ok ? response.json() : null))
+        .catch(() => null),
+    ])
+      .then(
+        ([mePayload, websitesPayload]: [
+          { user: AuthUser | null },
+          { websites?: WebsiteSummary[] } | null,
+        ]) => {
+          if (cancelled) {
+            return;
+          }
+
+          setUser(mePayload.user);
+          setName(mePayload.user?.name ?? "");
+          setWebsiteCount(websitesPayload?.websites?.length ?? null);
+        },
+      )
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const updateProfile = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -406,6 +435,7 @@ export default function AccountPage() {
 
   const planLabel = user.plan === "pro" ? "Kiwi Pro" : "Free";
   const subscriptionLabel = user.subscriptionStatus.replaceAll("_", " ");
+  const websiteLimit = user.plan === "pro" ? 3 : 1;
 
   return (
     <main className="min-h-screen bg-[#faf8f1] px-5 py-5 text-[#141811] sm:px-8 lg:px-10">
@@ -818,6 +848,13 @@ export default function AccountPage() {
                 </button>
               ) : null}
               <p className="mt-3 text-xs leading-5 text-black/45">
+                Your plan includes {websiteLimit}{" "}
+                {websiteLimit === 1 ? "website" : "websites"}
+                {websiteCount !== null
+                  ? ` — you're using ${websiteCount}.`
+                  : "."}
+              </p>
+              <p className="mt-2 text-xs leading-5 text-black/45">
                 Payments and invoices are handled securely by Stripe.
               </p>
             </section>

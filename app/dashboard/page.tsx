@@ -192,6 +192,7 @@ type WebsiteImagesState =
   | { status: "error" }
   | { status: "ready"; images: WebsiteImage[] };
 
+type ImagesModalTab = "gallery" | "upload" | "generate";
 type PageGenerationType = "business" | "legal" | "custom";
 type WebsiteActionModalType =
   | "edit"
@@ -526,9 +527,6 @@ export default function DashboardPage() {
   );
   const [pageGenerationType, setPageGenerationType] =
     useState<PageGenerationType>("business");
-  const [pageChooserWebsiteId, setPageChooserWebsiteId] = useState<string | null>(
-    null,
-  );
   const [legalAnswers, setLegalAnswers] =
     useState<LegalAnswersState>(DEFAULT_LEGAL_ANSWERS);
   const [customPageRequest, setCustomPageRequest] =
@@ -542,6 +540,8 @@ export default function DashboardPage() {
   const [websiteImages, setWebsiteImages] = useState<
     Record<string, WebsiteImagesState>
   >({});
+  const [imagesModalTab, setImagesModalTab] =
+    useState<ImagesModalTab>("gallery");
   const [uploadingImagesWebsiteId, setUploadingImagesWebsiteId] = useState<
     string | null
   >(null);
@@ -593,11 +593,6 @@ export default function DashboardPage() {
   const websiteLimit = isPro ? 3 : 1;
   const activeWebsiteCount = websites.length + activeRefreshJobs.length;
   const canAddWebsite = activeWebsiteCount < websiteLimit;
-  const websiteUsagePercent = Math.min(
-    100,
-    Math.round((activeWebsiteCount / websiteLimit) * 100),
-  );
-  const websitesRemaining = Math.max(0, websiteLimit - activeWebsiteCount);
   const hasActiveRefreshJobs = activeRefreshJobs.length > 0;
   const hasActiveEdit = websites.some(
     (website) =>
@@ -654,9 +649,6 @@ export default function DashboardPage() {
   const activePagesStageIndex = activePagesWebsite
     ? pageProgressStageIndex(activePagesWebsite.updatedAt, progressTick)
     : 0;
-  const pageChooserWebsite = pageChooserWebsiteId
-    ? websites.find((website) => website.id === pageChooserWebsiteId) ?? null
-    : null;
   const canSubmitPageGeneration =
     pageGenerationType === "business" ||
     (pageGenerationType === "legal" &&
@@ -821,8 +813,11 @@ export default function DashboardPage() {
     window.localStorage.setItem(DASHBOARD_TOUR_STORAGE_KEY, "true");
   };
 
-  const openPageChooser = (website: Website) => {
-    setPageGenerationType("business");
+  const preparePageGeneration = (
+    website: Website,
+    type: PageGenerationType = "business",
+  ) => {
+    setPageGenerationType(type);
     setLegalAnswers({
       ...DEFAULT_LEGAL_ANSWERS,
       businessLegalName: website.brandName ?? "",
@@ -830,8 +825,6 @@ export default function DashboardPage() {
       privacyEmail: user?.email ?? "",
     });
     setCustomPageRequest(DEFAULT_CUSTOM_PAGE_REQUEST);
-    setPageChooserWebsiteId(website.id);
-    setWebsiteActionModal(null);
     setErrorMessage(null);
   };
 
@@ -1050,7 +1043,6 @@ export default function DashboardPage() {
       }
 
       await loadDashboard();
-      setPageChooserWebsiteId(null);
       setWebsiteActionModal(null);
     } catch (error) {
       setErrorMessage(
@@ -1077,10 +1069,12 @@ export default function DashboardPage() {
         throw new Error(payload.error ?? "Failed to load images");
       }
 
+      const images = payload.images ?? [];
       setWebsiteImages((current) => ({
         ...current,
-        [websiteId]: { status: "ready", images: payload.images ?? [] },
+        [websiteId]: { status: "ready", images },
       }));
+      setImagesModalTab(images.length > 0 ? "gallery" : "upload");
     } catch {
       setWebsiteImages((current) => ({
         ...current,
@@ -1122,8 +1116,21 @@ export default function DashboardPage() {
     setConfirmRegenerateId(null);
     setErrorMessage(null);
 
-    if (type === "images" && websiteImages[website.id]?.status !== "ready") {
+    if (type === "pages") {
+      preparePageGeneration(website);
+    }
+
+    const currentImagesState = websiteImages[website.id];
+
+    if (type === "images" && currentImagesState?.status !== "ready") {
+      setImagesModalTab("gallery");
       void loadWebsiteImages(website.id);
+    }
+
+    if (type === "images" && currentImagesState?.status === "ready") {
+      setImagesModalTab(
+        currentImagesState.images.length > 0 ? "gallery" : "upload",
+      );
     }
 
     if (type === "domain" || type === "rename" || type === "delete") {
@@ -1848,49 +1855,6 @@ export default function DashboardPage() {
             )}
           </div>
 
-          <div className="mt-7 grid gap-4">
-            <div className="rounded-3xl border border-black/10 bg-white p-5 shadow-sm">
-              <div className="flex items-center gap-4">
-                <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-kiwi-green/25 text-[#3f8f22]">
-                  <svg
-                    aria-hidden
-                    viewBox="0 0 24 24"
-                    className="h-8 w-8"
-                    fill="currentColor"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M5.5 4A2.5 2.5 0 0 0 3 6.5v11A2.5 2.5 0 0 0 5.5 20h13a2.5 2.5 0 0 0 2.5-2.5v-11A2.5 2.5 0 0 0 18.5 4h-13ZM5 8.5v-2c0-.28.22-.5.5-.5h13c.28 0 .5.22.5.5v2H5Zm2 3.25c0-.41.34-.75.75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5a.75.75 0 0 1-.75-.75Zm6 0c0-.41.34-.75.75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5a.75.75 0 0 1-.75-.75ZM7.75 15a.75.75 0 0 0 0 1.5h2.5a.75.75 0 0 0 0-1.5h-2.5Zm5.25.75c0-.41.34-.75.75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5a.75.75 0 0 1-.75-.75Z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </span>
-                <div>
-                  <p className="text-xs font-normal uppercase text-black/45">
-                    Websites used
-                  </p>
-                  <p className="mt-1 text-xl font-bold">
-                    {activeWebsiteCount} of {websiteLimit}
-                  </p>
-                </div>
-              </div>
-              <p className="mt-4 text-sm text-black/55">
-                {websitesRemaining > 0
-                  ? `You can create ${websitesRemaining} more ${pluralise(
-                      websitesRemaining,
-                      "website",
-                    )}.`
-                  : "You have used your current website allowance."}
-              </p>
-              <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/10">
-                <div
-                  className="h-full rounded-full bg-[#C5E66A]"
-                  style={{ width: `${websiteUsagePercent}%` }}
-                />
-              </div>
-            </div>
-          </div>
-
           {errorMessage ? (
             <p className="mt-4 text-sm text-red-600" role="alert">
               {errorMessage}
@@ -2486,6 +2450,7 @@ export default function DashboardPage() {
                             </button>
                           </div>
 
+                          {generatedPages.length > 0 ? (
                           <div className="mt-6 rounded-2xl bg-[#faf8f1] p-4">
                             <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
                               <div>
@@ -2501,7 +2466,6 @@ export default function DashboardPage() {
                                 {pluralise(generatedPages.length, "page")}
                               </span>
                             </div>
-                            {generatedPages.length > 0 ? (
                               <div className="mt-3 flex flex-wrap gap-2">
                                 {generatedPages.map((page) => (
                                   <Link
@@ -2514,64 +2478,237 @@ export default function DashboardPage() {
                                   </Link>
                                 ))}
                               </div>
-                            ) : (
-                              <p className="mt-3 text-sm text-black/45">
-                                No extra pages yet.
-                              </p>
-                            )}
                           </div>
+                          ) : null}
 
-                          {state.canView && generatedPages.length === 0 ? (
-                            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (!isPro) {
-                                    openProSheet();
-                                    return;
-                                  }
+                          {state.canView ? (
+                            <div className="mt-6 rounded-2xl border border-black/10 bg-[#faf8f1] p-4">
+                              <p className="text-sm font-semibold text-black">
+                                Add pages
+                              </p>
+                              <p className="mt-1 text-xs leading-5 text-black/45">
+                                Choose the kind of page you want to add to this
+                                website.
+                              </p>
+                              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                                {[
+                                  {
+                                    type: "business" as const,
+                                    title: "Pages from your old site",
+                                    description:
+                                      "About, services, gallery, contact, FAQs and other useful pages.",
+                                  },
+                                  {
+                                    type: "legal" as const,
+                                    title: "Legal pages",
+                                    description:
+                                      "Starter privacy, cookie and terms pages. Not legal advice.",
+                                  },
+                                  {
+                                    type: "custom" as const,
+                                    title: "A brand-new page",
+                                    description:
+                                      "Describe one new page and we will build it to match your site.",
+                                  },
+                                ].map((option) => (
+                                  <button
+                                    key={option.type}
+                                    type="button"
+                                    onClick={() => {
+                                      if (!isPro) {
+                                        openProSheet();
+                                        return;
+                                      }
 
-                                  openPageChooser(website);
-                                }}
-                                disabled={
-                                  isGeneratingPages ||
-                                  generatingPagesWebsiteId === website.id
-                                }
-                                className="rounded-3xl border border-black/10 bg-white p-4 text-left transition hover:border-black/25 disabled:cursor-not-allowed disabled:opacity-50"
-                              >
-                                <span className="text-sm font-semibold text-black">
-                                  Other pages
-                                </span>
-                                <span className="mt-1 block text-xs leading-5 text-black/50">
-                                  About, services, gallery, contact, FAQs and other
-                                  useful pages from the current site.
-                                </span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (!isPro) {
-                                    openProSheet();
-                                    return;
-                                  }
+                                      preparePageGeneration(website, option.type);
+                                    }}
+                                    disabled={
+                                      isGeneratingPages ||
+                                      generatingPagesWebsiteId === website.id
+                                    }
+                                    className={`rounded-3xl border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                                      pageGenerationType === option.type
+                                        ? "border-kiwi-green bg-[#f8fde9]"
+                                        : "border-black/10 bg-white hover:border-black/25"
+                                    }`}
+                                  >
+                                    <span className="text-sm font-semibold text-black">
+                                      {option.title}
+                                    </span>
+                                    <span className="mt-1 block text-xs leading-5 text-black/50">
+                                      {option.description}
+                                    </span>
+                                  </button>
+                                ))}
+                              </div>
 
-                                  openPageChooser(website);
-                                  setPageGenerationType("legal");
-                                }}
-                                disabled={
-                                  isGeneratingPages ||
-                                  generatingPagesWebsiteId === website.id
-                                }
-                                className="rounded-3xl border border-black/10 bg-white p-4 text-left transition hover:border-black/25 disabled:cursor-not-allowed disabled:opacity-50"
-                              >
-                                <span className="text-sm font-semibold text-black">
-                                  Legal pages
-                                </span>
-                                <span className="mt-1 block text-xs leading-5 text-black/50">
-                                  Starter privacy, cookie and terms pages. This is
-                                  not legal advice.
-                                </span>
-                              </button>
+                              {isPro && pageGenerationType === "legal" ? (
+                                <div className="mt-5 rounded-3xl bg-white p-4">
+                                  <p className="text-sm font-semibold text-black">
+                                    Starter legal page details
+                                  </p>
+                                  <p className="mt-1 text-xs leading-5 text-black/45">
+                                    These answers help draft a better starter
+                                    template. Review it before putting them online.
+                                  </p>
+                                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                                    <label className="text-xs font-semibold text-black/55">
+                                      Business legal name
+                                      <input
+                                        value={legalAnswers.businessLegalName}
+                                        onChange={(event) =>
+                                          updateLegalAnswer(
+                                            "businessLegalName",
+                                            event.target.value,
+                                          )
+                                        }
+                                        className="mt-1 h-11 w-full rounded-2xl border border-black/10 bg-[#faf8f1] px-4 text-sm font-medium text-black outline-none focus:border-black/30"
+                                      />
+                                    </label>
+                                    <label className="text-xs font-semibold text-black/55">
+                                      Trading name
+                                      <input
+                                        value={legalAnswers.tradingName}
+                                        onChange={(event) =>
+                                          updateLegalAnswer(
+                                            "tradingName",
+                                            event.target.value,
+                                          )
+                                        }
+                                        className="mt-1 h-11 w-full rounded-2xl border border-black/10 bg-[#faf8f1] px-4 text-sm font-medium text-black outline-none focus:border-black/30"
+                                      />
+                                    </label>
+                                    <label className="text-xs font-semibold text-black/55">
+                                      Country/region
+                                      <input
+                                        value={legalAnswers.country}
+                                        onChange={(event) =>
+                                          updateLegalAnswer(
+                                            "country",
+                                            event.target.value,
+                                          )
+                                        }
+                                        className="mt-1 h-11 w-full rounded-2xl border border-black/10 bg-[#faf8f1] px-4 text-sm font-medium text-black outline-none focus:border-black/30"
+                                      />
+                                    </label>
+                                    <label className="text-xs font-semibold text-black/55">
+                                      Privacy contact email
+                                      <input
+                                        value={legalAnswers.privacyEmail}
+                                        onChange={(event) =>
+                                          updateLegalAnswer(
+                                            "privacyEmail",
+                                            event.target.value,
+                                          )
+                                        }
+                                        inputMode="email"
+                                        className="mt-1 h-11 w-full rounded-2xl border border-black/10 bg-[#faf8f1] px-4 text-sm font-medium text-black outline-none focus:border-black/30"
+                                      />
+                                    </label>
+                                  </div>
+                                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                                    {LEGAL_BOOLEAN_FIELDS.map((field) => (
+                                      <label
+                                        key={field.key}
+                                        className="flex items-center gap-2 rounded-2xl bg-[#faf8f1] px-3 py-2 text-sm font-medium text-black/60"
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={legalAnswers[field.key]}
+                                          onChange={(event) =>
+                                            updateLegalAnswer(
+                                              field.key,
+                                              event.target.checked,
+                                            )
+                                          }
+                                          className="h-4 w-4 accent-[#C5E66A]"
+                                        />
+                                        <span>{field.label}</span>
+                                      </label>
+                                    ))}
+                                  </div>
+                                  <label className="mt-4 block text-xs font-semibold text-black/55">
+                                    Extra notes
+                                    <textarea
+                                      value={legalAnswers.notes}
+                                      onChange={(event) =>
+                                        updateLegalAnswer("notes", event.target.value)
+                                      }
+                                      placeholder="Any tools, policies, services, or details we should mention?"
+                                      className="mt-1 min-h-24 w-full rounded-2xl border border-black/10 bg-[#faf8f1] px-4 py-3 text-sm font-medium text-black outline-none focus:border-black/30"
+                                    />
+                                  </label>
+                                </div>
+                              ) : null}
+
+                              {isPro && pageGenerationType === "custom" ? (
+                                <div className="mt-5 rounded-3xl bg-white p-4">
+                                  <p className="text-sm font-semibold text-black">
+                                    New page details
+                                  </p>
+                                  <p className="mt-1 text-xs leading-5 text-black/45">
+                                    Tell us what page to add and what it should
+                                    cover.
+                                  </p>
+                                  <label className="mt-4 block text-xs font-semibold text-black/55">
+                                    Page name
+                                    <input
+                                      value={customPageRequest.title}
+                                      onChange={(event) =>
+                                        updateCustomPageRequest(
+                                          "title",
+                                          event.target.value,
+                                        )
+                                      }
+                                      maxLength={80}
+                                      placeholder="Careers"
+                                      className="mt-1 h-11 w-full rounded-2xl border border-black/10 bg-[#faf8f1] px-4 text-sm font-medium text-black outline-none focus:border-black/30"
+                                    />
+                                  </label>
+                                  <label className="mt-4 block text-xs font-semibold text-black/55">
+                                    What should be on it?
+                                    <textarea
+                                      value={customPageRequest.brief}
+                                      onChange={(event) =>
+                                        updateCustomPageRequest(
+                                          "brief",
+                                          event.target.value,
+                                        )
+                                      }
+                                      maxLength={2000}
+                                      placeholder="Describe the page sections, key details, tone, and any facts we should include."
+                                      className="mt-1 min-h-28 w-full rounded-2xl border border-black/10 bg-[#faf8f1] px-4 py-3 text-sm font-medium text-black outline-none focus:border-black/30"
+                                    />
+                                  </label>
+                                </div>
+                              ) : null}
+
+                              {isPro ? (
+                                <div className="mt-5 flex justify-end">
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      void generateAdditionalPages(
+                                        website.id,
+                                        pageGenerationType,
+                                      )
+                                    }
+                                    disabled={
+                                      generatingPagesWebsiteId === website.id ||
+                                      !canSubmitPageGeneration
+                                    }
+                                    className="h-11 rounded-full bg-[#141811] px-5 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
+                                  >
+                                    {generatingPagesWebsiteId === website.id
+                                      ? "Starting..."
+                                      : pageGenerationType === "legal"
+                                        ? "Generate legal pages"
+                                        : pageGenerationType === "custom"
+                                          ? "Create my new page"
+                                          : "Generate my other pages"}
+                                  </button>
+                                </div>
+                              ) : null}
                             </div>
                           ) : null}
 
@@ -2588,7 +2725,7 @@ export default function DashboardPage() {
                                     type="button"
                                     onClick={() => {
                                       setConfirmRegenerateId(null);
-                                      openPageChooser(website);
+                                      void generateAdditionalPages(website.id, "business");
                                     }}
                                     className="rounded-full bg-[#141811] px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-black"
                                   >
@@ -2668,6 +2805,28 @@ export default function DashboardPage() {
                           </button>
                         </div>
 
+                        <div className="mt-5 grid gap-2 rounded-full bg-white p-1 shadow-sm sm:inline-grid sm:grid-cols-3">
+                          {[
+                            { id: "gallery" as const, label: "Your images" },
+                            { id: "upload" as const, label: "Upload photos" },
+                            { id: "generate" as const, label: "Create with AI" },
+                          ].map((tab) => (
+                            <button
+                              key={tab.id}
+                              type="button"
+                              onClick={() => setImagesModalTab(tab.id)}
+                              className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                                imagesModalTab === tab.id
+                                  ? "bg-[#141811] text-white"
+                                  : "text-black/50 hover:text-black"
+                              }`}
+                            >
+                              {tab.label}
+                            </button>
+                          ))}
+                        </div>
+
+                        {imagesModalTab === "upload" ? (
                         <form
                           className="mt-4 rounded-2xl border border-black/10 bg-white p-3"
                           onSubmit={(event) => {
@@ -2750,9 +2909,11 @@ export default function DashboardPage() {
                             files for later.
                           </p>
                         </form>
+                        ) : null}
 
+                        {imagesModalTab === "generate" ? (
                         <form
-                          className="mt-3 rounded-2xl border border-black/10 bg-white p-3"
+                          className="mt-4 rounded-2xl border border-black/10 bg-white p-3"
                           onSubmit={(event) => {
                             event.preventDefault();
                             void generateImage(website.id, event.currentTarget);
@@ -2845,7 +3006,10 @@ export default function DashboardPage() {
                                 : "Generate image"}
                           </button>
                         </form>
+                        ) : null}
 
+                        {imagesModalTab === "gallery" ? (
+                          <>
                         {(() => {
                           if (!imagesState || imagesState.status === "loading") {
                             return (
@@ -3098,6 +3262,8 @@ export default function DashboardPage() {
                             </div>
                           );
                         })()}
+                          </>
+                        ) : null}
                         </div>
                       </div>
                     ) : null}
@@ -3607,248 +3773,6 @@ export default function DashboardPage() {
           </div>
         </section>
       </div>
-
-      {pageChooserWebsite ? (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="page-chooser-title"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-5 backdrop-blur-sm"
-        >
-          <div className="preview-pop max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-black/10 bg-white p-6 shadow-2xl sm:p-8">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-black/40">
-                  Generate pages
-                </p>
-                <h2
-                  id="page-chooser-title"
-                  className="mt-2 font-fraunces text-3xl font-semibold tracking-tight"
-                >
-                  What should we build?
-                </h2>
-                <p className="mt-2 text-sm leading-6 text-black/55">
-                  Choose normal business pages, create starter legal pages, or
-                  describe a brand-new page from scratch.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setPageChooserWebsiteId(null)}
-                className="rounded-full border border-black/10 px-3 py-1 text-sm text-black/60 transition hover:border-black/25 hover:text-black"
-              >
-                Close
-              </button>
-            </div>
-
-            <div className="mt-6 grid gap-3 sm:grid-cols-3">
-              {[
-                {
-                  type: "business" as const,
-                  title: "My other pages",
-                  description:
-                    "About, services, gallery, blog, contact, FAQs and other useful pages from the current site.",
-                },
-                {
-                  type: "legal" as const,
-                  title: "Legal pages",
-                  description:
-                    "Starter privacy, cookie and terms pages. This is not legal advice.",
-                },
-                {
-                  type: "custom" as const,
-                  title: "A brand-new page",
-                  description:
-                    "Describe a page that does not exist yet and we will build it to match your site.",
-                },
-              ].map((option) => (
-                <button
-                  key={option.type}
-                  type="button"
-                  onClick={() => setPageGenerationType(option.type)}
-                  className={`rounded-3xl border p-4 text-left transition ${
-                    pageGenerationType === option.type
-                      ? "border-kiwi-green bg-[#f8fde9]"
-                      : "border-black/10 bg-white hover:border-black/25"
-                  }`}
-                >
-                  <span className="text-sm font-semibold text-black">
-                    {option.title}
-                  </span>
-                  <span className="mt-1 block text-xs leading-5 text-black/50">
-                    {option.description}
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            {pageGenerationType === "legal" ? (
-              <div className="mt-6 rounded-3xl bg-[#faf8f1] p-4 sm:p-5">
-                <p className="text-sm font-semibold text-black">
-                  Starter legal page details
-                </p>
-                <p className="mt-1 text-xs leading-5 text-black/45">
-                  These answers help draft a better starter template. Review it
-                  before putting them online.
-                </p>
-
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <label className="text-xs font-semibold text-black/55">
-                    Business legal name
-                    <input
-                      value={legalAnswers.businessLegalName}
-                      onChange={(event) =>
-                        updateLegalAnswer("businessLegalName", event.target.value)
-                      }
-                      className="mt-1 h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm font-medium text-black outline-none focus:border-black/30"
-                    />
-                  </label>
-                  <label className="text-xs font-semibold text-black/55">
-                    Trading name
-                    <input
-                      value={legalAnswers.tradingName}
-                      onChange={(event) =>
-                        updateLegalAnswer("tradingName", event.target.value)
-                      }
-                      className="mt-1 h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm font-medium text-black outline-none focus:border-black/30"
-                    />
-                  </label>
-                  <label className="text-xs font-semibold text-black/55">
-                    Country/region
-                    <input
-                      value={legalAnswers.country}
-                      onChange={(event) =>
-                        updateLegalAnswer("country", event.target.value)
-                      }
-                      className="mt-1 h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm font-medium text-black outline-none focus:border-black/30"
-                    />
-                  </label>
-                  <label className="text-xs font-semibold text-black/55">
-                    Privacy contact email
-                    <input
-                      value={legalAnswers.privacyEmail}
-                      onChange={(event) =>
-                        updateLegalAnswer("privacyEmail", event.target.value)
-                      }
-                      inputMode="email"
-                      className="mt-1 h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm font-medium text-black outline-none focus:border-black/30"
-                    />
-                  </label>
-                </div>
-
-                <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                  {LEGAL_BOOLEAN_FIELDS.map((field) => (
-                    <label
-                      key={field.key}
-                      className="flex items-center gap-2 rounded-2xl bg-white px-3 py-2 text-sm font-medium text-black/60"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={legalAnswers[field.key]}
-                        onChange={(event) =>
-                          updateLegalAnswer(field.key, event.target.checked)
-                        }
-                        className="h-4 w-4 accent-[#C5E66A]"
-                      />
-                      <span>
-                        {field.label}
-                        {field.key === "hasExistingLegalPages" ? (
-                          <span className="mt-0.5 block text-xs font-normal leading-5 text-black/40">
-                            We&apos;ll try to find and restyle them instead of
-                            writing new starter copy.
-                          </span>
-                        ) : null}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-
-                <label className="mt-4 block text-xs font-semibold text-black/55">
-                  Extra notes
-                  <textarea
-                    value={legalAnswers.notes}
-                    onChange={(event) =>
-                      updateLegalAnswer("notes", event.target.value)
-                    }
-                    placeholder="Any tools, policies, services, or details we should mention?"
-                    className="mt-1 min-h-24 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm font-medium text-black outline-none focus:border-black/30"
-                  />
-                </label>
-              </div>
-            ) : null}
-
-            {pageGenerationType === "custom" ? (
-              <div className="mt-6 rounded-3xl bg-[#faf8f1] p-4 sm:p-5">
-                <p className="text-sm font-semibold text-black">
-                  New page details
-                </p>
-                <p className="mt-1 text-xs leading-5 text-black/45">
-                  Tell us what page to add and what it should cover. We&apos;ll
-                  build one page that matches this site.
-                </p>
-
-                <label className="mt-4 block text-xs font-semibold text-black/55">
-                  Page name
-                  <input
-                    value={customPageRequest.title}
-                    onChange={(event) =>
-                      updateCustomPageRequest("title", event.target.value)
-                    }
-                    maxLength={80}
-                    placeholder="Careers"
-                    className="mt-1 h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm font-medium text-black outline-none focus:border-black/30"
-                  />
-                </label>
-
-                <label className="mt-4 block text-xs font-semibold text-black/55">
-                  What should be on it?
-                  <textarea
-                    value={customPageRequest.brief}
-                    onChange={(event) =>
-                      updateCustomPageRequest("brief", event.target.value)
-                    }
-                    maxLength={2000}
-                    placeholder="Describe the page sections, key details, tone, and any facts we should include."
-                    className="mt-1 min-h-28 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm font-medium text-black outline-none focus:border-black/30"
-                  />
-                </label>
-              </div>
-            ) : null}
-
-            <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                onClick={() => setPageChooserWebsiteId(null)}
-                className="h-11 rounded-full border border-black/10 bg-white px-5 text-sm font-semibold text-black/60 transition hover:border-black/25 hover:text-black"
-              >
-                Not now
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  void generateAdditionalPages(
-                    pageChooserWebsite.id,
-                    pageGenerationType,
-                  )
-                }
-                disabled={
-                  generatingPagesWebsiteId === pageChooserWebsite.id ||
-                  !canSubmitPageGeneration
-                }
-                className="h-11 rounded-full bg-[#141811] px-5 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {generatingPagesWebsiteId === pageChooserWebsite.id
-                  ? "Starting..."
-                  : pageGenerationType === "legal"
-                    ? "Generate legal pages"
-                    : pageGenerationType === "custom"
-                      ? "Create my new page"
-                      : "Generate my other pages"}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
 
       {showActivePagesModal && activePagesWebsite ? (
         <div
