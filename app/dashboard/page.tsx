@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import CurrencySelector from "@/components/CurrencySelector";
 import { usePricing } from "@/components/usePricing";
@@ -67,6 +67,8 @@ type Website = {
     status: "pending" | "building" | "ready";
   }>;
 };
+
+const DELETE_HOLD_MS = 3000;
 
 type ActiveRefreshJob = {
   id: string;
@@ -511,7 +513,6 @@ export default function DashboardPage() {
   const [editPrompts, setEditPrompts] = useState<Record<string, string>>({});
   const [editTargets, setEditTargets] = useState<Record<string, string>>({});
   const [renameValues, setRenameValues] = useState<Record<string, string>>({});
-  const [deleteConfirmations, setDeleteConfirmations] = useState<Record<string, string>>({});
   const [domainValues, setDomainValues] = useState<Record<string, string>>({});
   const [submittingEditId, setSubmittingEditId] = useState<string | null>(null);
   const [cancellingRefreshJobId, setCancellingRefreshJobId] = useState<string | null>(
@@ -557,9 +558,10 @@ export default function DashboardPage() {
   );
   const [revertingImageId, setRevertingImageId] = useState<string | null>(null);
   const [copiedWebsiteId, setCopiedWebsiteId] = useState<string | null>(null);
-  const [copiedDeleteNameId, setCopiedDeleteNameId] = useState<string | null>(
-    null,
-  );
+  const [deleteHoldWebsiteId, setDeleteHoldWebsiteId] = useState<string | null>(null);
+  const [deleteHoldProgress, setDeleteHoldProgress] = useState(0);
+  const deleteHoldFrameRef = useRef<number | null>(null);
+  const deleteHoldStartedAtRef = useRef<number | null>(null);
   const [progressTick, setProgressTick] = useState(() => Date.now());
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [confirmRegenerateId, setConfirmRegenerateId] = useState<string | null>(
@@ -1087,10 +1089,30 @@ export default function DashboardPage() {
     }
   };
 
+  const cancelDeleteHold = () => {
+    if (deleteHoldFrameRef.current !== null) {
+      window.cancelAnimationFrame(deleteHoldFrameRef.current);
+      deleteHoldFrameRef.current = null;
+    }
+
+    deleteHoldStartedAtRef.current = null;
+    setDeleteHoldWebsiteId(null);
+    setDeleteHoldProgress(0);
+  };
+
   const closeWebsiteActionModal = () => {
+    cancelDeleteHold();
     setWebsiteActionModal(null);
     setConfirmRegenerateId(null);
   };
+
+  useEffect(() => {
+    return () => {
+      if (deleteHoldFrameRef.current !== null) {
+        window.cancelAnimationFrame(deleteHoldFrameRef.current);
+      }
+    };
+  }, []);
 
   const openWebsiteActionModal = (
     website: Website,
@@ -1315,25 +1337,6 @@ export default function DashboardPage() {
     }
   };
 
-  const copyDeleteConfirmationName = async (website: Website) => {
-    const name = website.brandName || website.slug;
-
-    try {
-      await navigator.clipboard.writeText(name);
-      setCopiedDeleteNameId(website.id);
-      window.setTimeout(() => {
-        setCopiedDeleteNameId((current) =>
-          current === website.id ? null : current,
-        );
-      }, 2000);
-    } catch {
-      setDeleteConfirmations((current) => ({
-        ...current,
-        [website.id]: name,
-      }));
-    }
-  };
-
   const updateImageInState = (websiteId: string, image: WebsiteImage) => {
     setWebsiteImages((current) => {
       const state = current[websiteId];
@@ -1514,7 +1517,7 @@ export default function DashboardPage() {
     }
   };
 
-  const deleteWebsite = async (website: Website) => {
+  const deleteWebsite = async (website: Website, confirmation: string) => {
     setDeletingWebsiteId(website.id);
     setErrorMessage(null);
 
@@ -1523,7 +1526,7 @@ export default function DashboardPage() {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          confirmation: deleteConfirmations[website.id] ?? "",
+          confirmation,
         }),
       });
       const payload = await response.json();
@@ -1555,6 +1558,42 @@ export default function DashboardPage() {
     } finally {
       setDeletingWebsiteId(null);
     }
+  };
+
+  const startDeleteHold = (website: Website) => {
+    if (deletingWebsiteId === website.id || deleteHoldWebsiteId === website.id) {
+      return;
+    }
+
+    cancelDeleteHold();
+    const confirmation = website.brandName || website.slug;
+    deleteHoldStartedAtRef.current = performance.now();
+    setDeleteHoldWebsiteId(website.id);
+    setDeleteHoldProgress(0);
+
+    const tick = (timestamp: number) => {
+      const startedAt = deleteHoldStartedAtRef.current;
+
+      if (startedAt === null) {
+        return;
+      }
+
+      const progress = Math.min(1, (timestamp - startedAt) / DELETE_HOLD_MS);
+      setDeleteHoldProgress(progress);
+
+      if (progress >= 1) {
+        deleteHoldStartedAtRef.current = null;
+        deleteHoldFrameRef.current = null;
+        setDeleteHoldWebsiteId(null);
+        setDeleteHoldProgress(0);
+        void deleteWebsite(website, confirmation);
+        return;
+      }
+
+      deleteHoldFrameRef.current = window.requestAnimationFrame(tick);
+    };
+
+    deleteHoldFrameRef.current = window.requestAnimationFrame(tick);
   };
 
   const connectDomain = async (website: Website) => {
@@ -3316,8 +3355,8 @@ export default function DashboardPage() {
                                 Delete {website.brandName || website.slug}?
                               </h2>
                               <p className="mt-2 text-sm leading-6 text-black/55">
-                                This removes the website from your dashboard. Type
-                                the website name to confirm.
+                                This removes the website from your dashboard.
+                                Press and hold the button below to confirm.
                               </p>
                             </div>
                             <button
@@ -3328,62 +3367,62 @@ export default function DashboardPage() {
                               Close
                             </button>
                           </div>
-                          <p className="mt-6 text-xs leading-5 text-black/45">
-                            Type{" "}
-                            <span className="inline-flex items-center gap-1.5">
+                          <div className="mt-6 rounded-2xl border border-red-100 bg-red-50/50 p-4">
+                            <p className="text-sm leading-6 text-black/60">
+                              You are deleting{" "}
                               <span className="font-semibold text-black">
                                 {website.brandName || website.slug}
                               </span>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  void copyDeleteConfirmationName(website)
-                                }
-                                className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-black/10 bg-white text-black/45 transition hover:border-black/25 hover:text-black"
-                                aria-label={`Copy ${
-                                  website.brandName || website.slug
-                                }`}
-                              >
-                                {copiedDeleteNameId === website.id ? (
-                                  <span className="text-[10px] font-bold">✓</span>
-                                ) : (
-                                  <svg
-                                    aria-hidden
-                                    viewBox="0 0 16 16"
-                                    className="h-3.5 w-3.5"
-                                  >
-                                    <path
-                                      fill="currentColor"
-                                      d="M5 2.5A1.5 1.5 0 0 1 6.5 1h5A1.5 1.5 0 0 1 13 2.5v5A1.5 1.5 0 0 1 11.5 9h-5A1.5 1.5 0 0 1 5 7.5v-5Zm1.5-.25a.25.25 0 0 0-.25.25v5c0 .14.11.25.25.25h5c.14 0 .25-.11.25-.25v-5a.25.25 0 0 0-.25-.25h-5ZM3.5 5.25c-.14 0-.25.11-.25.25v7c0 .14.11.25.25.25h7c.14 0 .25-.11.25-.25V11H12v1.5A1.5 1.5 0 0 1 10.5 14h-7A1.5 1.5 0 0 1 2 12.5v-7A1.5 1.5 0 0 1 3.5 4H4v1.25h-.5Z"
-                                    />
-                                  </svg>
-                                )}
-                              </button>
-                            </span>{" "}
-                            to delete it from your dashboard.
-                          </p>
-                          <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-                            <input
-                              value={deleteConfirmations[website.id] ?? ""}
-                              onChange={(event) =>
-                                setDeleteConfirmations((current) => ({
-                                  ...current,
-                                  [website.id]: event.target.value,
-                                }))
-                              }
-                              placeholder={website.brandName || website.slug}
-                              className="h-11 flex-1 rounded-full border border-red-100 bg-white px-4 text-sm outline-none placeholder:text-black/25 focus:border-red-200"
-                              aria-label="Delete confirmation"
-                            />
+                              . Keep holding until the button fills.
+                            </p>
                             <button
                               type="button"
-                              onClick={() => void deleteWebsite(website)}
+                              onPointerDown={(event) => {
+                                event.currentTarget.setPointerCapture(
+                                  event.pointerId,
+                                );
+                                startDeleteHold(website);
+                              }}
+                              onPointerUp={cancelDeleteHold}
+                              onPointerLeave={cancelDeleteHold}
+                              onPointerCancel={cancelDeleteHold}
+                              onLostPointerCapture={cancelDeleteHold}
+                              onContextMenu={(event) => event.preventDefault()}
+                              onKeyDown={(event) => {
+                                if (event.key === " " || event.key === "Enter") {
+                                  event.preventDefault();
+                                  startDeleteHold(website);
+                                }
+                              }}
+                              onKeyUp={(event) => {
+                                if (event.key === " " || event.key === "Enter") {
+                                  event.preventDefault();
+                                  cancelDeleteHold();
+                                }
+                              }}
                               disabled={deletingWebsiteId === website.id}
-                              className="h-11 rounded-full bg-red-600 px-5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                              aria-label={`Press and hold to delete ${
+                                website.brandName || website.slug
+                              }`}
+                              className="relative mt-4 h-12 w-full touch-none overflow-hidden rounded-full border border-red-700 bg-red-600 px-5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
                             >
-                              {deletingWebsiteId === website.id
-                                ? "Deleting..."
-                                : "Delete website"}
+                              <span
+                                aria-hidden
+                                className="absolute inset-y-0 left-0 bg-red-900/35"
+                                style={{
+                                  width:
+                                    deleteHoldWebsiteId === website.id
+                                      ? `${Math.round(deleteHoldProgress * 100)}%`
+                                      : "0%",
+                                }}
+                              />
+                              <span className="relative">
+                                {deletingWebsiteId === website.id
+                                  ? "Deleting..."
+                                  : deleteHoldWebsiteId === website.id
+                                    ? "Keep holding..."
+                                    : "Hold to delete website"}
+                              </span>
                             </button>
                           </div>
                         </div>
