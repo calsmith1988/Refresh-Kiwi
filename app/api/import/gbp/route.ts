@@ -18,7 +18,7 @@ import { createJobAccessToken } from "@/lib/jobs/token";
 import { metaUserDataFromRequest, sendMetaEvent } from "@/lib/meta/events";
 import { verifyTurnstileToken } from "@/lib/security/turnstile";
 import { enqueueBackgroundTask } from "@/lib/worker/queue";
-import { userHasProPlan } from "@/lib/websites/service";
+import { checkWebsiteAllowance, userHasProPlan } from "@/lib/websites/service";
 
 export const runtime = "nodejs";
 
@@ -125,9 +125,24 @@ export async function POST(request: Request) {
       message: "Too many Google listing imports. Please wait a moment and try again.",
     });
 
+    const isPro = currentUser ? await userHasProPlan(currentUser.id) : false;
+
+    // Signed-in generations save straight to the account, so enforce the
+    // website allowance (1 free / 3 Pro) before spending an agent run.
+    if (currentUser) {
+      const allowance = await checkWebsiteAllowance({
+        userId: currentUser.id,
+        isPro,
+      });
+
+      if (!allowance.ok) {
+        return NextResponse.json({ error: allowance.message }, { status: 403 });
+      }
+    }
+
     const limit = await checkRefreshLimit({
       userId: currentUser?.id ?? null,
-      isPro: currentUser ? await userHasProPlan(currentUser.id) : false,
+      isPro,
       clientIp,
     });
 

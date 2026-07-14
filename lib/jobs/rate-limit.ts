@@ -7,8 +7,10 @@ const { jobs } = schema;
 
 /**
  * Every refresh costs a real Cursor agent run, and /api/refresh is public —
- * so generations are capped per rolling 24 hours. The website-save limit
- * (1 free / 3 Pro) only applies at claim time and doesn't protect this.
+ * so generations are capped per rolling 24 hours. This complements the
+ * website allowance (1 free / 3 Pro, see checkWebsiteAllowance): anonymous
+ * visitors have no saved websites yet, so this cap is what protects the
+ * public endpoints from them.
  *
  * Failed jobs don't count against anyone — those are on us.
  */

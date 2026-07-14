@@ -1,4 +1,4 @@
-import { and, desc, eq, ne } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNull, ne } from "drizzle-orm";
 
 import { getDb, schema } from "@/lib/db";
 import { deleteSiteDirectoryFromR2 } from "@/lib/storage/r2";
@@ -29,6 +29,60 @@ function isProUser(user: ProPlanCandidate) {
 
 export function previewExpiresAt(): Date {
   return new Date(Date.now() + PREVIEW_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
+}
+
+// Generations that haven't produced a website row yet. A job in one of these
+// states will become an owned website when it finishes, so it must count
+// toward the owner's website allowance.
+const IN_FLIGHT_JOB_STATUSES = [
+  "queued",
+  "analyzing",
+  "building_homepage",
+  "homepage_ready",
+] as const;
+
+export type WebsiteAllowanceResult =
+  | { ok: true }
+  | { ok: false; message: string };
+
+/**
+ * Signed-in generations skip the claim step — the finished website is saved
+ * straight to the user's account. So the 1-free/3-Pro website limit has to be
+ * enforced before starting a generation, not just in claimWebsite.
+ */
+export async function checkWebsiteAllowance(params: {
+  userId: string;
+  isPro: boolean;
+}): Promise<WebsiteAllowanceResult> {
+  const db = getDb();
+  const [ownedWebsites, [inFlight]] = await Promise.all([
+    listOwnedWebsites(params.userId),
+    db
+      .select({ value: count() })
+      .from(jobs)
+      .leftJoin(websites, eq(websites.jobId, jobs.id))
+      .where(
+        and(
+          eq(jobs.userId, params.userId),
+          inArray(jobs.status, [...IN_FLIGHT_JOB_STATUSES]),
+          isNull(websites.id),
+        ),
+      ),
+  ]);
+
+  const used = ownedWebsites.length + (inFlight?.value ?? 0);
+  const limit = params.isPro ? PRO_WEBSITE_LIMIT : FREE_WEBSITE_LIMIT;
+
+  if (used >= limit) {
+    return {
+      ok: false,
+      message: params.isPro
+        ? "Your Pro plan includes up to 3 websites and you've used them all. Delete one from your dashboard to make room, or contact us to add more."
+        : "Free accounts include 1 website and you already have one. Upgrade to Pro for up to 3 websites, or delete your current one from the dashboard.",
+    };
+  }
+
+  return { ok: true };
 }
 
 export function toWebsiteResponse(website: typeof websites.$inferSelect) {
