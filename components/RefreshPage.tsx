@@ -946,7 +946,7 @@ export default function RefreshPage({
   const [isStartingCheckout, setIsStartingCheckout] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [statusMessageIndex, setStatusMessageIndex] = useState(0);
-  const [isPreviewMenuOpen, setIsPreviewMenuOpen] = useState(false);
+  const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
   const [showStartAnotherWarning, setShowStartAnotherWarning] = useState(false);
   const pollTimerRef = useRef<number | null>(null);
   const pollFailuresRef = useRef(0);
@@ -1384,7 +1384,7 @@ export default function RefreshPage({
     } finally {
       clearStoredJob();
       setUser(null);
-      setIsPreviewMenuOpen(false);
+      setIsHeaderMenuOpen(false);
       setAccountMode("closed");
     }
   };
@@ -1643,7 +1643,7 @@ export default function RefreshPage({
   };
 
   const requestStartFresh = () => {
-    setIsPreviewMenuOpen(false);
+    setIsHeaderMenuOpen(false);
 
     if (job && !job.isClaimed) {
       setShowStartAnotherWarning(true);
@@ -2112,7 +2112,7 @@ export default function RefreshPage({
 
   useEffect(() => {
     if (!showReveal) {
-      setIsPreviewMenuOpen(false);
+      setIsHeaderMenuOpen(false);
     }
   }, [showReveal]);
 
@@ -2228,7 +2228,7 @@ export default function RefreshPage({
             </span>
           </Link>
           <nav
-            className="hidden items-center gap-7 text-sm font-medium text-black/60 md:flex"
+            className="hidden items-center gap-7 whitespace-nowrap text-sm font-medium text-black/60 md:flex"
             aria-label="Primary"
           >
             <a href="#how" className="transition hover:text-black">
@@ -2245,15 +2245,36 @@ export default function RefreshPage({
             </a>
           </nav>
           <div
-            className={`items-center gap-2 ${showReveal ? "hidden md:flex" : "flex"}`}
+            className={`items-center gap-2 ${
+              user || showReveal ? "hidden md:flex" : "flex"
+            }`}
           >
             {user ? (
-              <Link
-                href="/dashboard"
-                className="rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold transition hover:border-black/25 sm:px-5"
-              >
-                My websites
-              </Link>
+              <>
+                <Link
+                  href="/dashboard"
+                  className="whitespace-nowrap rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold transition hover:border-black/25 sm:px-5"
+                >
+                  My websites
+                </Link>
+                <Link
+                  href="/account"
+                  className={`whitespace-nowrap rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold text-black/60 transition hover:border-black/25 hover:text-black sm:px-5 ${
+                    showReveal ? "hidden" : "hidden lg:inline-block"
+                  }`}
+                >
+                  Account
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => void logout()}
+                  className={`whitespace-nowrap rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold text-black/60 transition hover:border-black/25 hover:text-black sm:px-5 ${
+                    showReveal ? "hidden lg:inline-block" : ""
+                  }`}
+                >
+                  Log out
+                </button>
+              </>
             ) : (
               <button
                 type="button"
@@ -2267,11 +2288,11 @@ export default function RefreshPage({
               <button
                 type="button"
                 onClick={requestStartFresh}
-                className="rounded-full bg-[#141811] px-4 py-2 text-sm font-semibold text-white transition hover:bg-black sm:px-5"
+                className="whitespace-nowrap rounded-full bg-[#141811] px-4 py-2 text-sm font-semibold text-white transition hover:bg-black sm:px-5"
               >
                 Start another
               </button>
-            ) : (
+            ) : !user ? (
               <a
                 href={flowMode === "fresh" ? "#fresh-input" : "#refresh-input"}
                 onClick={() => chooseHeroMode(flowMode)}
@@ -2279,17 +2300,17 @@ export default function RefreshPage({
               >
                 Try it free
               </a>
-            )}
+            ) : null}
           </div>
-          {showReveal ? (
+          {user || showReveal ? (
             <div className="relative md:hidden">
               <button
                 type="button"
-                onClick={() => setIsPreviewMenuOpen((open) => !open)}
+                onClick={() => setIsHeaderMenuOpen((open) => !open)}
                 className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-4 py-2.5 text-sm font-semibold text-black shadow-sm transition hover:border-black/25"
                 aria-label="Open menu"
-                aria-expanded={isPreviewMenuOpen}
-                aria-controls="preview-mobile-menu"
+                aria-expanded={isHeaderMenuOpen}
+                aria-controls="header-mobile-menu"
               >
                 <span className="flex h-4 w-4 flex-col justify-center gap-1" aria-hidden>
                   <span className="block h-0.5 rounded-full bg-current" />
@@ -2298,19 +2319,26 @@ export default function RefreshPage({
                 </span>
                 Menu
               </button>
-              {isPreviewMenuOpen ? (
+              {isHeaderMenuOpen ? (
                 <div
-                  id="preview-mobile-menu"
+                  id="header-mobile-menu"
                   className="absolute right-0 top-[3.25rem] z-50 w-56 rounded-3xl border border-black/10 bg-white p-2 shadow-2xl shadow-black/15"
                 >
                   {user ? (
                     <>
                       <Link
                         href="/dashboard"
-                        onClick={() => setIsPreviewMenuOpen(false)}
+                        onClick={() => setIsHeaderMenuOpen(false)}
                         className="block rounded-2xl px-4 py-3 text-sm font-semibold text-black transition hover:bg-black/5"
                       >
                         My websites
+                      </Link>
+                      <Link
+                        href="/account"
+                        onClick={() => setIsHeaderMenuOpen(false)}
+                        className="block rounded-2xl px-4 py-3 text-sm font-semibold text-black/65 transition hover:bg-black/5 hover:text-black"
+                      >
+                        Account
                       </Link>
                       <button
                         type="button"
@@ -2324,7 +2352,7 @@ export default function RefreshPage({
                     <button
                       type="button"
                       onClick={() => {
-                        setIsPreviewMenuOpen(false);
+                        setIsHeaderMenuOpen(false);
                         setAccountMode("login");
                       }}
                       className="block w-full rounded-2xl px-4 py-3 text-left text-sm font-semibold text-black transition hover:bg-black/5"
@@ -2332,24 +2360,26 @@ export default function RefreshPage({
                       Log in
                     </button>
                   )}
-                  {previewHref ? (
+                  {showReveal && previewHref ? (
                     <Link
                       href={previewHref}
                       target="_blank"
                       rel="noopener noreferrer"
-                      onClick={() => setIsPreviewMenuOpen(false)}
+                      onClick={() => setIsHeaderMenuOpen(false)}
                       className="block rounded-2xl px-4 py-3 text-sm font-semibold text-black transition hover:bg-black/5"
                     >
                       Open preview
                     </Link>
                   ) : null}
-                  <button
-                    type="button"
-                    onClick={requestStartFresh}
-                    className="mt-1 block w-full rounded-2xl bg-[#141811] px-4 py-3 text-left text-sm font-semibold text-white transition hover:bg-black"
-                  >
-                    Start another
-                  </button>
+                  {showReveal ? (
+                    <button
+                      type="button"
+                      onClick={requestStartFresh}
+                      className="mt-1 block w-full rounded-2xl bg-[#141811] px-4 py-3 text-left text-sm font-semibold text-white transition hover:bg-black"
+                    >
+                      Start another
+                    </button>
+                  ) : null}
                 </div>
               ) : null}
             </div>
