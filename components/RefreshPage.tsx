@@ -314,6 +314,13 @@ function breakableLabel(label: string) {
   ));
 }
 
+function isWebsiteLimitError(message: string): boolean {
+  return (
+    message.includes("Your Pro plan includes up to 3 websites") ||
+    message.includes("Free accounts include 1 website")
+  );
+}
+
 function formatElapsed(ms: number): string {
   const total = Math.max(0, Math.floor(ms / 1000));
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
@@ -918,6 +925,9 @@ export default function RefreshPage({
   const [pendingGeneration, setPendingGeneration] =
     useState<PendingGeneration | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [websiteLimitErrorMessage, setWebsiteLimitErrorMessage] = useState<
+    string | null
+  >(null);
   const [authErrorMessage, setAuthErrorMessage] = useState<string | null>(null);
   const [accountMode, setAccountMode] = useState<"closed" | "signup" | "login">(
     "closed",
@@ -1717,6 +1727,18 @@ export default function RefreshPage({
     );
   };
 
+  const handleGenerationError = (error: unknown, fallbackMessage: string) => {
+    const message = error instanceof Error ? error.message : fallbackMessage;
+
+    if (isWebsiteLimitError(message)) {
+      setWebsiteLimitErrorMessage(message);
+      setErrorMessage(null);
+      return;
+    }
+
+    setErrorMessage(message);
+  };
+
   const requireVerification = (generation: PendingGeneration): boolean => {
     if (user || turnstileToken) {
       return false;
@@ -1729,6 +1751,7 @@ export default function RefreshPage({
     setPendingGeneration(generation);
     setShowVerification(true);
     setErrorMessage(null);
+    setWebsiteLimitErrorMessage(null);
     return true;
   };
 
@@ -1741,6 +1764,7 @@ export default function RefreshPage({
     setGenerationSource("gbp");
     setJob(null);
     setErrorMessage(null);
+    setWebsiteLimitErrorMessage(null);
     setStatusMessageIndex(0);
     stopPolling();
     startProgressTimers();
@@ -1787,11 +1811,7 @@ export default function RefreshPage({
       setIsRefreshing(false);
       stopTimer();
       stopStatusRotation();
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Failed to start Google listing import",
-      );
+      handleGenerationError(error, "Failed to start Google listing import");
     }
   };
 
@@ -1800,6 +1820,7 @@ export default function RefreshPage({
     setGenerationSource("refresh");
     setJob(null);
     setErrorMessage(null);
+    setWebsiteLimitErrorMessage(null);
     setStatusMessageIndex(0);
     stopPolling();
     startProgressTimers();
@@ -1845,9 +1866,7 @@ export default function RefreshPage({
       setIsRefreshing(false);
       stopTimer();
       stopStatusRotation();
-      setErrorMessage(
-        error instanceof Error ? error.message : "Failed to start refresh",
-      );
+      handleGenerationError(error, "Failed to start refresh");
     }
   };
 
@@ -1884,6 +1903,7 @@ export default function RefreshPage({
     setGenerationSource("fresh");
     setJob(null);
     setErrorMessage(null);
+    setWebsiteLimitErrorMessage(null);
     setStatusMessageIndex(0);
     stopPolling();
     startProgressTimers();
@@ -1944,9 +1964,7 @@ export default function RefreshPage({
       setIsRefreshing(false);
       stopTimer();
       stopStatusRotation();
-      setErrorMessage(
-        error instanceof Error ? error.message : "Failed to start website creation",
-      );
+      handleGenerationError(error, "Failed to start website creation");
     }
   };
 
@@ -3617,6 +3635,48 @@ export default function RefreshPage({
             </div>
           </footer>
         </>
+      ) : null}
+
+      {websiteLimitErrorMessage ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="website-limit-error-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-5 backdrop-blur-sm"
+        >
+          <div className="w-full max-w-md rounded-3xl border border-black/10 bg-white p-6 text-center shadow-2xl sm:p-8">
+            <Image
+              src="/refresh-kiwi-favicon-v2.png"
+              alt=""
+              width={44}
+              height={44}
+              aria-hidden
+              className="mx-auto rounded-full"
+            />
+            <h2
+              id="website-limit-error-title"
+              className="mt-4 font-fraunces text-2xl font-semibold tracking-tight"
+            >
+              That didn&apos;t work this time
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-black/55">
+              {websiteLimitErrorMessage}
+            </p>
+            <Link
+              href="/dashboard"
+              className="mt-6 inline-flex h-12 w-full items-center justify-center rounded-full bg-kiwi-green px-5 text-sm font-bold transition hover:bg-kiwi-green-hover"
+            >
+              Go to dashboard
+            </Link>
+            <button
+              type="button"
+              onClick={() => setWebsiteLimitErrorMessage(null)}
+              className="mt-4 text-sm font-medium text-black/50 underline decoration-black/20 underline-offset-4 transition hover:text-black"
+            >
+              Close
+            </button>
+          </div>
+        </div>
       ) : null}
 
       {showStartAnotherWarning ? (
