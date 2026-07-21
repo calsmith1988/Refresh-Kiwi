@@ -107,7 +107,7 @@ OUTPUT: sites/${slug}/
    - brandName, slug ("${slug}"), sourceUrl
    - pages: [{ "path": "/", "title": "Home", "gated": false }]
    - discoveredPages: [] unless obvious nav paths are already visible without extra browsing
-5. Stop as soon as index.html, styles.css, and site.json are written under sites/${slug}/ and available as run artifacts. Do not wait to commit before finishing.
+5. When index.html, styles.css, and site.json are written under sites/${slug}/, commit and push them to the repository, then finish. The commit is required — the platform falls back to reading the repo when run artifacts are unavailable, so finishing without a commit can make the whole build count as failed.
 
 ## Images — hotlink the source site's real images, do not download
 
@@ -156,7 +156,7 @@ Avoid:
 - Broken image references — every image URL must come from the source site.
 - Never use localhost, 127.0.0.1, or port-based preview origins in links, scripts, forms, canonical tags, Open Graph URLs, or base tags. Use root-relative paths such as /preview/${slug}/ and /preview/${slug}/page-path.
 
-Do not build secondary pages in this phase. Do not spend time on a multi-page plan. The first preview is artifact-first, so the generated files are the deliverable even if no git commit is created.`;
+Do not build secondary pages in this phase. Do not spend time on a multi-page plan. Finish as soon as the homepage files are written and committed.`;
 }
 
 function formatSeedAssets(seedAssets: PromptSeedAsset[]): string {

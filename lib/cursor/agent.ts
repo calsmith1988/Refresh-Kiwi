@@ -12,8 +12,24 @@ import {
   type PromptSeedAsset,
 } from "@/lib/cursor/prompts";
 import { RUN_TIMEOUTS, waitForRun } from "@/lib/cursor/run";
+import type { RunResult } from "@cursor/sdk";
 
 const MODEL = { id: "composer-2.5" } as const;
+
+/**
+ * The agent's closing message says what it actually did (committed, wrote
+ * files, hit a blocker). Logging a snippet makes "finished but produced
+ * nothing" failures diagnosable from worker logs alone.
+ */
+function logRunSummary(phase: string, slug: string, result: RunResult): void {
+  const summary = result.result?.replace(/\s+/g, " ").trim();
+
+  if (summary) {
+    console.info(
+      `[refresh-kiwi] ${phase} agent summary slug=${slug}: ${summary.slice(0, 400)}`,
+    );
+  }
+}
 
 function cloudOptions() {
   return {
@@ -62,6 +78,7 @@ export async function runHomepagePhase(
     console.info(
       `[refresh-kiwi] homepage agent finished agentId=${started.agentId} runId=${result.id} status=${result.status}`,
     );
+    logRunSummary("homepage", params.slug, result);
 
     if (result.status === "error") {
       throw new Error(`Homepage build failed (run ${result.id})`);
@@ -116,6 +133,7 @@ export async function runFreshHomepagePhase(
     console.info(
       `[refresh-kiwi] fresh homepage agent finished agentId=${started.agentId} runId=${result.id} status=${result.status}`,
     );
+    logRunSummary("fresh homepage", params.slug, result);
 
     if (result.status === "error") {
       throw new Error(`Fresh homepage build failed (run ${result.id})`);

@@ -45,18 +45,20 @@ async function sleep(ms: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function listRelevantArtifacts(
+async function listArtifactsWithRelevant(
   agent: Awaited<ReturnType<typeof Agent.resume>>,
   prefix: string,
 ) {
-  const artifacts = await agent.listArtifacts();
+  const all = await agent.listArtifacts();
 
-  return artifacts.filter(
+  const relevant = all.filter(
     (artifact) =>
       artifact.path.startsWith(prefix) &&
       !artifact.path.endsWith("/") &&
       artifact.path !== prefix,
   );
+
+  return { all, relevant };
 }
 
 function relativePathFromPrefix(pathname: string, prefix: string): string {
@@ -90,12 +92,26 @@ async function syncFromAgentArtifacts(
   await using agent = await Agent.resume(agentId, { apiKey });
 
   for (let attempt = 1; attempt <= ARTIFACT_SYNC_ATTEMPTS; attempt++) {
-    const relevant = await listRelevantArtifacts(agent, prefix);
+    const { all, relevant } = await listArtifactsWithRelevant(agent, prefix);
     logMemoryUsage("preview-sync:artifacts-listed", {
       slug,
       attempt,
       artifacts: relevant.length,
+      artifactsTotal: all.length,
     });
+
+    // A raw list that is non-empty while the filtered list is empty means the
+    // artifact paths no longer match the sites/{slug}/ prefix we expect —
+    // surface a sample so the mismatch is diagnosable from worker logs.
+    if (all.length > 0 && relevant.length === 0) {
+      const sample = all
+        .slice(0, 5)
+        .map((artifact) => artifact.path)
+        .join(", ");
+      console.warn(
+        `[refresh-kiwi] artifacts exist but none match prefix ${prefix}; sample paths: ${sample}`,
+      );
+    }
 
     if (relevant.length > 0) {
       const relativePaths = relevant.map((artifact) =>

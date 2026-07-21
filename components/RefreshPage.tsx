@@ -904,6 +904,9 @@ export default function RefreshPage({
   const [pendingGeneration, setPendingGeneration] =
     useState<PendingGeneration | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  // True only when a generation job reached "failed" — renders the failure
+  // card in place of the processing card instead of a message under the input.
+  const [generationFailed, setGenerationFailed] = useState(false);
   const [authErrorMessage, setAuthErrorMessage] = useState<string | null>(null);
   const [accountMode, setAccountMode] = useState<"closed" | "signup" | "login">(
     "closed",
@@ -1159,6 +1162,7 @@ export default function RefreshPage({
               nextJob.errorMessage ??
                 "We couldn't finish refreshing your website this time.",
             );
+            setGenerationFailed(true);
           }
         }
       } catch {
@@ -1768,6 +1772,7 @@ export default function RefreshPage({
     setFreshLogo(null);
     setFreshImages([]);
     setErrorMessage(null);
+    setGenerationFailed(false);
     setEditStatus("idle");
     setActiveEditRequestId(null);
     setIsRefreshing(false);
@@ -1882,6 +1887,7 @@ export default function RefreshPage({
     setGenerationSource("gbp");
     setJob(null);
     setErrorMessage(null);
+    setGenerationFailed(false);
     setEditStatus("idle");
     setActiveEditRequestId(null);
     setStatusMessageIndex(0);
@@ -1944,6 +1950,7 @@ export default function RefreshPage({
     setGenerationSource("refresh");
     setJob(null);
     setErrorMessage(null);
+    setGenerationFailed(false);
     setEditStatus("idle");
     setActiveEditRequestId(null);
     setStatusMessageIndex(0);
@@ -2031,6 +2038,7 @@ export default function RefreshPage({
     setGenerationSource("fresh");
     setJob(null);
     setErrorMessage(null);
+    setGenerationFailed(false);
     setEditStatus("idle");
     setActiveEditRequestId(null);
     setStatusMessageIndex(0);
@@ -2132,6 +2140,45 @@ export default function RefreshPage({
     } else {
       void submitRefreshJob(token);
     }
+  };
+
+  // Inputs (url / prompt / selected listing) survive a failed job, so a retry
+  // can re-run the exact same generation without sending the user back to the
+  // form. Goes through requireVerification because Turnstile tokens are
+  // single-use.
+  const failedGeneration: PendingGeneration =
+    generationSource === "gbp"
+      ? "gbp"
+      : generationSource === "fresh"
+        ? "fresh"
+        : "refresh";
+  const canRetryGeneration =
+    failedGeneration === "gbp"
+      ? Boolean(selectedGbpPlace)
+      : failedGeneration === "fresh"
+        ? Boolean(freshPrompt.trim())
+        : Boolean(url.trim());
+
+  const retryGeneration = () => {
+    setGenerationFailed(false);
+    setErrorMessage(null);
+
+    if (requireVerification(failedGeneration)) {
+      return;
+    }
+
+    if (failedGeneration === "gbp") {
+      void handleGbpImport();
+    } else if (failedGeneration === "fresh") {
+      void submitFreshJob();
+    } else {
+      void submitRefreshJob();
+    }
+  };
+
+  const dismissGenerationFailure = () => {
+    setGenerationFailed(false);
+    setErrorMessage(null);
   };
 
   const loadingStage = !isRefreshing
@@ -2589,6 +2636,41 @@ export default function RefreshPage({
                         : "Cancel refresh"}
                   </button>
                 ) : null}
+              </div>
+            </div>
+          ) : generationFailed && errorMessage ? (
+            <div className="flex min-h-[60vh] items-center justify-center">
+              <div
+                className="w-full max-w-md rounded-3xl border border-black/10 bg-white/95 p-8 text-center shadow-2xl shadow-black/10 backdrop-blur sm:max-w-lg"
+                role="alert"
+              >
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-black/40">
+                  {activeMode === "fresh" ? "Creating" : "Refreshing"}
+                </p>
+                <h1 className="mx-auto mt-2 max-w-[22ch] font-fraunces text-[clamp(1.6rem,4.5vw,2.15rem)] font-semibold leading-none tracking-tight">
+                  That didn&apos;t work this time
+                </h1>
+                <p className="mx-auto mt-4 max-w-sm text-sm leading-6 text-black/55">
+                  {errorMessage}
+                </p>
+                <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
+                  {canRetryGeneration ? (
+                    <button
+                      type="button"
+                      onClick={retryGeneration}
+                      className="rounded-full bg-kiwi-green px-6 py-2.5 text-sm font-bold transition hover:bg-kiwi-green-hover"
+                    >
+                      Try again
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={dismissGenerationFailure}
+                    className="rounded-full border border-black/10 bg-white px-6 py-2.5 text-sm font-semibold text-black/60 transition hover:border-black/25 hover:text-black"
+                  >
+                    Back to start
+                  </button>
+                </div>
               </div>
             </div>
           ) : showReveal && previewHref ? (
