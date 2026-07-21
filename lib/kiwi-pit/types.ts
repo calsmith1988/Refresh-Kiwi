@@ -28,19 +28,27 @@ export const MAX_BODIES_CAP_MOBILE = 1000;
 export const PILE_FILL_TARGET_MS = 100_000;
 export const LANDING_SPEED_THRESHOLD = 1.5;
 
-/** Once the pile reaches this fraction of capacity, bottom kiwis start popping. */
-export const PRESSURE_START_RATIO = 0.88;
 /**
- * While under pressure but not full, pop this fraction of the spawn rate so the
- * pile still compresses a little before settling into a steady fountain.
+ * Pressure only starts once the top of the landed pile has reached this
+ * fraction of the viewport height (0 = top of screen). Body-count alone was
+ * too early and made pops start mid-screen.
  */
-export const POP_RATE_OF_SPAWN = 0.85;
-/** Only landed kiwis in the bottom this fraction of the pile height may pop. */
-export const POP_BAND_RATIO = 0.22;
-/** How long the squash → burst → fade animation lasts. */
-export const POP_DURATION_MS = 320;
+export const PRESSURE_TOP_Y_RATIO = 0.14;
+/** Still require this fraction of capacity so a sparse tall stack doesn't pop. */
+export const PRESSURE_MIN_FILL_RATIO = 0.72;
+/**
+ * Pop slower than spawn so upper kiwis have time to fall into gaps — otherwise
+ * the bottom hollows out and the pop front marches upward.
+ */
+export const POP_RATE_OF_SPAWN = 0.45;
+/** Only landed kiwis in the bottom this fraction of the *viewport* may splat. */
+export const POP_FLOOR_BAND_RATIO = 0.14;
+/** How long the squash → splat → fade animation lasts. */
+export const POP_DURATION_MS = 380;
 /** Wake sleeping neighbours within this multiple of the popped kiwi's radius. */
-export const POP_WAKE_RADIUS_MULT = 3.2;
+export const POP_WAKE_RADIUS_MULT = 3.6;
+/** Cap simultaneous mid-splat visuals so the bottom never empties out. */
+export const MAX_CONCURRENT_POPS = 6;
 
 export interface KiwiMeta {
   landed: boolean;

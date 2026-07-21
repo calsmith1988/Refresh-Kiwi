@@ -211,8 +211,8 @@ export default function KiwiPitCanvas({
       const timestamp = performance.now();
       finishCompletedPops(currentWorld, timestamp);
 
-      // Once the pile is near the top, pop bottom kiwis under "pressure" so
-      // new ones can keep falling until the website preview is ready.
+      // Once the pile reaches the top of the screen, splat floor-band kiwis
+      // under pressure so new ones keep falling until the preview is ready.
       const toPop = popsNeededThisTick(currentWorld, maxBodies, spawnPerTick);
       if (toPop > 0) {
         startPops(currentWorld, toPop, timestamp);

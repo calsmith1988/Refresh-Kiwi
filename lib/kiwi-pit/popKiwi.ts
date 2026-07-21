@@ -2,11 +2,13 @@ import Matter from "matter-js";
 
 import {
   createDefaultMeta,
-  POP_BAND_RATIO,
+  MAX_CONCURRENT_POPS,
   POP_DURATION_MS,
+  POP_FLOOR_BAND_RATIO,
   POP_RATE_OF_SPAWN,
   POP_WAKE_RADIUS_MULT,
-  PRESSURE_START_RATIO,
+  PRESSURE_MIN_FILL_RATIO,
+  PRESSURE_TOP_Y_RATIO,
   type KiwiPitWorld,
 } from "./types";
 
@@ -38,17 +40,9 @@ function wakeNeighbours(world: KiwiPitWorld, x: number, y: number, radius: numbe
   }
 }
 
-/**
- * Pick landed kiwis from the bottom band of the pile. Weighted randomly so
- * pops don't march in a neat horizontal line.
- */
-function selectPopTargets(world: KiwiPitWorld, count: number): Matter.Body[] {
-  if (count <= 0 || world.bodies.length === 0) {
-    return [];
-  }
-
-  let minY = Infinity;
-  let maxY = -Infinity;
+/** True once landed kiwis have stacked close to the top of the viewport. */
+export function pileReachesTop(world: KiwiPitWorld): boolean {
+  let minLandedY = Infinity;
 
   for (const body of world.bodies) {
     if (body.label !== "kiwi") {
@@ -60,17 +54,26 @@ function selectPopTargets(world: KiwiPitWorld, count: number): Matter.Body[] {
       continue;
     }
 
-    minY = Math.min(minY, body.position.y);
-    maxY = Math.max(maxY, body.position.y);
+    minLandedY = Math.min(minLandedY, body.position.y);
   }
 
-  if (!Number.isFinite(minY) || !Number.isFinite(maxY)) {
+  if (!Number.isFinite(minLandedY)) {
+    return false;
+  }
+
+  return minLandedY <= world.height * PRESSURE_TOP_Y_RATIO;
+}
+
+/**
+ * Pick landed kiwis from an absolute band near the floor — never relative to
+ * the pile height, so pops can't climb mid-screen as the bottom empties.
+ */
+function selectPopTargets(world: KiwiPitWorld, count: number): Matter.Body[] {
+  if (count <= 0 || world.bodies.length === 0) {
     return [];
   }
 
-  const pileHeight = Math.max(maxY - minY, 1);
-  const bandTop = maxY - pileHeight * POP_BAND_RATIO;
-
+  const bandTop = world.height * (1 - POP_FLOOR_BAND_RATIO);
   const candidates: Matter.Body[] = [];
 
   for (const body of world.bodies) {
@@ -92,22 +95,23 @@ function selectPopTargets(world: KiwiPitWorld, count: number): Matter.Body[] {
     return [];
   }
 
-  // Prefer lower kiwis, with enough randomness to look organic.
+  // Prefer lower kiwis, with light randomness so they don't vanish in a row.
+  const bandHeight = Math.max(world.height - bandTop, 1);
   candidates.sort((a, b) => {
     const depthBias = b.position.y - a.position.y;
-    return depthBias + (Math.random() - 0.5) * pileHeight * 0.35;
+    return depthBias + (Math.random() - 0.5) * bandHeight * 0.4;
   });
 
   return candidates.slice(0, Math.min(count, candidates.length));
 }
 
 /**
- * Start popping `count` bottom-band kiwis: remove them from physics immediately
- * so the pile can settle, keep a visual for the burst animation, and wake
- * sleeping neighbours so nothing hangs in mid-air.
+ * Start splatting `count` floor-band kiwis: remove them from physics so the
+ * pile can settle, keep a visual for the splat, and wake sleeping neighbours.
  */
 export function startPops(world: KiwiPitWorld, count: number, now: number): number {
-  const targets = selectPopTargets(world, count);
+  const room = Math.max(0, MAX_CONCURRENT_POPS - world.popping.length);
+  const targets = selectPopTargets(world, Math.min(count, room));
 
   for (const body of targets) {
     const meta = world.meta.get(body) ?? createDefaultMeta();
@@ -131,7 +135,7 @@ export function startPops(world: KiwiPitWorld, count: number, now: number): numb
   return targets.length;
 }
 
-/** Finish any pop animations whose duration has elapsed and return bodies to the pool. */
+/** Finish any splat animations whose duration has elapsed and return bodies to the pool. */
 export function finishCompletedPops(world: KiwiPitWorld, now: number): number {
   if (world.popping.length === 0) {
     return 0;
@@ -155,9 +159,9 @@ export function finishCompletedPops(world: KiwiPitWorld, now: number): number {
 }
 
 /**
- * How many kiwis to pop this tick given the current pile fill and spawn rate.
- * Slightly under spawn rate until full, then matches spawn so the fountain can
- * keep running indefinitely.
+ * How many floor-band kiwis to splat this tick. Requires the pile to have
+ * reached the top of the screen; pops slower than spawn so the stack can
+ * keep falling into the gaps.
  */
 export function popsNeededThisTick(
   world: KiwiPitWorld,
@@ -170,18 +174,21 @@ export function popsNeededThisTick(
 
   const fill = world.bodies.length / maxBodies;
 
-  if (fill < PRESSURE_START_RATIO) {
+  if (fill < PRESSURE_MIN_FILL_RATIO || !pileReachesTop(world)) {
+    return 0;
+  }
+
+  // Cap concurrent splats so we never hollow the floor band out.
+  const room = Math.max(0, MAX_CONCURRENT_POPS - world.popping.length);
+  if (room === 0) {
     return 0;
   }
 
   if (world.bodies.length >= maxBodies) {
-    return Math.max(1, spawnPerTick);
+    // Need slots for new spawns, but only clear a couple at a time so the
+    // layer above has time to drop into place.
+    return Math.min(room, Math.max(1, Math.ceil(spawnPerTick * 0.6)));
   }
 
-  // Ramp from POP_RATE_OF_SPAWN toward 1.0 as we approach capacity.
-  const pressureT =
-    (fill - PRESSURE_START_RATIO) / Math.max(1 - PRESSURE_START_RATIO, 0.001);
-  const rate = POP_RATE_OF_SPAWN + (1 - POP_RATE_OF_SPAWN) * Math.min(1, pressureT);
-
-  return Math.max(1, Math.ceil(spawnPerTick * rate));
+  return Math.min(room, Math.max(1, Math.ceil(spawnPerTick * POP_RATE_OF_SPAWN)));
 }

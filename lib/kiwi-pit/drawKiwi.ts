@@ -108,8 +108,9 @@ export function drawKiwi(
 }
 
 /**
- * Squash → burst → fade for a kiwi that has left the physics world.
- * A few flecks radiate outward in the middle of the animation.
+ * Splat against the floor: squash flat, spread sideways, fade out.
+ * Anchored to the bottom of the sprite so it reads as pressure from above,
+ * not a balloon popping toward the camera.
  */
 export function drawPoppingKiwi(
   ctx: CanvasRenderingContext2D,
@@ -117,71 +118,75 @@ export function drawPoppingKiwi(
   sprite: KiwiSprite,
   now: number,
 ) {
-  const { meta, x, y, angle } = entry;
+  const { meta, x, y } = entry;
   const started = meta.popStartTime ?? now;
   const t = Math.min(1, Math.max(0, (now - started) / POP_DURATION_MS));
   const baseSize = KIWI_DISPLAY_SIZE * (meta.scale || 1) * KIWI_SPRITE_SCALE;
+  const half = baseSize / 2;
 
   let scaleX = 1;
   let scaleY = 1;
   let alpha = 1;
-  let lift = 0;
 
-  if (t < 0.28) {
-    // Squash under pressure.
-    const s = easeOutCubic(t / 0.28);
-    scaleX = 1 + 0.28 * s;
-    scaleY = 1 - 0.32 * s;
-  } else if (t < 0.55) {
-    // Burst outward.
-    const s = easeOutCubic((t - 0.28) / 0.27);
-    scaleX = 1.28 + 0.35 * s;
-    scaleY = 0.68 + 0.9 * s;
-    alpha = 1 - 0.25 * s;
-    lift = -6 * s;
+  if (t < 0.35) {
+    // Compress under the pile — wide and flat.
+    const s = easeOutCubic(t / 0.35);
+    scaleX = 1 + 0.85 * s;
+    scaleY = 1 - 0.72 * s;
+  } else if (t < 0.65) {
+    // Finish the splat: pancake further, start fading.
+    const s = easeOutCubic((t - 0.35) / 0.3);
+    scaleX = 1.85 + 0.55 * s;
+    scaleY = 0.28 * (1 - 0.55 * s);
+    alpha = 1 - 0.35 * s;
   } else {
-    // Fade away.
-    const s = (t - 0.55) / 0.45;
+    // Dissolve while staying flat on the floor.
+    const s = (t - 0.65) / 0.35;
     const e = easeOutCubic(s);
-    scaleX = 1.63 * (1 + 0.2 * e);
-    scaleY = 1.58 * (1 + 0.2 * e);
-    alpha = (1 - 0.25) * (1 - e);
-    lift = -6 - 10 * e;
+    scaleX = 2.4 + 0.35 * e;
+    scaleY = 0.12 * (1 - e);
+    alpha = 0.65 * (1 - e);
   }
 
+  // Keep the bottom edge planted so it looks like it's hitting the floor.
+  const groundY = y + half;
+
   ctx.save();
-  ctx.translate(x, y + lift);
-  ctx.rotate(angle);
-  ctx.scale(scaleX, scaleY);
+  ctx.translate(x, groundY);
+  // Flatten upright against the floor — ignore body spin so it doesn't look
+  // like a spinning balloon.
+  ctx.scale(scaleX, Math.max(scaleY, 0.04));
+  ctx.translate(0, -half);
   ctx.globalAlpha = Math.max(0, alpha);
   drawKiwiSprite(ctx, meta, sprite, baseSize);
   ctx.restore();
 
-  // Juice flecks during the burst window.
-  if (t > 0.28 && t < 0.85) {
-    const fleckT = (t - 0.28) / 0.57;
-    const fleckAlpha = (1 - fleckT) * 0.55;
+  // Juice flecks spray sideways along the floor during the splat.
+  if (t > 0.3 && t < 0.9) {
+    const fleckT = (t - 0.3) / 0.6;
+    const fleckAlpha = (1 - fleckT) * 0.5;
     const fleckColor = meta.greenColor || "#C5E66A";
-    const fleckCount = 3;
+    const sides = [-1, 1] as const;
 
     ctx.save();
-    ctx.translate(x, y + lift);
+    ctx.translate(x, groundY - 2);
     ctx.globalAlpha = fleckAlpha;
 
-    for (let i = 0; i < fleckCount; i += 1) {
-      const theta = angle + (i / fleckCount) * Math.PI * 2 + 0.4;
-      const dist = 8 + fleckT * 22;
-      const r = 1.6 + (1 - fleckT) * 2.2;
-      ctx.beginPath();
-      ctx.fillStyle = fleckColor;
-      ctx.arc(
-        Math.cos(theta) * dist,
-        Math.sin(theta) * dist - fleckT * 4,
-        r,
-        0,
-        Math.PI * 2,
-      );
-      ctx.fill();
+    for (const side of sides) {
+      for (let i = 0; i < 2; i += 1) {
+        const dist = 10 + fleckT * (18 + i * 10);
+        const r = 1.4 + (1 - fleckT) * 2;
+        ctx.beginPath();
+        ctx.fillStyle = fleckColor;
+        ctx.arc(
+          side * dist,
+          -fleckT * (2 + i),
+          r,
+          0,
+          Math.PI * 2,
+        );
+        ctx.fill();
+      }
     }
 
     ctx.restore();
