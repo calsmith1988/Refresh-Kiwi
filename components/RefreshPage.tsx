@@ -950,6 +950,7 @@ export default function RefreshPage({
   const statusTimerRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const freshInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const heroSectionRef = useRef<HTMLElement | null>(null);
   const heroPointerFrameRef = useRef<number | null>(null);
   const [heroPointer, setHeroPointer] = useState({ x: 0.58, y: 0.46 });
 
@@ -967,11 +968,15 @@ export default function RefreshPage({
       const clientY = event.clientY;
 
       heroPointerFrameRef.current = window.requestAnimationFrame(() => {
-        const heroHeight = Math.min(window.innerHeight, 760);
+        const heroBounds = heroSectionRef.current?.getBoundingClientRect();
+        const width = heroBounds?.width || window.innerWidth;
+        const height = heroBounds?.height || Math.min(window.innerHeight, 760);
+        const offsetX = heroBounds?.left ?? 0;
+        const offsetY = heroBounds?.top ?? 0;
 
         setHeroPointer({
-          x: Math.min(1, Math.max(0, clientX / window.innerWidth)),
-          y: Math.min(1, Math.max(0, clientY / heroHeight)),
+          x: Math.min(1, Math.max(0, (clientX - offsetX) / width)),
+          y: Math.min(1, Math.max(0, (clientY - offsetY) / height)),
         });
       });
     },
@@ -2160,93 +2165,6 @@ export default function RefreshPage({
       onPointerMove={handleHeroPointerMove}
     >
       <KiwiPitCanvas active={isRefreshing} />
-      {!showReveal && !isRefreshing ? (
-        <div
-          aria-hidden
-          className="pointer-events-none absolute left-1/2 top-0 z-0 min-h-[680px] w-screen -translate-x-1/2 overflow-hidden sm:min-h-[720px] lg:min-h-[760px]"
-        >
-          {MOBILE_HERO_KIWI_MARKS.map((mark, index) => (
-            <div
-              key={`mobile-${index}`}
-              className="hero-kiwi-drift absolute rounded-full mix-blend-multiply blur-[0.2px] sm:hidden"
-              style={{
-                left: mark.left,
-                top: mark.top,
-                width: mark.size,
-                height: mark.size,
-                opacity: mark.opacity,
-                "--hero-kiwi-rotate": mark.rotate,
-                "--hero-kiwi-drift-x": heroKiwiMotion(
-                  index % 2 === 0 ? 6 : -5,
-                  "px",
-                ),
-                "--hero-kiwi-drift-y": heroKiwiMotion(
-                  index % 2 === 0 ? -7 : 6,
-                  "px",
-                ),
-                "--hero-kiwi-drift-rotate": heroKiwiMotion(
-                  index % 2 === 0 ? 3 : -4,
-                  "deg",
-                ),
-                "--hero-kiwi-duration": `${15 + index * 2.5}s`,
-                "--hero-kiwi-delay": `${index * -1.4}s`,
-              } as CSSProperties}
-            >
-              <Image
-                src="/refresh-kiwi-favicon-v2.png"
-                alt=""
-                aria-hidden
-                fill
-                sizes="112px"
-                className="object-contain"
-              />
-            </div>
-          ))}
-          {HERO_KIWI_MARKS.map((mark, index) => (
-            <div
-              key={index}
-              className="hero-kiwi-drift absolute hidden rounded-full mix-blend-multiply blur-[0.2px] sm:block"
-              style={{
-                left: mark.left,
-                top: mark.top,
-                width: mark.size,
-                height: mark.size,
-                opacity: mark.opacity,
-                "--hero-kiwi-rotate": mark.rotate,
-                "--hero-kiwi-drift-x": heroKiwiMotion(
-                  index % 2 === 0 ? 10 : -8,
-                  "px",
-                ),
-                "--hero-kiwi-drift-y": heroKiwiMotion(
-                  index % 3 === 0 ? -12 : 9,
-                  "px",
-                ),
-                "--hero-kiwi-drift-rotate": heroKiwiMotion(
-                  index % 2 === 0 ? 4 : -5,
-                  "deg",
-                ),
-                "--hero-kiwi-duration": `${15 + (index % 5) * 2.5}s`,
-                "--hero-kiwi-delay": `${index * -1.7}s`,
-              } as CSSProperties}
-            >
-              <Image
-                src="/refresh-kiwi-favicon-v2.png"
-                alt=""
-                aria-hidden
-                fill
-                sizes="220px"
-                className="object-contain"
-              />
-            </div>
-          ))}
-          <div
-            className="absolute inset-0 transition-opacity duration-500"
-            style={heroSpotlightStyle}
-          />
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,#faf8f1_0%,rgba(250,248,241,0.96)_28%,rgba(250,248,241,0.72)_44%,rgba(250,248,241,0.18)_58%,transparent_72%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_42%_58%_at_25%_43%,rgba(250,248,241,0.92)_0%,rgba(250,248,241,0.62)_46%,transparent_76%)]" />
-        </div>
-      ) : null}
 
       {/* ───────────────────────── Header ───────────────────────── */}
       <header className="sticky top-0 z-40 border-b border-black/5 bg-[#faf8f1]/85 backdrop-blur-md">
@@ -2430,8 +2348,108 @@ export default function RefreshPage({
       </header>
 
       {/* ───────────────────────── Hero / Theatre / Reveal ───────────────────────── */}
-      <section className="relative z-30 px-5 pb-8 pt-14 sm:px-8 sm:pb-10 sm:pt-20">
-        <div className="mx-auto w-full max-w-6xl">
+      <section
+        ref={heroSectionRef}
+        className="relative z-30 px-5 pb-8 pt-14 sm:px-8 sm:pb-10 sm:pt-20"
+      >
+        {!showReveal && !isRefreshing ? (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
+          >
+            <div className="absolute inset-0 left-1/2 w-screen -translate-x-1/2">
+              {MOBILE_HERO_KIWI_MARKS.map((mark, index) => (
+                <div
+                  key={`mobile-${index}`}
+                  className="hero-kiwi-drift absolute rounded-full mix-blend-multiply blur-[0.2px] sm:hidden"
+                  style={{
+                    left: mark.left,
+                    top: mark.top,
+                    width: mark.size,
+                    height: mark.size,
+                    opacity: mark.opacity,
+                    "--hero-kiwi-rotate": mark.rotate,
+                    "--hero-kiwi-drift-x": heroKiwiMotion(
+                      index % 2 === 0 ? 6 : -5,
+                      "px",
+                    ),
+                    "--hero-kiwi-drift-y": heroKiwiMotion(
+                      index % 2 === 0 ? -7 : 6,
+                      "px",
+                    ),
+                    "--hero-kiwi-drift-rotate": heroKiwiMotion(
+                      index % 2 === 0 ? 3 : -4,
+                      "deg",
+                    ),
+                    "--hero-kiwi-duration": `${15 + index * 2.5}s`,
+                    "--hero-kiwi-delay": `${index * -1.4}s`,
+                  } as CSSProperties}
+                >
+                  <Image
+                    src="/refresh-kiwi-favicon-v2.png"
+                    alt=""
+                    aria-hidden
+                    fill
+                    sizes="112px"
+                    className="object-contain"
+                  />
+                </div>
+              ))}
+              {HERO_KIWI_MARKS.map((mark, index) => (
+                <div
+                  key={index}
+                  className="hero-kiwi-drift absolute hidden rounded-full mix-blend-multiply blur-[0.2px] sm:block"
+                  style={{
+                    left: mark.left,
+                    top: mark.top,
+                    width: mark.size,
+                    height: mark.size,
+                    opacity: mark.opacity,
+                    "--hero-kiwi-rotate": mark.rotate,
+                    "--hero-kiwi-drift-x": heroKiwiMotion(
+                      index % 2 === 0 ? 10 : -8,
+                      "px",
+                    ),
+                    "--hero-kiwi-drift-y": heroKiwiMotion(
+                      index % 3 === 0 ? -12 : 9,
+                      "px",
+                    ),
+                    "--hero-kiwi-drift-rotate": heroKiwiMotion(
+                      index % 2 === 0 ? 4 : -5,
+                      "deg",
+                    ),
+                    "--hero-kiwi-duration": `${15 + (index % 5) * 2.5}s`,
+                    "--hero-kiwi-delay": `${index * -1.7}s`,
+                  } as CSSProperties}
+                >
+                  <Image
+                    src="/refresh-kiwi-favicon-v2.png"
+                    alt=""
+                    aria-hidden
+                    fill
+                    sizes="220px"
+                    className="object-contain"
+                  />
+                </div>
+              ))}
+              <div
+                className="absolute inset-0 transition-opacity duration-500"
+                style={heroSpotlightStyle}
+              />
+              <div className="absolute inset-0 bg-[linear-gradient(90deg,#faf8f1_0%,rgba(250,248,241,0.96)_28%,rgba(250,248,241,0.72)_44%,rgba(250,248,241,0.18)_58%,transparent_72%)]" />
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_42%_58%_at_25%_43%,rgba(250,248,241,0.92)_0%,rgba(250,248,241,0.62)_46%,transparent_76%)]" />
+            </div>
+          </div>
+        ) : null}
+
+        {!hasChosenHeroMode && !showReveal && !isRefreshing ? (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 z-20 bg-[#faf8f1]/45 backdrop-blur-[1px]"
+          />
+        ) : null}
+
+        <div className="relative z-30 mx-auto w-full max-w-6xl">
           {isRefreshing ? (
             <div className="flex min-h-[60vh] items-center justify-center">
               <div
@@ -3116,8 +3134,6 @@ export default function RefreshPage({
               </div>
 
               {!hasChosenHeroMode ? (
-                <>
-                  <div className="absolute -bottom-10 top-0 left-1/2 z-20 w-screen -translate-x-1/2 bg-[#faf8f1]/45 backdrop-blur-[1px]" />
                 <div className="absolute inset-0 z-30 flex items-start justify-center px-3 pb-8 pt-6 sm:items-center sm:px-6 sm:py-8">
                   <div className="relative w-full max-w-2xl overflow-hidden rounded-[1.75rem] border border-black/10 bg-white/85 p-3 shadow-2xl shadow-black/15 backdrop-blur-xl sm:rounded-[2rem] sm:p-6">
                     <Image
@@ -3180,7 +3196,6 @@ export default function RefreshPage({
                     </div>
                   </div>
                 </div>
-                </>
               ) : null}
             </div>
           )}
