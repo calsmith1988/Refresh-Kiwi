@@ -52,7 +52,7 @@ const OVERTIME_MESSAGE =
 const STAGE_2_AT_MS = 25 * 1000;
 const STAGE_3_AT_MS = 95 * 1000;
 const ACTIVE_JOB_STORAGE_KEY = "refresh-kiwi:active-job";
-const HERO_KIWI_FLOATINESS = 1.15;
+const HERO_KIWI_FLOATINESS = 2.25;
 
 function heroKiwiMotion(value: number, unit: "px" | "deg"): string {
   return `${Number((value * HERO_KIWI_FLOATINESS).toFixed(2))}${unit}`;
@@ -154,14 +154,6 @@ interface AuthUser {
   plan: "free" | "pro";
   subscriptionStatus: string;
 }
-
-type BlogSnippet = {
-  slug: string;
-  title: string;
-  excerpt: string;
-  category: string;
-  readingTime: string;
-};
 
 type FlowMode = "refresh" | "fresh";
 type FreshEntry = "describe" | "google";
@@ -885,10 +877,8 @@ function BeforeAfterReveal({
 }
 
 export default function RefreshPage({
-  blogSnippets = [],
   googleBusinessImportEnabled = false,
 }: {
-  blogSnippets?: BlogSnippet[];
   googleBusinessImportEnabled?: boolean;
 }) {
   const { pricing, selectedCurrency, selectPricingCurrency } = usePricing();
@@ -2198,7 +2188,7 @@ export default function RefreshPage({
                   index % 2 === 0 ? 3 : -4,
                   "deg",
                 ),
-                "--hero-kiwi-duration": `${20 + index * 3}s`,
+                "--hero-kiwi-duration": `${15 + index * 2.5}s`,
                 "--hero-kiwi-delay": `${index * -1.4}s`,
               } as CSSProperties}
             >
@@ -2235,7 +2225,7 @@ export default function RefreshPage({
                   index % 2 === 0 ? 4 : -5,
                   "deg",
                 ),
-                "--hero-kiwi-duration": `${18 + (index % 5) * 3}s`,
+                "--hero-kiwi-duration": `${15 + (index % 5) * 2.5}s`,
                 "--hero-kiwi-delay": `${index * -1.7}s`,
               } as CSSProperties}
             >
@@ -2279,12 +2269,16 @@ export default function RefreshPage({
             className="hidden items-center gap-7 whitespace-nowrap text-sm font-medium text-black/60 md:flex"
             aria-label="Primary"
           >
-            <a href="#how" className="transition hover:text-black">
-              How it works
-            </a>
-            <a href="#examples" className="transition hover:text-black">
-              Examples
-            </a>
+            {!showReveal ? (
+              <>
+                <a href="#how" className="transition hover:text-black">
+                  How it works
+                </a>
+                <a href="#examples" className="transition hover:text-black">
+                  Examples
+                </a>
+              </>
+            ) : null}
             <a href="#pricing" className="transition hover:text-black">
               Pricing
             </a>
@@ -2441,7 +2435,7 @@ export default function RefreshPage({
           {isRefreshing ? (
             <div className="flex min-h-[60vh] items-center justify-center">
               <div
-                className="w-full max-w-md rounded-3xl border border-black/10 bg-white/95 p-8 text-center shadow-2xl shadow-black/10 backdrop-blur sm:max-w-lg"
+                className="w-full max-w-md rounded-3xl border border-black/10 bg-white/95 p-8 text-center shadow-2xl shadow-black/10 backdrop-blur sm:max-w-xl md:max-w-2xl"
                 role="status"
                 aria-live="polite"
               >
@@ -2540,7 +2534,7 @@ export default function RefreshPage({
           ) : generationFailed && errorMessage ? (
             <div className="flex min-h-[60vh] items-center justify-center">
               <div
-                className="w-full max-w-md rounded-3xl border border-black/10 bg-white/95 p-8 text-center shadow-2xl shadow-black/10 backdrop-blur sm:max-w-lg"
+                className="w-full max-w-md rounded-3xl border border-black/10 bg-white/95 p-8 text-center shadow-2xl shadow-black/10 backdrop-blur sm:max-w-xl md:max-w-2xl"
                 role="alert"
               >
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-black/40">
@@ -3190,6 +3184,8 @@ export default function RefreshPage({
 
       {!isRefreshing ? (
         <>
+          {!showReveal ? (
+            <>
           {/* ───────────────────────── Social strip ───────────────────────── */}
           <section className="relative z-10 border-y border-black/5 bg-white px-5 py-6 sm:px-8">
             <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-center gap-x-5 gap-y-3 text-sm font-medium text-black/40 sm:gap-x-8">
@@ -3352,6 +3348,8 @@ export default function RefreshPage({
               </p>
             </div>
           </section>
+            </>
+          ) : null}
 
           {/* ───────────────────────── Pricing ───────────────────────── */}
           <section id="pricing" className="scroll-mt-20 px-5 py-20 sm:px-8">
@@ -3534,110 +3532,64 @@ export default function RefreshPage({
             </div>
           </section>
 
-          {blogSnippets.length ? (
-            <section className="border-t border-black/5 px-5 py-20 sm:px-8">
-              <div className="mx-auto w-full max-w-6xl">
-                <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
-                  <div>
-                    <p className="text-sm font-semibold uppercase tracking-[0.18em] text-black/40">
-                      From the blog
-                    </p>
-                    <h2 className="mt-3 max-w-2xl font-fraunces text-3xl font-semibold tracking-tight sm:text-4xl">
-                      {flowMode === "fresh"
-                        ? "Quick reads before you start your website."
-                        : "Quick reads before you refresh your website."}
-                    </h2>
-                  </div>
-                  <Link
-                    href="/blog"
-                    className="inline-flex h-11 items-center rounded-full border border-black/10 bg-white px-5 text-sm font-semibold transition hover:border-black/25"
-                  >
-                    Read More
-                  </Link>
-                </div>
-
-                <div className="mt-8 grid gap-4 md:grid-cols-3">
-                  {blogSnippets.map((article) => (
-                    <Link
-                      key={article.slug}
-                      href={`/blog/${article.slug}`}
-                      className="group rounded-[2rem] border border-black/10 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-                    >
-                      <div className="flex flex-wrap items-center gap-2 text-xs text-black/45">
-                        <span>{article.category}</span>
-                        <span aria-hidden>•</span>
-                        <span>{article.readingTime}</span>
-                      </div>
-                      <h3 className="mt-4 font-fraunces text-2xl font-semibold leading-tight tracking-tight group-hover:underline">
-                        {article.title}
-                      </h3>
-                      <p className="mt-3 text-sm leading-7 text-black/60">
-                        {article.excerpt}
-                      </p>
-                    </Link>
-                  ))}
-                </div>
+          {!showReveal ? (
+            <section className="px-5 py-20 sm:px-8">
+              <div className="relative mx-auto w-full max-w-6xl overflow-hidden rounded-[2.5rem] bg-[#C5E66A] px-6 py-16 text-center sm:px-12">
+                <Image
+                  src={kiwiGroupBackground}
+                  alt=""
+                  aria-hidden
+                  fill
+                  sizes="(min-width: 1024px) 1152px, 100vw"
+                  className="object-cover opacity-42 mix-blend-multiply"
+                />
+                <div className="absolute inset-0 bg-[#C5E66A]/80" />
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_48%_54%_at_50%_47%,rgba(255,255,255,0.74)_0%,rgba(255,255,255,0.48)_36%,rgba(255,255,255,0)_72%)]" />
+                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.22),transparent_28%,transparent_72%,rgba(20,24,17,0.06))]" />
+                <h2 className="relative mx-auto max-w-2xl font-fraunces text-4xl font-semibold tracking-tight text-[#11150f] sm:text-5xl">
+                  {flowMode === "fresh"
+                    ? "Start your website in about 2 minutes."
+                    : "Your website called. It wants a redesign."}
+                </h2>
+                <p className="relative mx-auto mt-4 max-w-md text-base font-medium leading-7 text-[#11150f]/65">
+                  {flowMode === "fresh"
+                    ? "Describe your business and get a fresh website you can save, change, and take online when you're ready."
+                    : "Revamping website design? Try it for free. It takes about 2 minutes, and nothing changes until you say so."}
+                </p>
+                <a
+                  href={flowMode === "fresh" ? "#fresh-input" : "#refresh-input"}
+                  onClick={() => chooseHeroMode(flowMode)}
+                  className="relative mt-8 inline-flex items-center rounded-full bg-[#141811] px-8 py-4 text-sm font-bold text-white shadow-xl shadow-black/15 ring-1 ring-white/20 transition hover:bg-black"
+                >
+                  {flowMode === "fresh"
+                    ? "Create my website — free"
+                    : "Refresh my website — free"}
+                </a>
               </div>
             </section>
           ) : null}
 
-          {/* ───────────────────────── Final CTA ───────────────────────── */}
-          <section className="px-5 py-20 sm:px-8">
-            <div className="relative mx-auto w-full max-w-6xl overflow-hidden rounded-[2.5rem] bg-[#C5E66A] px-6 py-16 text-center sm:px-12">
-              <Image
-                src={kiwiGroupBackground}
-                alt=""
-                aria-hidden
-                fill
-                sizes="(min-width: 1024px) 1152px, 100vw"
-                className="object-cover opacity-42 mix-blend-multiply"
-              />
-              <div className="absolute inset-0 bg-[#C5E66A]/80" />
-              <div className="absolute inset-0 bg-[radial-gradient(ellipse_48%_54%_at_50%_47%,rgba(255,255,255,0.74)_0%,rgba(255,255,255,0.48)_36%,rgba(255,255,255,0)_72%)]" />
-              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.22),transparent_28%,transparent_72%,rgba(20,24,17,0.06))]" />
-              <h2 className="relative mx-auto max-w-2xl font-fraunces text-4xl font-semibold tracking-tight text-[#11150f] sm:text-5xl">
-                {flowMode === "fresh"
-                  ? "Start your website in about 2 minutes."
-                  : "Your website called. It wants a redesign."}
-              </h2>
-              <p className="relative mx-auto mt-4 max-w-md text-base font-medium leading-7 text-[#11150f]/65">
-                {flowMode === "fresh"
-                  ? "Describe your business and get a fresh website you can save, change, and take online when you're ready."
-                  : "Revamping website design? Try it for free. It takes about 2 minutes, and nothing changes until you say so."}
-              </p>
-              <a
-                href={flowMode === "fresh" ? "#fresh-input" : "#refresh-input"}
-                onClick={() => chooseHeroMode(flowMode)}
-                className="relative mt-8 inline-flex items-center rounded-full bg-[#141811] px-8 py-4 text-sm font-bold text-white shadow-xl shadow-black/15 ring-1 ring-white/20 transition hover:bg-black"
-              >
-                {flowMode === "fresh"
-                  ? "Create my website — free"
-                  : "Refresh my website — free"}
-              </a>
-            </div>
-          </section>
-
           {/* ───────────────────────── Footer ───────────────────────── */}
           <footer className="border-t border-black/5 px-5 py-12 sm:px-8">
-            <div className="mx-auto grid w-full max-w-6xl gap-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,2.2fr)]">
-              <div>
+            <div className="mx-auto grid w-full max-w-6xl gap-10 text-center lg:grid-cols-[minmax(0,1.2fr)_minmax(0,2.2fr)] lg:gap-8 lg:text-left">
+              <div className="flex flex-col items-center lg:items-start">
                 <Link href="/" className="inline-flex items-center gap-2.5">
                   <Image
                     src="/refresh-kiwi-favicon-v2.png"
                     alt=""
-                    width={32}
-                    height={32}
+                    width={30}
+                    height={30}
                     aria-hidden
                     className="rounded-full"
                   />
-                  <span className="inline-block font-roboto text-[32px] font-[350] leading-none tracking-tight">
-                    refresh kiwi
+                  <span className="inline-block font-dosis text-[27px] font-medium leading-none tracking-tight">
+                    Refresh Kiwi
                   </span>
                 </Link>
-                <p className="mt-3 text-xs leading-5 text-black/60">
+                <p className="mt-3 max-w-xs text-xs leading-5 text-black/60 lg:max-w-none">
                   Create a new website in about two minutes.
                 </p>
-                <div className="mt-6 flex items-center gap-4">
+                <div className="mt-6 flex items-center justify-center gap-4 lg:justify-start">
                   <a
                     href="https://www.facebook.com/profile.php?id=61590976286585"
                     aria-label="Refresh Kiwi on Facebook"
@@ -3680,33 +3632,37 @@ export default function RefreshPage({
                 </div>
               </div>
 
-              <div className="grid gap-6 sm:grid-cols-3">
-                <div>
+              <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
+                <div className="flex flex-col items-center lg:items-start">
                   <h2 className="text-sm font-bold text-black">Product</h2>
                   <nav
                     aria-label="Footer product links"
-                    className="mt-3 flex flex-col gap-2 text-sm text-black/55"
+                    className="mt-3 flex flex-col items-center gap-2 text-sm text-black/55 lg:items-start"
                   >
                     <Link className="transition hover:text-black" href="/">
                       Home
                     </Link>
-                    <a className="transition hover:text-black" href="#how">
-                      How it works
-                    </a>
-                    <a className="transition hover:text-black" href="#examples">
-                      Examples
-                    </a>
+                    {!showReveal ? (
+                      <>
+                        <a className="transition hover:text-black" href="#how">
+                          How it works
+                        </a>
+                        <a className="transition hover:text-black" href="#examples">
+                          Examples
+                        </a>
+                      </>
+                    ) : null}
                     <a className="transition hover:text-black" href="#pricing">
                       Pricing
                     </a>
                   </nav>
                 </div>
 
-                <div>
+                <div className="flex flex-col items-center lg:items-start">
                   <h2 className="text-sm font-bold text-black">Company</h2>
                   <nav
                     aria-label="Footer company links"
-                    className="mt-3 flex flex-col gap-2 text-sm text-black/55"
+                    className="mt-3 flex flex-col items-center gap-2 text-sm text-black/55 lg:items-start"
                   >
                     <Link className="transition hover:text-black" href="/about-us">
                       About us
@@ -3717,11 +3673,23 @@ export default function RefreshPage({
                   </nav>
                 </div>
 
-                <div>
+                <div className="flex flex-col items-center lg:items-start">
+                  <h2 className="text-sm font-bold text-black">Resources</h2>
+                  <nav
+                    aria-label="Footer resource links"
+                    className="mt-3 flex flex-col items-center gap-2 text-sm text-black/55 lg:items-start"
+                  >
+                    <Link className="transition hover:text-black" href="/blog">
+                      Blog
+                    </Link>
+                  </nav>
+                </div>
+
+                <div className="flex flex-col items-center lg:items-start">
                   <h2 className="text-sm font-bold text-black">Legal</h2>
                   <nav
                     aria-label="Footer legal links"
-                    className="mt-3 flex flex-col gap-2 text-sm text-black/55"
+                    className="mt-3 flex flex-col items-center gap-2 text-sm text-black/55 lg:items-start"
                   >
                     <Link
                       className="transition hover:text-black"
