@@ -5,6 +5,7 @@ import Image from "next/image";
 import type { StaticImageData } from "next/image";
 import Link from "next/link";
 import {
+  Fragment,
   useCallback,
   useEffect,
   useRef,
@@ -298,6 +299,26 @@ function jobLabel(
   }
 
   return hostLabel(job?.sourceUrl ?? fallbackUrl);
+}
+
+// Domains are a single unbroken "word", so on narrow screens the browser
+// either overflows them or snaps them apart mid-word. Adding <wbr> break
+// opportunities before each dot/hyphen lets long labels wrap cleanly at
+// natural boundaries (e.g. "longbusinessname" / ".co.uk") instead.
+function breakableLabel(label: string) {
+  return label.split(/(?=[.-])/).map((part, index) => (
+    <Fragment key={index}>
+      {index > 0 ? <wbr /> : null}
+      {part}
+    </Fragment>
+  ));
+}
+
+function isWebsiteLimitError(message: string): boolean {
+  return (
+    message.includes("Your Pro plan includes up to 3 websites") ||
+    message.includes("Free accounts include 1 website")
+  );
 }
 
 function formatElapsed(ms: number): string {
@@ -907,6 +928,9 @@ export default function RefreshPage({
   // True only when a generation job reached "failed" — renders the failure
   // card in place of the processing card instead of a message under the input.
   const [generationFailed, setGenerationFailed] = useState(false);
+  const [websiteLimitErrorMessage, setWebsiteLimitErrorMessage] = useState<
+    string | null
+  >(null);
   const [authErrorMessage, setAuthErrorMessage] = useState<string | null>(null);
   const [accountMode, setAccountMode] = useState<"closed" | "signup" | "login">(
     "closed",
@@ -919,24 +943,14 @@ export default function RefreshPage({
   );
   const [twoFactorCode, setTwoFactorCode] = useState("");
   const [isSubmittingAuth, setIsSubmittingAuth] = useState(false);
-  const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
-  const [editPrompt, setEditPrompt] = useState("");
-  const [editStatus, setEditStatus] = useState<
-    "idle" | "working" | "done" | "failed" | "cancelled"
-  >("idle");
-  const [activeEditRequestId, setActiveEditRequestId] = useState<string | null>(
-    null,
-  );
   const [isCancellingRefresh, setIsCancellingRefresh] = useState(false);
-  const [isCancellingEdit, setIsCancellingEdit] = useState(false);
   const [showProSheet, setShowProSheet] = useState(false);
   const [pendingUpgrade, setPendingUpgrade] = useState(false);
   const [isStartingCheckout, setIsStartingCheckout] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [statusMessageIndex, setStatusMessageIndex] = useState(0);
-  const [isPreviewMenuOpen, setIsPreviewMenuOpen] = useState(false);
+  const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
   const [showStartAnotherWarning, setShowStartAnotherWarning] = useState(false);
-  const editPollTimerRef = useRef<number | null>(null);
   const pollTimerRef = useRef<number | null>(null);
   const pollFailuresRef = useRef(0);
   // Access token issued when the job was created; proves this browser started
@@ -1097,13 +1111,6 @@ export default function RefreshPage({
     if (pollTimerRef.current !== null) {
       window.clearInterval(pollTimerRef.current);
       pollTimerRef.current = null;
-    }
-  }, []);
-
-  const stopEditPolling = useCallback(() => {
-    if (editPollTimerRef.current !== null) {
-      window.clearInterval(editPollTimerRef.current);
-      editPollTimerRef.current = null;
     }
   }, []);
 
@@ -1331,7 +1338,6 @@ export default function RefreshPage({
     return () => {
       cancelled = true;
       stopPolling();
-      stopEditPolling();
       stopTimer();
       stopStatusRotation();
     };
@@ -1382,7 +1388,7 @@ export default function RefreshPage({
     } finally {
       clearStoredJob();
       setUser(null);
-      setIsPreviewMenuOpen(false);
+      setIsHeaderMenuOpen(false);
       setAccountMode("closed");
     }
   };
@@ -1576,109 +1582,6 @@ export default function RefreshPage({
     }
   };
 
-  const pollEditStatus = useCallback(
-    (websiteId: string, editRequestId: string) => {
-      stopEditPolling();
-      setEditStatus("working");
-
-      editPollTimerRef.current = window.setInterval(() => {
-        void fetch("/api/websites")
-          .then(async (response) => {
-            if (!response.ok) {
-              return;
-            }
-
-            const payload = (await response.json()) as {
-              websites: Array<{
-                id: string;
-                latestEditRequest: {
-                  id: string;
-                  status: string;
-                  errorMessage: string | null;
-                } | null;
-              }>;
-            };
-            const website = payload.websites.find((w) => w.id === websiteId);
-            const latest = website?.latestEditRequest;
-
-            if (!latest || latest.id !== editRequestId) {
-              return;
-            }
-
-            if (latest.status === "complete") {
-              stopEditPolling();
-              setEditStatus("done");
-              setActiveEditRequestId(null);
-            } else if (latest.status === "failed") {
-              stopEditPolling();
-              setEditStatus(
-                latest.errorMessage === "Edit cancelled." ? "cancelled" : "failed",
-              );
-              setActiveEditRequestId(null);
-            }
-          })
-          .catch(() => {
-            // Transient network error — keep polling.
-          });
-      }, POLL_INTERVAL_MS);
-    },
-    [stopEditPolling],
-  );
-
-  const handleSubmitEdit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    const prompt = editPrompt.trim();
-    if (!prompt) {
-      return;
-    }
-
-    if (!job?.websiteId) {
-      setAccountMode("signup");
-      return;
-    }
-
-    setIsSubmittingEdit(true);
-    setErrorMessage(null);
-    setEditStatus("idle");
-
-    try {
-      const response = await fetch(`/api/websites/${job.websiteId}/edits`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
-      });
-      const payload = await response.json();
-
-      if (!response.ok) {
-        throw new Error(payload.error ?? "Failed to request edit");
-      }
-
-      setEditPrompt("");
-
-      const created = payload as { editRequest?: { id: string } };
-      if (created.editRequest?.id) {
-        setActiveEditRequestId(created.editRequest.id);
-        pollEditStatus(job.websiteId, created.editRequest.id);
-      }
-
-      const refreshed = await fetch(`/api/refresh/${job.id}`, {
-        headers: jobTokenRef.current
-          ? { "x-job-token": jobTokenRef.current }
-          : undefined,
-      });
-      if (refreshed.ok) {
-        setJob((await refreshed.json()) as JobResponse);
-      }
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : "Failed to request edit",
-      );
-    } finally {
-      setIsSubmittingEdit(false);
-    }
-  };
-
   const cancelRefresh = async () => {
     if (!job?.id || isCancellingRefresh) {
       return;
@@ -1716,40 +1619,8 @@ export default function RefreshPage({
     }
   };
 
-  const cancelActiveEdit = async () => {
-    if (!job?.websiteId || !activeEditRequestId || isCancellingEdit) {
-      return;
-    }
-
-    setIsCancellingEdit(true);
-    setErrorMessage(null);
-
-    try {
-      const response = await fetch(
-        `/api/websites/${job.websiteId}/edits/${activeEditRequestId}`,
-        { method: "DELETE" },
-      );
-
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}));
-        throw new Error(payload.error ?? "Failed to cancel edit");
-      }
-
-      stopEditPolling();
-      setEditStatus("cancelled");
-      setActiveEditRequestId(null);
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : "Failed to cancel edit",
-      );
-    } finally {
-      setIsCancellingEdit(false);
-    }
-  };
-
   const startFresh = () => {
     stopPolling();
-    stopEditPolling();
     stopTimer();
     stopStatusRotation();
     clearStoredJob();
@@ -1773,13 +1644,12 @@ export default function RefreshPage({
     setFreshImages([]);
     setErrorMessage(null);
     setGenerationFailed(false);
-    setEditStatus("idle");
-    setActiveEditRequestId(null);
+    setWebsiteLimitErrorMessage(null);
     setIsRefreshing(false);
   };
 
   const requestStartFresh = () => {
-    setIsPreviewMenuOpen(false);
+    setIsHeaderMenuOpen(false);
 
     if (job && !job.isClaimed) {
       setShowStartAnotherWarning(true);
@@ -1863,6 +1733,18 @@ export default function RefreshPage({
     );
   };
 
+  const handleGenerationError = (error: unknown, fallbackMessage: string) => {
+    const message = error instanceof Error ? error.message : fallbackMessage;
+
+    if (isWebsiteLimitError(message)) {
+      setWebsiteLimitErrorMessage(message);
+      setErrorMessage(null);
+      return;
+    }
+
+    setErrorMessage(message);
+  };
+
   const requireVerification = (generation: PendingGeneration): boolean => {
     if (user || turnstileToken) {
       return false;
@@ -1875,6 +1757,7 @@ export default function RefreshPage({
     setPendingGeneration(generation);
     setShowVerification(true);
     setErrorMessage(null);
+    setWebsiteLimitErrorMessage(null);
     return true;
   };
 
@@ -1888,11 +1771,9 @@ export default function RefreshPage({
     setJob(null);
     setErrorMessage(null);
     setGenerationFailed(false);
-    setEditStatus("idle");
-    setActiveEditRequestId(null);
+    setWebsiteLimitErrorMessage(null);
     setStatusMessageIndex(0);
     stopPolling();
-    stopEditPolling();
     startProgressTimers();
 
     try {
@@ -1937,11 +1818,7 @@ export default function RefreshPage({
       setIsRefreshing(false);
       stopTimer();
       stopStatusRotation();
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Failed to start Google listing import",
-      );
+      handleGenerationError(error, "Failed to start Google listing import");
     }
   };
 
@@ -1951,11 +1828,9 @@ export default function RefreshPage({
     setJob(null);
     setErrorMessage(null);
     setGenerationFailed(false);
-    setEditStatus("idle");
-    setActiveEditRequestId(null);
+    setWebsiteLimitErrorMessage(null);
     setStatusMessageIndex(0);
     stopPolling();
-    stopEditPolling();
     startProgressTimers();
 
     try {
@@ -1999,9 +1874,7 @@ export default function RefreshPage({
       setIsRefreshing(false);
       stopTimer();
       stopStatusRotation();
-      setErrorMessage(
-        error instanceof Error ? error.message : "Failed to start refresh",
-      );
+      handleGenerationError(error, "Failed to start refresh");
     }
   };
 
@@ -2039,11 +1912,9 @@ export default function RefreshPage({
     setJob(null);
     setErrorMessage(null);
     setGenerationFailed(false);
-    setEditStatus("idle");
-    setActiveEditRequestId(null);
+    setWebsiteLimitErrorMessage(null);
     setStatusMessageIndex(0);
     stopPolling();
-    stopEditPolling();
     startProgressTimers();
 
     try {
@@ -2102,9 +1973,7 @@ export default function RefreshPage({
       setIsRefreshing(false);
       stopTimer();
       stopStatusRotation();
-      setErrorMessage(
-        error instanceof Error ? error.message : "Failed to start website creation",
-      );
+      handleGenerationError(error, "Failed to start website creation");
     }
   };
 
@@ -2291,7 +2160,7 @@ export default function RefreshPage({
 
   useEffect(() => {
     if (!showReveal) {
-      setIsPreviewMenuOpen(false);
+      setIsHeaderMenuOpen(false);
     }
   }, [showReveal]);
 
@@ -2407,7 +2276,7 @@ export default function RefreshPage({
             </span>
           </Link>
           <nav
-            className="hidden items-center gap-7 text-sm font-medium text-black/60 md:flex"
+            className="hidden items-center gap-7 whitespace-nowrap text-sm font-medium text-black/60 md:flex"
             aria-label="Primary"
           >
             <a href="#how" className="transition hover:text-black">
@@ -2424,15 +2293,36 @@ export default function RefreshPage({
             </a>
           </nav>
           <div
-            className={`items-center gap-2 ${showReveal ? "hidden md:flex" : "flex"}`}
+            className={`items-center gap-2 ${
+              user || showReveal ? "hidden md:flex" : "flex"
+            }`}
           >
             {user ? (
-              <Link
-                href="/dashboard"
-                className="rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold transition hover:border-black/25 sm:px-5"
-              >
-                My websites
-              </Link>
+              <>
+                <Link
+                  href="/dashboard"
+                  className="whitespace-nowrap rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold transition hover:border-black/25 sm:px-5"
+                >
+                  My websites
+                </Link>
+                <Link
+                  href="/account"
+                  className={`whitespace-nowrap rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold text-black/60 transition hover:border-black/25 hover:text-black sm:px-5 ${
+                    showReveal ? "hidden" : "hidden lg:inline-block"
+                  }`}
+                >
+                  Account
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => void logout()}
+                  className={`whitespace-nowrap rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold text-black/60 transition hover:border-black/25 hover:text-black sm:px-5 ${
+                    showReveal ? "hidden lg:inline-block" : ""
+                  }`}
+                >
+                  Log out
+                </button>
+              </>
             ) : (
               <button
                 type="button"
@@ -2446,11 +2336,11 @@ export default function RefreshPage({
               <button
                 type="button"
                 onClick={requestStartFresh}
-                className="rounded-full bg-[#141811] px-4 py-2 text-sm font-semibold text-white transition hover:bg-black sm:px-5"
+                className="whitespace-nowrap rounded-full bg-[#141811] px-4 py-2 text-sm font-semibold text-white transition hover:bg-black sm:px-5"
               >
                 Start another
               </button>
-            ) : (
+            ) : !user ? (
               <a
                 href={flowMode === "fresh" ? "#fresh-input" : "#refresh-input"}
                 onClick={() => chooseHeroMode(flowMode)}
@@ -2458,17 +2348,17 @@ export default function RefreshPage({
               >
                 Try it free
               </a>
-            )}
+            ) : null}
           </div>
-          {showReveal ? (
+          {user || showReveal ? (
             <div className="relative md:hidden">
               <button
                 type="button"
-                onClick={() => setIsPreviewMenuOpen((open) => !open)}
+                onClick={() => setIsHeaderMenuOpen((open) => !open)}
                 className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-4 py-2.5 text-sm font-semibold text-black shadow-sm transition hover:border-black/25"
                 aria-label="Open menu"
-                aria-expanded={isPreviewMenuOpen}
-                aria-controls="preview-mobile-menu"
+                aria-expanded={isHeaderMenuOpen}
+                aria-controls="header-mobile-menu"
               >
                 <span className="flex h-4 w-4 flex-col justify-center gap-1" aria-hidden>
                   <span className="block h-0.5 rounded-full bg-current" />
@@ -2477,19 +2367,26 @@ export default function RefreshPage({
                 </span>
                 Menu
               </button>
-              {isPreviewMenuOpen ? (
+              {isHeaderMenuOpen ? (
                 <div
-                  id="preview-mobile-menu"
+                  id="header-mobile-menu"
                   className="absolute right-0 top-[3.25rem] z-50 w-56 rounded-3xl border border-black/10 bg-white p-2 shadow-2xl shadow-black/15"
                 >
                   {user ? (
                     <>
                       <Link
                         href="/dashboard"
-                        onClick={() => setIsPreviewMenuOpen(false)}
+                        onClick={() => setIsHeaderMenuOpen(false)}
                         className="block rounded-2xl px-4 py-3 text-sm font-semibold text-black transition hover:bg-black/5"
                       >
                         My websites
+                      </Link>
+                      <Link
+                        href="/account"
+                        onClick={() => setIsHeaderMenuOpen(false)}
+                        className="block rounded-2xl px-4 py-3 text-sm font-semibold text-black/65 transition hover:bg-black/5 hover:text-black"
+                      >
+                        Account
                       </Link>
                       <button
                         type="button"
@@ -2503,7 +2400,7 @@ export default function RefreshPage({
                     <button
                       type="button"
                       onClick={() => {
-                        setIsPreviewMenuOpen(false);
+                        setIsHeaderMenuOpen(false);
                         setAccountMode("login");
                       }}
                       className="block w-full rounded-2xl px-4 py-3 text-left text-sm font-semibold text-black transition hover:bg-black/5"
@@ -2511,24 +2408,26 @@ export default function RefreshPage({
                       Log in
                     </button>
                   )}
-                  {previewHref ? (
+                  {showReveal && previewHref ? (
                     <Link
                       href={previewHref}
                       target="_blank"
                       rel="noopener noreferrer"
-                      onClick={() => setIsPreviewMenuOpen(false)}
+                      onClick={() => setIsHeaderMenuOpen(false)}
                       className="block rounded-2xl px-4 py-3 text-sm font-semibold text-black transition hover:bg-black/5"
                     >
                       Open preview
                     </Link>
                   ) : null}
-                  <button
-                    type="button"
-                    onClick={requestStartFresh}
-                    className="mt-1 block w-full rounded-2xl bg-[#141811] px-4 py-3 text-left text-sm font-semibold text-white transition hover:bg-black"
-                  >
-                    Start another
-                  </button>
+                  {showReveal ? (
+                    <button
+                      type="button"
+                      onClick={requestStartFresh}
+                      className="mt-1 block w-full rounded-2xl bg-[#141811] px-4 py-3 text-left text-sm font-semibold text-white transition hover:bg-black"
+                    >
+                      Start another
+                    </button>
+                  ) : null}
                 </div>
               ) : null}
             </div>
@@ -2549,12 +2448,12 @@ export default function RefreshPage({
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-black/40">
                   {activeMode === "fresh" ? "Creating" : "Refreshing"}
                 </p>
-                <h1 className="mx-auto mt-2 max-w-[22ch] font-fraunces text-[clamp(1.6rem,4.5vw,2.15rem)] font-semibold leading-none tracking-tight [overflow-wrap:anywhere]">
+                <h1 className="mx-auto mt-2 max-w-full font-fraunces text-[clamp(1.35rem,5.5vw,2.15rem)] font-semibold leading-tight tracking-tight break-words">
                   {activeGenerationSource === "gbp"
                     ? "Creating from your Google listing"
                     : activeMode === "fresh"
                       ? "Creating your new website"
-                      : activeLabel}
+                      : breakableLabel(activeLabel)}
                 </h1>
 
                 <ol className="mx-auto mt-8 max-w-xs space-y-3.5 text-left">
@@ -2679,10 +2578,10 @@ export default function RefreshPage({
                 <span className="inline-flex items-center gap-2 rounded-full bg-kiwi-green px-4 py-1.5 text-sm font-bold">
                   Your new website is ready ✨
                 </span>
-                <h1 className="mt-5 font-fraunces text-4xl font-semibold tracking-tight sm:text-5xl">
-                  {activeMode === "fresh"
-                    ? `Here's ${activeLabel}.`
-                    : `Here's ${activeLabel}, refreshed.`}
+                <h1 className="mx-auto mt-5 max-w-full font-fraunces text-[clamp(1.75rem,7vw,2.25rem)] font-semibold leading-[1.12] tracking-tight break-words sm:text-5xl">
+                  {"Here's "}
+                  {breakableLabel(activeLabel)}
+                  {activeMode === "fresh" ? "." : ", refreshed."}
                 </h1>
                 <p className="mx-auto mt-3 max-w-md text-base leading-7 text-black/55">
                   {job?.isClaimed
@@ -2708,8 +2607,6 @@ export default function RefreshPage({
                     </span>
                   </div>
                   <iframe
-                    // Reload the frame once an edit lands so the user sees it.
-                    key={editStatus === "done" ? "after-edit" : "initial"}
                     src={previewHref}
                     title="Preview of your new website"
                     className="h-[460px] w-full sm:h-[540px] lg:h-[640px]"
@@ -2780,7 +2677,7 @@ export default function RefreshPage({
                           left
                         </span>
                       </p>
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
                         <Link
                           href={previewHref}
                           target="_blank"
@@ -2803,69 +2700,16 @@ export default function RefreshPage({
                       </div>
                     </div>
 
-                    <form onSubmit={handleSubmitEdit} className="mt-4">
-                      <label
-                        htmlFor="edit-prompt"
-                        className="mb-2 block text-xs font-semibold text-black/55"
-                      >
-                        Ask for a change
-                      </label>
-                      <div className="flex flex-col gap-2 sm:flex-row">
-                        <input
-                          id="edit-prompt"
-                          value={editPrompt}
-                          onChange={(event) =>
-                            setEditPrompt(event.target.value)
-                          }
-                          placeholder="Make the phone number bigger, swap the main photo..."
-                          className="h-11 flex-1 rounded-full border border-black/10 bg-white px-4 text-sm outline-none placeholder:text-black/30 focus:border-black/30"
-                        />
-                        <button
-                          type="submit"
-                          disabled={isSubmittingEdit || !editPrompt.trim()}
-                          className="h-11 rounded-full bg-[#141811] px-5 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          {isSubmittingEdit ? "Sending…" : "Make the change"}
-                        </button>
-                      </div>
-                      {editStatus === "working" ? (
-                        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
-                          <p className="flex items-center gap-2 text-xs font-medium text-black/55">
-                            <span
-                              aria-hidden
-                              className="h-1.5 w-1.5 animate-pulse rounded-full bg-kiwi-green"
-                            />
-                            Making your change — usually takes a few minutes. You
-                            can keep browsing.
-                          </p>
-                          {activeEditRequestId ? (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                void cancelActiveEdit();
-                              }}
-                              disabled={isCancellingEdit}
-                              className="text-xs font-semibold text-black/45 underline underline-offset-2 transition hover:text-black disabled:opacity-50"
-                            >
-                              {isCancellingEdit ? "Cancelling..." : "Cancel edit"}
-                            </button>
-                          ) : null}
-                        </div>
-                      ) : editStatus === "done" ? (
-                        <p className="mt-3 text-xs font-medium text-[#4d8a2a]">
-                          ✓ Done! The preview above has been updated.
-                        </p>
-                      ) : editStatus === "cancelled" ? (
-                        <p className="mt-3 text-xs font-medium text-black/55">
-                          Edit cancelled. You can request another change.
-                        </p>
-                      ) : editStatus === "failed" ? (
-                        <p className="mt-3 text-xs font-medium text-black/55">
-                          That change didn&apos;t work this time — please try
-                          asking again.
-                        </p>
-                      ) : null}
-                    </form>
+                    <p className="mt-4 text-sm leading-6 text-black/55">
+                      Want something changed? Head to your dashboard to ask for
+                      changes, swap photos and manage your website.
+                    </p>
+                    <Link
+                      href="/dashboard"
+                      className="mt-3 inline-flex h-11 items-center rounded-full bg-[#141811] px-5 text-sm font-semibold text-white transition hover:bg-black"
+                    >
+                      Make changes in my dashboard
+                    </Link>
                   </div>
                 )}
 
@@ -3904,6 +3748,48 @@ export default function RefreshPage({
             </div>
           </footer>
         </>
+      ) : null}
+
+      {websiteLimitErrorMessage ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="website-limit-error-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-5 backdrop-blur-sm"
+        >
+          <div className="w-full max-w-md rounded-3xl border border-black/10 bg-white p-6 text-center shadow-2xl sm:p-8">
+            <Image
+              src="/refresh-kiwi-favicon-v2.png"
+              alt=""
+              width={44}
+              height={44}
+              aria-hidden
+              className="mx-auto rounded-full"
+            />
+            <h2
+              id="website-limit-error-title"
+              className="mt-4 font-fraunces text-2xl font-semibold tracking-tight"
+            >
+              That didn&apos;t work this time
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-black/55">
+              {websiteLimitErrorMessage}
+            </p>
+            <Link
+              href="/dashboard"
+              className="mt-6 inline-flex h-12 w-full items-center justify-center rounded-full bg-kiwi-green px-5 text-sm font-bold transition hover:bg-kiwi-green-hover"
+            >
+              Go to dashboard
+            </Link>
+            <button
+              type="button"
+              onClick={() => setWebsiteLimitErrorMessage(null)}
+              className="mt-4 text-sm font-medium text-black/50 underline decoration-black/20 underline-offset-4 transition hover:text-black"
+            >
+              Close
+            </button>
+          </div>
+        </div>
       ) : null}
 
       {showStartAnotherWarning ? (
