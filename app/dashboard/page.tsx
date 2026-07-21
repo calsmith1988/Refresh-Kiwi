@@ -475,7 +475,7 @@ function websiteState(website: Website, isPro: boolean) {
     return {
       label: "Preview ended",
       badgeClass: "bg-red-50 text-red-700",
-      description: `Expired on ${formatDate(website.expiresAt)}.`,
+      description: `Your free preview ended on ${formatDate(website.expiresAt)}, but your website is saved. Go Pro to bring it back exactly as it was.`,
       canView: false,
       canEdit: false,
       showUpgrade: true,
@@ -2241,7 +2241,7 @@ export default function DashboardPage() {
                                 {pluralise(generatedPages.length, "page")}
                               </span>
                             ) : null}
-                            {!isPro && website.status !== "live" ? (
+                            {!isPro && website.status !== "live" && state.canEdit ? (
                               <span className="inline-flex items-center gap-1.5">
                                 <DashboardIcon
                                   name="calendar"
@@ -2259,7 +2259,7 @@ export default function DashboardPage() {
                                 Online since {formatDate(website.publishedAt)}
                               </span>
                             ) : null}
-                            {!isPro ? (
+                            {!isPro && state.canEdit ? (
                               <span className="inline-flex items-center gap-1.5">
                                 <DashboardIcon
                                   name="changes"
@@ -2292,7 +2292,7 @@ export default function DashboardPage() {
                               >
                                 <DashboardIcon name="rocket" />
                                 {state.label === "Preview ended"
-                                  ? `Take it online again — ${pricing.proPriceShort}`
+                                  ? `Restore my website — ${pricing.proPriceShort}`
                                   : `Take it online — ${pricing.proPriceShort}`}
                               </button>
                             ) : null}
@@ -2347,14 +2347,16 @@ export default function DashboardPage() {
                                   : "Pages"}
                               </button>
                             ) : null}
-                            <button
-                              type="button"
-                              onClick={() => openWebsiteActionModal(website, "domain")}
-                              className="inline-flex items-center gap-2 rounded-2xl border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-black transition hover:border-black/25"
-                            >
-                              <DashboardIcon name="globe" />
-                              Manage domain
-                            </button>
+                            {state.canView ? (
+                              <button
+                                type="button"
+                                onClick={() => openWebsiteActionModal(website, "domain")}
+                                className="inline-flex items-center gap-2 rounded-2xl border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-black transition hover:border-black/25"
+                              >
+                                <DashboardIcon name="globe" />
+                                Manage domain
+                              </button>
+                            ) : null}
                             <button
                               type="button"
                               onClick={() => openWebsiteActionModal(website, "delete")}
