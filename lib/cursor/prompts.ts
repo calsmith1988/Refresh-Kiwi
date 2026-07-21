@@ -127,6 +127,15 @@ OUTPUT: sites/${slug}/
   3. A tiny local SVG at assets/favicon.svg with the brand initials on a solid brand-coloured disc (create this file yourself if needed).
 - Example: <link rel="icon" href="…" type="image/png"> (or type="image/svg+xml" for an SVG).
 
+## SEO basics
+
+- <title>: specific and human, "Brand — what they do in Town" style, under 60 characters. Not "Home".
+- <meta name="description">: one compelling sentence about the real offer, under 160 characters.
+- Open Graph tags: og:title, og:description, og:type "website", and og:image set to the strongest real image URL you used on the page.
+- One <script type="application/ld+json"> LocalBusiness block in <head> using only facts you actually saw on the source site: name, telephone, address, openingHours, areaServed, image. Omit any field you don't have — never invent facts. Skip the "url" field; the platform handles canonical URLs.
+- Exactly one <h1> per page. Meaningful alt text on content images; alt="" on decorative ones.
+- Do not write canonical tags, robots.txt, or sitemap.xml — the platform generates those.
+
 ## Videos — embed or hotlink, never download
 
 - If the source site features videos, carry them into the refresh:
@@ -225,6 +234,15 @@ ${formatSeedAssets(seedAssets)}
 - Example: <link rel="icon" href="/preview/${slug}/assets/favicon.svg" type="image/svg+xml">
   When using the provided logo instead: <link rel="icon" href="THE_LOGO_URL" type="image/png"> (match the real content type).
 
+## SEO basics
+
+- <title>: specific and human, "Brand — what they do in Town" style, under 60 characters. Not "Home".
+- <meta name="description">: one compelling sentence about the real offer, under 160 characters.
+- Open Graph tags: og:title, og:description, og:type "website", and og:image set to the strongest image URL you used on the page.
+- If the brief includes real business facts (name, phone, address, opening hours, service area), add one <script type="application/ld+json"> LocalBusiness block in <head> with only those facts. Omit any field the brief doesn't provide — never invent facts. Skip the "url" field; the platform handles canonical URLs.
+- Exactly one <h1> per page. Meaningful alt text on content images; alt="" on decorative ones.
+- Do not write canonical tags, robots.txt, or sitemap.xml — the platform generates those.
+
 ${buildDesignDirectionSection(pickDesignDirection(slug))}
 
 ## Design bar
@@ -287,6 +305,7 @@ ${buildFormRules(slug)}
 ## Quality bar
 
 - These should be real pages, not lock placeholders.
+- Every new page needs its own specific <title> (under 60 characters, not just the page name) and <meta name="description"> (under 160 characters), plus og:title/og:description. Do not write canonical tags, robots.txt, or sitemap.xml — the platform generates those.
 - Keep factual claims grounded in the brief and existing homepage. Do not invent addresses, phone numbers, awards, testimonials, or compliance claims.
 - Every generated page must load shared CSS and assets correctly from preview subpaths. Prefer root-relative preview paths like /preview/${slug}/styles.css, /preview/${slug}/script.js, /preview/${slug}/assets/file.png, and /preview/${slug}/page-path for navigation links.
 - Never use localhost, 127.0.0.1, or port-based preview origins anywhere in links, scripts, forms, canonical tags, Open Graph URLs, or base tags.
@@ -325,6 +344,7 @@ ${buildFormRules(slug)}
 ## Quality bar
 
 - These should be real refreshed pages, not lock placeholders.
+- Every new page needs its own specific <title> (under 60 characters, not just the page name) and <meta name="description"> (under 160 characters), plus og:title/og:description. Do not write canonical tags, robots.txt, or sitemap.xml — the platform generates those.
 - Convert old copy into polished, concise marketing sections.
 - Preserve factual details, services, contact details, proof points, and useful imagery.
 - Avoid broken links and broken asset paths.
@@ -388,6 +408,7 @@ ${buildFormRules(slug)}
 ## Quality bar
 
 - The new page should feel like part of the same website, not a pasted template.
+- Give the page its own specific <title> (under 60 characters) and <meta name="description"> (under 160 characters), plus og:title/og:description. Do not write canonical tags, robots.txt, or sitemap.xml — the platform generates those.
 - Make the page useful and specific to the user's brief, but stay conservative when facts are missing.
 - Every generated page must load shared CSS and assets correctly from preview subpaths. Prefer root-relative preview paths like /preview/${slug}/styles.css, /preview/${slug}/script.js, /preview/${slug}/assets/file.png, and /preview/${slug}/page-path for navigation links.
 - Do not use href="styles.css" or src="assets/..." on nested pages, because those relative paths can break in previews.

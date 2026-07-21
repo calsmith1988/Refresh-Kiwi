@@ -7,6 +7,11 @@ import {
 } from "@/lib/preview/rewrite";
 import { isSvgContentType, svgSecurityHeaders } from "@/lib/assets/validate";
 import { CUSTOM_DOMAIN_HOST_HEADER } from "@/lib/security/headers";
+import {
+  buildCustomDomainRobots,
+  buildCustomDomainSitemap,
+  injectSeoTags,
+} from "@/lib/seo/customDomain";
 import { getWebsiteAccessByCustomDomain } from "@/lib/websites/service";
 
 export const runtime = "nodejs";
@@ -29,6 +34,10 @@ function rewriteLocalPreviewOrigins(
   }
 
   return rewriteLocalPreviewOriginsText(body.toString("utf8"));
+}
+
+function isHtmlContentType(contentType: string): boolean {
+  return contentType.split(";")[0].trim() === "text/html";
 }
 
 export async function GET(request: Request, context: RouteContext) {
@@ -58,6 +67,35 @@ export async function GET(request: Request, context: RouteContext) {
   const { path } = await context.params;
   const file = await readPreviewFile(websiteAccess.slug, path ?? []);
 
+  // Canonical host: the domain as connected in the dashboard, so www and
+  // bare-domain requests both point search engines at one version.
+  const canonicalHost = websiteAccess.customDomain ?? host;
+
+  // Generated sitemap/robots from site.json — only when the site itself
+  // doesn't ship those files, so hand-written versions always win.
+  if (!file && path?.length === 1) {
+    if (path[0] === "sitemap.xml") {
+      return new NextResponse(
+        await buildCustomDomainSitemap(websiteAccess.slug, canonicalHost),
+        {
+          headers: {
+            "Content-Type": "application/xml; charset=utf-8",
+            "Cache-Control": "public, max-age=3600",
+          },
+        },
+      );
+    }
+
+    if (path[0] === "robots.txt") {
+      return new NextResponse(buildCustomDomainRobots(canonicalHost), {
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Cache-Control": "public, max-age=3600",
+        },
+      });
+    }
+  }
+
   if (!file) {
     return NextResponse.json(
       { error: "Page not found", reason: "file_not_found", slug: websiteAccess.slug },
@@ -65,7 +103,19 @@ export async function GET(request: Request, context: RouteContext) {
     );
   }
 
-  const body = rewriteLocalPreviewOrigins(file.body, file.contentType);
+  let body = rewriteLocalPreviewOrigins(file.body, file.contentType);
+
+  if (typeof body === "string" && isHtmlContentType(file.contentType)) {
+    body = injectSeoTags({
+      html: body,
+      host: canonicalHost,
+      pathSegments: path ?? [],
+      settings: {
+        searchConsoleToken: websiteAccess.seoSearchConsoleToken,
+        analyticsId: websiteAccess.seoAnalyticsId,
+      },
+    });
+  }
 
   return new NextResponse(body, {
     headers: {

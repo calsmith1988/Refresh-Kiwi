@@ -59,6 +59,8 @@ type Website = {
     steps: string[];
   };
   customDomainHelpUrl: string | null;
+  seoSearchConsoleToken: string | null;
+  seoAnalyticsId: string | null;
   homepageScreenshotUrl: string;
   expiresAt: string;
   publishedAt: string | null;
@@ -144,7 +146,8 @@ type DashboardIconName =
   | "trash"
   | "rocket"
   | "calendar"
-  | "changes";
+  | "changes"
+  | "seo";
 
 function DashboardIcon({
   name,
@@ -165,6 +168,7 @@ function DashboardIcon({
     rocket: "M12.6 3.1c2.5-.5 5.2.1 8.1 1.9.1 3.4-.7 6-2.4 7.9l.5 3.5-3.8 3.8-1-4a13 13 0 0 1-2.1.8l-4.8-4.8c.2-.7.5-1.4.8-2.1l-4-.9 3.8-3.8 3.5.5c.4-1.3.9-2.2 1.4-2.8Zm2.4 6.4A1.5 1.5 0 1 0 15 6.5a1.5 1.5 0 0 0 0 3ZM6.6 15.1c.6.6.6 1.7 0 2.3-.7.7-3.6 1.6-3.6 1.6s.9-2.9 1.6-3.6c.6-.6 1.7-.6 2.3 0Z",
     calendar: "M7 3h2v2h6V3h2v2h3v16H4V5h3V3Zm11 8H6v8h12v-8Z",
     changes: "M12 4V2l4 3-4 3V6a5 5 0 0 0-4.6 7h-2A7 7 0 0 1 12 4Zm6.6 7a7 7 0 0 1-6.6 9v2l-4-3 4-3v2a5 5 0 0 0 4.6-7h2Z",
+    seo: "M10 2a8 8 0 1 0 4.9 14.3l4.4 4.4 1.4-1.4-4.4-4.4A8 8 0 0 0 10 2Zm0 2a6 6 0 1 1 0 12 6 6 0 0 1 0-12Zm-3 6.5h2v3H7v-3Zm3-2.5h2v5.5h-2V8Zm3 1.5h2v4h-2v-4Z",
   };
 
   return (
@@ -211,6 +215,7 @@ type WebsiteActionModalType =
   | "images"
   | "pages"
   | "domain"
+  | "seo"
   | "rename"
   | "delete";
 
@@ -527,6 +532,15 @@ export default function DashboardPage() {
   const [editTargets, setEditTargets] = useState<Record<string, string>>({});
   const [renameValues, setRenameValues] = useState<Record<string, string>>({});
   const [domainValues, setDomainValues] = useState<Record<string, string>>({});
+  const [seoValues, setSeoValues] = useState<
+    Record<string, { searchConsole: string; analyticsId: string }>
+  >({});
+  const [savingSeoWebsiteId, setSavingSeoWebsiteId] = useState<string | null>(
+    null,
+  );
+  const [seoSavedWebsiteId, setSeoSavedWebsiteId] = useState<string | null>(
+    null,
+  );
   const [submittingEditId, setSubmittingEditId] = useState<string | null>(null);
   const [cancellingRefreshJobId, setCancellingRefreshJobId] = useState<string | null>(
     null,
@@ -1565,6 +1579,42 @@ export default function DashboardPage() {
     }
   };
 
+  const saveSeoSettings = async (website: Website) => {
+    const values = seoValues[website.id] ?? {
+      searchConsole: website.seoSearchConsoleToken ?? "",
+      analyticsId: website.seoAnalyticsId ?? "",
+    };
+
+    setSavingSeoWebsiteId(website.id);
+    setSeoSavedWebsiteId(null);
+    setErrorMessage(null);
+
+    try {
+      const response = await fetch(`/api/websites/${website.id}/seo`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          searchConsoleToken: values.searchConsole,
+          analyticsId: values.analyticsId,
+        }),
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Failed to save SEO settings");
+      }
+
+      setSeoSavedWebsiteId(website.id);
+      await loadDashboard();
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Failed to save SEO settings",
+      );
+    } finally {
+      setSavingSeoWebsiteId(null);
+    }
+  };
+
   const deleteWebsite = async (website: Website, confirmation: string) => {
     setDeletingWebsiteId(website.id);
     setErrorMessage(null);
@@ -2355,6 +2405,19 @@ export default function DashboardPage() {
                               >
                                 <DashboardIcon name="globe" />
                                 Manage domain
+                              </button>
+                            ) : null}
+                            {state.canView ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSeoSavedWebsiteId(null);
+                                  openWebsiteActionModal(website, "seo");
+                                }}
+                                className="inline-flex items-center gap-2 rounded-2xl border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-black/60 transition hover:border-black/25 hover:text-black"
+                              >
+                                <DashboardIcon name="seo" />
+                                Advanced
                               </button>
                             ) : null}
                             <button
@@ -3537,6 +3600,181 @@ export default function DashboardPage() {
                           ) : null}
                         </div>
 
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {websiteActionModal?.websiteId === website.id &&
+                    websiteActionModal.type === "seo" ? (
+                      <div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby={`seo-modal-${website.id}`}
+                        onMouseDown={closeWebsiteActionModalOnBackdrop}
+                        className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/35 px-5 py-4 backdrop-blur-sm sm:items-center"
+                      >
+                        <div className="preview-pop max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-black/10 bg-white p-6 shadow-2xl sm:p-8">
+                          <div className="flex items-start justify-between gap-4">
+                            <div>
+                              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-black/40">
+                                Advanced
+                              </p>
+                              <h2
+                                id={`seo-modal-${website.id}`}
+                                className="mt-2 font-fraunces text-3xl font-semibold tracking-tight"
+                              >
+                                Search &amp; analytics
+                              </h2>
+                              <p className="mt-2 text-sm leading-6 text-black/55">
+                                You don&apos;t need to touch this — your website
+                                already comes with the SEO basics built in. If
+                                someone helps you with SEO or analytics, they may
+                                ask you to paste a code here.
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={closeWebsiteActionModal}
+                              className="rounded-full border border-black/10 px-3 py-1 text-sm text-black/60 transition hover:border-black/25 hover:text-black"
+                            >
+                              Close
+                            </button>
+                          </div>
+
+                          <form
+                            className="mt-6 space-y-5"
+                            onSubmit={(event) => {
+                              event.preventDefault();
+                              void saveSeoSettings(website);
+                            }}
+                          >
+                            <div>
+                              <label
+                                htmlFor={`seo-gsc-${website.id}`}
+                                className="text-sm font-semibold text-black"
+                              >
+                                Google Search Console verification
+                              </label>
+                              <p className="mt-1 text-xs leading-5 text-black/45">
+                                Proves to Google that you own this website. Paste
+                                the verification code (or the whole meta tag)
+                                Google gives you.
+                              </p>
+                              <input
+                                id={`seo-gsc-${website.id}`}
+                                value={
+                                  seoValues[website.id]?.searchConsole ??
+                                  website.seoSearchConsoleToken ??
+                                  ""
+                                }
+                                onChange={(event) =>
+                                  setSeoValues((current) => ({
+                                    ...current,
+                                    [website.id]: {
+                                      searchConsole: event.target.value,
+                                      analyticsId:
+                                        current[website.id]?.analyticsId ??
+                                        website.seoAnalyticsId ??
+                                        "",
+                                    },
+                                  }))
+                                }
+                                placeholder="Verification code from Google"
+                                className="mt-2 h-11 w-full rounded-full border border-black/10 bg-white px-4 text-sm outline-none placeholder:text-black/30 focus:border-black/30"
+                              />
+                            </div>
+
+                            <div>
+                              <label
+                                htmlFor={`seo-ga-${website.id}`}
+                                className="text-sm font-semibold text-black"
+                              >
+                                Google Analytics
+                              </label>
+                              <p className="mt-1 text-xs leading-5 text-black/45">
+                                Shows you how many people visit your website. Paste
+                                a measurement ID that starts with G-.
+                              </p>
+                              <input
+                                id={`seo-ga-${website.id}`}
+                                value={
+                                  seoValues[website.id]?.analyticsId ??
+                                  website.seoAnalyticsId ??
+                                  ""
+                                }
+                                onChange={(event) =>
+                                  setSeoValues((current) => ({
+                                    ...current,
+                                    [website.id]: {
+                                      searchConsole:
+                                        current[website.id]?.searchConsole ??
+                                        website.seoSearchConsoleToken ??
+                                        "",
+                                      analyticsId: event.target.value,
+                                    },
+                                  }))
+                                }
+                                placeholder="G-XXXXXXXXXX"
+                                className="mt-2 h-11 w-full rounded-full border border-black/10 bg-white px-4 text-sm outline-none placeholder:text-black/30 focus:border-black/30"
+                              />
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                              <button
+                                type="submit"
+                                disabled={savingSeoWebsiteId === website.id}
+                                className="h-11 rounded-full bg-[#141811] px-5 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                {savingSeoWebsiteId === website.id
+                                  ? "Saving..."
+                                  : "Save"}
+                              </button>
+                              {seoSavedWebsiteId === website.id ? (
+                                <span className="text-sm font-medium text-black/55">
+                                  Saved — live on your domain within a minute.
+                                </span>
+                              ) : null}
+                            </div>
+                          </form>
+
+                          <div className="mt-6 rounded-2xl bg-[#faf8f1] p-4">
+                            <p className="text-sm font-semibold text-black">
+                              For your SEO person
+                            </p>
+                            {website.customDomainStatus === "connected" &&
+                            website.customDomain ? (
+                              <>
+                                <p className="mt-1 text-xs leading-5 text-black/50">
+                                  These are generated automatically — nothing to
+                                  set up:
+                                </p>
+                                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs font-semibold">
+                                  <a
+                                    href={`https://${website.customDomain}/sitemap.xml`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-black underline decoration-black/25 underline-offset-2 transition hover:decoration-black"
+                                  >
+                                    sitemap.xml
+                                  </a>
+                                  <a
+                                    href={`https://${website.customDomain}/robots.txt`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-black underline decoration-black/25 underline-offset-2 transition hover:decoration-black"
+                                  >
+                                    robots.txt
+                                  </a>
+                                </div>
+                              </>
+                            ) : (
+                              <p className="mt-1 text-xs leading-5 text-black/50">
+                                A sitemap, robots.txt, and these codes take effect
+                                once your own domain is connected (see Manage
+                                domain).
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ) : null}

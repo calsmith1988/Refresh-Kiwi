@@ -109,6 +109,8 @@ export function toWebsiteResponse(website: typeof websites.$inferSelect) {
     customDomainVerifiedAt: website.customDomainVerifiedAt?.toISOString() ?? null,
     customDomainLastCheckedAt:
       website.customDomainLastCheckedAt?.toISOString() ?? null,
+    seoSearchConsoleToken: website.seoSearchConsoleToken,
+    seoAnalyticsId: website.seoAnalyticsId,
     expiresAt: website.expiresAt.toISOString(),
     publishedAt: website.publishedAt?.toISOString() ?? null,
     createdAt: website.createdAt.toISOString(),
@@ -470,6 +472,31 @@ export async function renameOwnedWebsite(params: {
   return updated;
 }
 
+export async function updateOwnedWebsiteSeoSettings(params: {
+  websiteId: string;
+  userId: string;
+  searchConsoleToken: string | null;
+  analyticsId: string | null;
+}) {
+  const website = await getOwnedWebsite(params);
+
+  if (!website) {
+    throw new Error("Website not found");
+  }
+
+  const [updated] = await getDb()
+    .update(websites)
+    .set({
+      seoSearchConsoleToken: params.searchConsoleToken,
+      seoAnalyticsId: params.analyticsId,
+      updatedAt: new Date(),
+    })
+    .where(eq(websites.id, website.id))
+    .returning();
+
+  return updated;
+}
+
 export async function archiveOwnedWebsite(params: {
   websiteId: string;
   userId: string;
@@ -580,6 +607,8 @@ export async function getWebsiteAccessByCustomDomain(hostname: string) {
         expiresAt: websites.expiresAt,
         customDomain: websites.customDomain,
         customDomainStatus: websites.customDomainStatus,
+        seoSearchConsoleToken: websites.seoSearchConsoleToken,
+        seoAnalyticsId: websites.seoAnalyticsId,
         user: {
           plan: users.plan,
           subscriptionStatus: users.subscriptionStatus,

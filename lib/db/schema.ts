@@ -259,6 +259,12 @@ export const websites = pgTable(
     customDomainLastCheckedAt: timestamp("custom_domain_last_checked_at", {
       withTimezone: true,
     }),
+    /** Google Search Console verification token, injected as a meta tag when
+     * the site is served on its custom domain. */
+    seoSearchConsoleToken: text("seo_search_console_token"),
+    /** GA4 measurement ID (G-XXXXXXX), injected as a gtag snippet when the
+     * site is served on its custom domain. */
+    seoAnalyticsId: text("seo_analytics_id"),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     publishedAt: timestamp("published_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
