@@ -33,7 +33,9 @@ export const LANDING_SPEED_THRESHOLD = 1.5;
  * fraction of the viewport height (0 = top of screen). Body-count alone was
  * too early and made pops start mid-screen.
  */
-export const PRESSURE_TOP_Y_RATIO = 0.14;
+export const PRESSURE_TOP_Y_RATIO = 0.16;
+/** Landed kiwis required above the top line before pressure engages. */
+export const PRESSURE_TOP_MIN_COUNT = 6;
 /** Still require this fraction of capacity so a sparse tall stack doesn't pop. */
 export const PRESSURE_MIN_FILL_RATIO = 0.72;
 /**

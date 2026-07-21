@@ -8,6 +8,7 @@ import {
   POP_RATE_OF_SPAWN,
   POP_WAKE_RADIUS_MULT,
   PRESSURE_MIN_FILL_RATIO,
+  PRESSURE_TOP_MIN_COUNT,
   PRESSURE_TOP_Y_RATIO,
   type KiwiPitWorld,
 } from "./types";
@@ -23,8 +24,14 @@ function releaseBody(world: KiwiPitWorld, body: Matter.Body) {
   world.pool.push(body);
 }
 
-function wakeNeighbours(world: KiwiPitWorld, x: number, y: number, radius: number) {
+/**
+ * Wake immediate neighbours AND the full column of kiwis above the popped
+ * one. Sleeping bodies don't notice their support vanishing, so without the
+ * column wake the stack hangs in mid-air over a white gap instead of falling.
+ */
+function wakeAbove(world: KiwiPitWorld, x: number, y: number, radius: number) {
   const wakeR2 = radius * radius;
+  const columnHalfWidth = radius;
 
   for (const body of world.bodies) {
     if (body.label !== "kiwi" || !body.isSleeping) {
@@ -34,15 +41,27 @@ function wakeNeighbours(world: KiwiPitWorld, x: number, y: number, radius: numbe
     const dx = body.position.x - x;
     const dy = body.position.y - y;
 
+    // Near the pop itself, in any direction.
     if (dx * dx + dy * dy <= wakeR2) {
+      Sleeping.set(body, false);
+      continue;
+    }
+
+    // Anywhere in the column above — these are the ones that must fall.
+    if (body.position.y < y && Math.abs(dx) <= columnHalfWidth) {
       Sleeping.set(body, false);
     }
   }
 }
 
-/** True once landed kiwis have stacked close to the top of the viewport. */
+/**
+ * True once the landed pile has genuinely stacked to the top of the viewport.
+ * Requires several landed kiwis near the top so a single stray body (e.g. one
+ * marked landed mid-fall) can't trigger pressure while the screen is 75% full.
+ */
 export function pileReachesTop(world: KiwiPitWorld): boolean {
-  let minLandedY = Infinity;
+  const topLine = world.height * PRESSURE_TOP_Y_RATIO;
+  let landedNearTop = 0;
 
   for (const body of world.bodies) {
     if (body.label !== "kiwi") {
@@ -54,14 +73,16 @@ export function pileReachesTop(world: KiwiPitWorld): boolean {
       continue;
     }
 
-    minLandedY = Math.min(minLandedY, body.position.y);
+    if (body.position.y <= topLine) {
+      landedNearTop += 1;
+
+      if (landedNearTop >= PRESSURE_TOP_MIN_COUNT) {
+        return true;
+      }
+    }
   }
 
-  if (!Number.isFinite(minLandedY)) {
-    return false;
-  }
-
-  return minLandedY <= world.height * PRESSURE_TOP_Y_RATIO;
+  return false;
 }
 
 /**
@@ -127,7 +148,7 @@ export function startPops(world: KiwiPitWorld, count: number, now: number): numb
     World.remove(world.engine.world, body);
     world.bodies = world.bodies.filter((entry) => entry !== body);
 
-    wakeNeighbours(world, x, y, radius);
+    wakeAbove(world, x, y, radius);
 
     world.popping.push({ body, meta, x, y, angle });
   }
@@ -159,9 +180,11 @@ export function finishCompletedPops(world: KiwiPitWorld, now: number): number {
 }
 
 /**
- * How many floor-band kiwis to splat this tick. Requires the pile to have
- * reached the top of the screen; pops slower than spawn so the stack can
- * keep falling into the gaps.
+ * How many floor-band kiwis to splat this tick. Pressure engages when the
+ * pile visually reaches the top of the screen, OR when the world hits its
+ * body cap (on large screens the cap is reached before the pile can stack to
+ * the top — without this the animation would deadlock frozen mid-screen).
+ * Pops run slower than spawn so the stack keeps falling into the gaps.
  */
 export function popsNeededThisTick(
   world: KiwiPitWorld,
@@ -172,9 +195,12 @@ export function popsNeededThisTick(
     return 0;
   }
 
+  const atCapacity = world.bodies.length >= maxBodies;
   const fill = world.bodies.length / maxBodies;
+  const underPressure =
+    atCapacity || (fill >= PRESSURE_MIN_FILL_RATIO && pileReachesTop(world));
 
-  if (fill < PRESSURE_MIN_FILL_RATIO || !pileReachesTop(world)) {
+  if (!underPressure) {
     return 0;
   }
 
@@ -184,7 +210,7 @@ export function popsNeededThisTick(
     return 0;
   }
 
-  if (world.bodies.length >= maxBodies) {
+  if (atCapacity) {
     // Need slots for new spawns, but only clear a couple at a time so the
     // layer above has time to drop into place.
     return Math.min(room, Math.max(1, Math.ceil(spawnPerTick * 0.6)));
