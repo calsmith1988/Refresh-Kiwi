@@ -28,6 +28,20 @@ export const MAX_BODIES_CAP_MOBILE = 1000;
 export const PILE_FILL_TARGET_MS = 100_000;
 export const LANDING_SPEED_THRESHOLD = 1.5;
 
+/** Once the pile reaches this fraction of capacity, bottom kiwis start popping. */
+export const PRESSURE_START_RATIO = 0.88;
+/**
+ * While under pressure but not full, pop this fraction of the spawn rate so the
+ * pile still compresses a little before settling into a steady fountain.
+ */
+export const POP_RATE_OF_SPAWN = 0.85;
+/** Only landed kiwis in the bottom this fraction of the pile height may pop. */
+export const POP_BAND_RATIO = 0.22;
+/** How long the squash → burst → fade animation lasts. */
+export const POP_DURATION_MS = 320;
+/** Wake sleeping neighbours within this multiple of the popped kiwi's radius. */
+export const POP_WAKE_RADIUS_MULT = 3.2;
+
 export interface KiwiMeta {
   landed: boolean;
   greenColor: string;
@@ -35,6 +49,18 @@ export interface KiwiMeta {
   fillStartTime: number | null;
   tintedSprite: HTMLCanvasElement | null;
   scale: number;
+  /** True while the squash/burst animation is playing (body already removed). */
+  popping: boolean;
+  popStartTime: number | null;
+}
+
+/** Detached visual for a kiwi that has left the physics world mid-pop. */
+export interface PoppingKiwi {
+  body: Body;
+  meta: KiwiMeta;
+  x: number;
+  y: number;
+  angle: number;
 }
 
 export interface KiwiPitWorld {
@@ -44,6 +70,8 @@ export interface KiwiPitWorld {
   rightWall: Body;
   bodies: Body[];
   pool: Body[];
+  /** Bodies mid-pop animation — drawn but not in the Matter world. */
+  popping: PoppingKiwi[];
   meta: WeakMap<Body, KiwiMeta>;
   width: number;
   height: number;
@@ -57,5 +85,7 @@ export function createDefaultMeta(): KiwiMeta {
     fillStartTime: null,
     tintedSprite: null,
     scale: 1,
+    popping: false,
+    popStartTime: null,
   };
 }

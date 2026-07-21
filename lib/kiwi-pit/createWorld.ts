@@ -60,6 +60,7 @@ export function createWorld(width: number, height: number): KiwiPitWorld {
     rightWall,
     bodies: [],
     pool: [],
+    popping: [],
     meta,
     width,
     height,
@@ -94,5 +95,14 @@ export function resetWorld(world: KiwiPitWorld) {
     world.pool.push(body);
   }
 
+  for (const entry of world.popping) {
+    Matter.Body.setPosition(entry.body, { x: -500, y: -500 });
+    Matter.Body.setVelocity(entry.body, { x: 0, y: 0 });
+    Matter.Body.setAngularVelocity(entry.body, 0);
+    world.meta.set(entry.body, createDefaultMeta());
+    world.pool.push(entry.body);
+  }
+
   world.bodies = [];
+  world.popping = [];
 }

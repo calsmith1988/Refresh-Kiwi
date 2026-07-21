@@ -4,10 +4,19 @@ import Matter from "matter-js";
 import { useEffect, useRef } from "react";
 
 import { createWorld, resetWorld, resizeWorld } from "@/lib/kiwi-pit/createWorld";
-import { drawKiwi, updateFillProgress } from "@/lib/kiwi-pit/drawKiwi";
+import {
+  drawKiwi,
+  drawPoppingKiwi,
+  updateFillProgress,
+} from "@/lib/kiwi-pit/drawKiwi";
 import { prepareSprite } from "@/lib/kiwi-pit/prepareSprite";
 import type { KiwiSprite } from "@/lib/kiwi-pit/prepareSprite";
 import { setupLandingDetection } from "@/lib/kiwi-pit/landing";
+import {
+  finishCompletedPops,
+  popsNeededThisTick,
+  startPops,
+} from "@/lib/kiwi-pit/popKiwi";
 import { spawnKiwi } from "@/lib/kiwi-pit/spawnKiwi";
 import {
   createDefaultMeta,
@@ -142,6 +151,10 @@ export default function KiwiPitCanvas({
         drawKiwi(ctx, body, meta, sprite);
       }
 
+      for (const entry of world.popping) {
+        drawPoppingKiwi(ctx, entry, sprite, timestamp);
+      }
+
       rafRef.current = window.requestAnimationFrame(render);
     };
 
@@ -193,6 +206,16 @@ export default function KiwiPitCanvas({
       const currentWorld = worldRef.current;
       if (!currentWorld || !activeRef.current) {
         return;
+      }
+
+      const timestamp = performance.now();
+      finishCompletedPops(currentWorld, timestamp);
+
+      // Once the pile is near the top, pop bottom kiwis under "pressure" so
+      // new ones can keep falling until the website preview is ready.
+      const toPop = popsNeededThisTick(currentWorld, maxBodies, spawnPerTick);
+      if (toPop > 0) {
+        startPops(currentWorld, toPop, timestamp);
       }
 
       for (let i = 0; i < spawnPerTick; i += 1) {
