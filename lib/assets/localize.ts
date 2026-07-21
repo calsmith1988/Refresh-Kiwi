@@ -144,6 +144,19 @@ function isLocalizableUrl(url: string): boolean {
  * Collects candidate external URLs from HTML/CSS. Over-collection is fine:
  * anything that doesn't download as an image/* response is left untouched.
  */
+function isIconLinkRel(rel: string): boolean {
+  const tokens = rel.toLowerCase().split(/\s+/).filter(Boolean);
+
+  return tokens.some(
+    (token) =>
+      token === "icon" ||
+      token === "shortcut" ||
+      token === "apple-touch-icon" ||
+      token === "apple-touch-icon-precomposed" ||
+      token === "mask-icon",
+  );
+}
+
 function extractCandidateUrls(content: string): Set<string> {
   const urls = new Set<string>();
 
@@ -166,6 +179,24 @@ function extractCandidateUrls(content: string): Set<string> {
       if (url) {
         urls.add(url);
       }
+    }
+  }
+
+  // Favicon / apple-touch-icon <link> tags. Order of attributes varies, so
+  // match the whole tag then pull rel + href separately.
+  for (const match of content.matchAll(/<link\b[^>]*>/gi)) {
+    const tag = match[0];
+    const rel = tag.match(/\brel\s*=\s*["']([^"']+)["']/i)?.[1];
+    const href = tag.match(/\bhref\s*=\s*["']([^"']+)["']/i)?.[1];
+
+    if (!rel || !href || !isIconLinkRel(rel)) {
+      continue;
+    }
+
+    const url = normalizeCandidateUrl(href);
+
+    if (url) {
+      urls.add(url);
     }
   }
 

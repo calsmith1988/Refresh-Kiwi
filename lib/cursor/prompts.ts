@@ -119,6 +119,14 @@ OUTPUT: sites/${slug}/
 - Never invent local image paths — only reference image URLs you actually saw on the source site.
 - Fall back to CSS gradients, shapes, and illustration-like CSS treatments only if the source genuinely has no usable images.
 
+## Favicon
+
+- Every generated page must include a favicon in <head>. Prefer, in order:
+  1. The source site's favicon / apple-touch-icon (hotlink the absolute https URL you actually found — PNG or SVG preferred over .ico).
+  2. The header logo image URL, if it is square-ish and readable at small sizes.
+  3. A tiny local SVG at assets/favicon.svg with the brand initials on a solid brand-coloured disc (create this file yourself if needed).
+- Example: <link rel="icon" href="…" type="image/png"> (or type="image/svg+xml" for an SVG).
+
 ## Videos — embed or hotlink, never download
 
 - If the source site features videos, carry them into the refresh:
@@ -209,6 +217,14 @@ ${formatSeedAssets(seedAssets)}
 - If no suitable image exists for a section, use refined CSS composition instead of stock-photo placeholders.
 - Do not download any images or embed third-party images unless the user explicitly included a URL in the brief.
 
+## Favicon
+
+- Every generated page must include a favicon in <head>. Prefer, in order:
+  1. The provided logo asset URL, if a logo is listed above.
+  2. A tiny local SVG at assets/favicon.svg with the business initials (1–2 letters from the brand name) on a solid brand-coloured disc — create this file yourself. Keep it simple: circle + bold initials, no gradients required.
+- Example: <link rel="icon" href="/preview/${slug}/assets/favicon.svg" type="image/svg+xml">
+  When using the provided logo instead: <link rel="icon" href="THE_LOGO_URL" type="image/png"> (match the real content type).
+
 ${buildDesignDirectionSection(pickDesignDirection(slug))}
 
 ## Design bar
@@ -259,11 +275,12 @@ The homepage already exists. Your job is to expand it into a small multi-page we
 3. Build up to 6 useful pages such as About, Services, Products, Gallery, FAQs, Contact, Pricing, or location/service pages. Create only pages that fit the brief and homepage.
 4. Use existing uploaded/local assets from assets/ where they fit. Do not invent image paths or download third-party images.
 5. Match the homepage design system: same brand colours and palette, spacing, typography, visual style, header/nav/footer, and responsive behavior.
-6. Update the homepage navigation to link to the generated pages.
-7. Update site.json with:
+6. Copy the homepage favicon <link rel="icon"> (and apple-touch-icon if present) into every new page's <head>. Do not invent a different favicon.
+7. Update the homepage navigation to link to the generated pages.
+8. Update site.json with:
    - pages: include "/" plus each generated page with path, title, and gated false
    - discoveredPages: []
-8. Commit the finished multi-page site to the repo.
+9. Commit the finished multi-page site to the repo.
 
 ${buildFormRules(slug)}
 
@@ -296,11 +313,12 @@ The homepage already exists. Your job is to crawl the source website for importa
 5. Images: hotlink the source site's real images by their absolute https URLs, exactly like the homepage does. Do not download image files. Never invent image paths — only use URLs you actually saw on the source site. Galleries and image-heavy pages may use as many source images as the design deserves.
 6. Videos: same rule as the homepage — re-embed YouTube/Vimeo videos with responsive lazy-loaded iframes (youtube-nocookie for YouTube), and reference self-hosted video files by absolute https URL in <video controls preload="metadata"> tags. Never download video files or invent video URLs.
 7. Match the homepage design system: same brand colours and palette, spacing, typography, visual style, header/nav/footer, and responsive behavior. Read styles.css first and reuse its tokens rather than introducing new colours.
-8. Update the homepage navigation to link to the generated pages.
-9. Update site.json with:
+8. Copy the homepage favicon <link rel="icon"> (and apple-touch-icon if present) into every new page's <head>. Do not invent a different favicon.
+9. Update the homepage navigation to link to the generated pages.
+10. Update site.json with:
    - pages: include "/" plus each generated page with path, title, and gated false
    - discoveredPages: include any meaningful internal pages you found but did not generate
-10. Commit the finished multi-page site to the repo.
+11. Commit the finished multi-page site to the repo.
 
 ${buildFormRules(slug)}
 
@@ -358,11 +376,12 @@ The homepage already exists. Your job is to add exactly one polished page that m
 4. Ground copy in the user's page brief, the original/source context, and the existing site. Do not invent addresses, phone numbers, awards, testimonials, prices, policies, or compliance claims.
 5. ${imageRules}
 6. Match the homepage design system: same brand colours and palette, spacing, typography, visual style, header/nav/footer, and responsive behavior.
-7. Update the homepage navigation or footer to link to the new page in a natural place.
-8. Update site.json with:
+7. Copy the homepage favicon <link rel="icon"> (and apple-touch-icon if present) into the new page's <head>.
+8. Update the homepage navigation or footer to link to the new page in a natural place.
+9. Update site.json with:
    - pages: include "/" plus all existing pages and the new page with path, title, and gated false
    - discoveredPages: preserve existing discoveredPages when present
-9. Commit the finished custom page to the repo.
+10. Commit the finished custom page to the repo.
 
 ${buildFormRules(slug)}
 
@@ -407,11 +426,12 @@ ${legalDraft}
 4. Create pages only for the legal content available or discovered, normally Privacy Policy, Cookie Policy, and Terms.
 5. Include a short disclaimer on each generated legal page: "Starter template only - review before publishing."
 6. Do not create or wire a cookie consent banner in this phase.
-7. Update the homepage footer/navigation to link to the legal pages in a subtle footer/legal-links area.
-8. Update site.json with:
+7. Copy the homepage favicon <link rel="icon"> (and apple-touch-icon if present) into every legal page's <head>.
+8. Update the homepage footer/navigation to link to the legal pages in a subtle footer/legal-links area.
+9. Update site.json with:
    - pages: include "/" plus all existing pages and each legal page with path, title, and gated false
    - discoveredPages: include any meaningful pages discovered but not generated
-9. Commit the finished legal pages to the repo.
+10. Commit the finished legal pages to the repo.
 
 ${buildFormRules(slug)}
 
@@ -450,7 +470,7 @@ USER REQUEST: ${editPrompt}
 
 1. Work only inside sites/${slug}/.
 2. Read the existing files first, especially index.html, styles.css, script.js if present, and site.json.
-3. Apply the requested change while preserving the current design language, brand colours, layout quality, responsive behavior, and asset paths.
+3. Apply the requested change while preserving the current design language, brand colours, layout quality, responsive behavior, asset paths, and favicon <link> tags in <head>.
 4. Do not rebuild the whole site from scratch unless the request explicitly requires a major redesign.
 5. Images may be referenced two ways — preserve whichever is in use:
    - Hotlinked absolute https URLs pointing at the original business website. Keep them as-is.
