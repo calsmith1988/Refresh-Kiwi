@@ -28,6 +28,19 @@ body {
   font-family: var(--font-sans);
 }
 
+/* Native <button> defaults to the arrow cursor; match links so every
+   interactive control reads as clickable. */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+summary {
+  cursor: pointer;
+}
+
+button:disabled,
+[role="button"][aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
 :is(a, button).bg-kiwi-green {
   position: relative;
   overflow: hidden;

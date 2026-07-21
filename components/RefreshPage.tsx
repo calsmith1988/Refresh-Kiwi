@@ -4072,8 +4072,8 @@ export default function RefreshPage({
                   className="mt-4 text-sm font-medium text-black/60 underline underline-offset-4"
                 >
                   {accountMode === "login"
-                    ? "Need an account?"
-                    : "Already have an account?"}
+                    ? "Create an account"
+                    : "Already have an account? Log in"}
                 </button>
                 {accountMode === "login" ? (
                   <a
