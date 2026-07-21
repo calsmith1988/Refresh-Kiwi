@@ -2880,7 +2880,7 @@ export default function RefreshPage({
                     className="relative mx-auto w-full max-w-xl min-w-0 lg:max-w-none"
                   >
                   <div className="pointer-events-none absolute -inset-8 rounded-full bg-[radial-gradient(circle_at_58%_30%,rgba(191,226,98,0.32),transparent_58%)] blur-2xl" />
-                  <div className="relative min-w-0 overflow-hidden rounded-[2rem] border-2 border-black/20 bg-white p-4 shadow-2xl shadow-black/10 transition focus-within:border-black/40 sm:p-5">
+                  <div className="relative min-w-0 overflow-visible rounded-[2rem] border-2 border-black/20 bg-white p-4 shadow-2xl shadow-black/10 transition focus-within:border-black/40 sm:p-5">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div>
                         <h2 className="font-fraunces text-2xl font-semibold tracking-tight">
@@ -2902,11 +2902,16 @@ export default function RefreshPage({
                               type="button"
                               onClick={() => {
                                 setFreshEntry(entry);
-                                setGenerationSource("fresh");
                                 setPlaceSuggestions([]);
                                 setPlacesSearchError(null);
-                                setSelectedGbpPlace(null);
-                                setSelectedGbpPhotoNames([]);
+                                // Keep any Google listing selection when the user
+                                // toggles to "Describe it" and back — only clear
+                                // it when they explicitly hit Back on the listing.
+                                setGenerationSource(
+                                  entry === "google" && selectedGbpPlace
+                                    ? "gbp"
+                                    : "fresh",
+                                );
                               }}
                               className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
                                 freshEntry === entry
