@@ -5,6 +5,10 @@ import { rateLimitResponse } from "@/lib/auth/rateLimitResponse";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getDb, schema } from "@/lib/db";
 import {
+  isNewPageEditRequest,
+  NEW_PAGE_EDIT_MESSAGE,
+} from "@/lib/edits/pageRequest";
+import {
   checkDailyEditQuota,
   MAX_EDIT_PROMPT_LENGTH,
   MIN_EDIT_PROMPT_LENGTH,
@@ -66,6 +70,10 @@ export async function POST(request: Request, context: RouteContext) {
       { error: "Keep the change request under 4,000 characters." },
       { status: 400 },
     );
+  }
+
+  if (isNewPageEditRequest(prompt)) {
+    return NextResponse.json({ error: NEW_PAGE_EDIT_MESSAGE }, { status: 400 });
   }
 
   const hasPro = await userHasProPlan(user.id);

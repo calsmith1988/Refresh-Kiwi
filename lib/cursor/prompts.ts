@@ -493,13 +493,14 @@ USER REQUEST: ${editPrompt}
 2. Read the existing files first, especially index.html, styles.css, script.js if present, and site.json.
 3. Apply the requested change while preserving the current design language, brand colours, layout quality, responsive behavior, asset paths, and favicon <link> tags in <head>.
 4. Do not rebuild the whole site from scratch unless the request explicitly requires a major redesign.
-5. Images may be referenced two ways — preserve whichever is in use:
+5. Do not create new website pages, routes, or HTML files. Edits may only change existing pages (copy, layout, colours, sections, images, nav labels, etc.). Adding a new page is handled by a separate product flow — if the user asks for a new page, do not invent one; leave files unchanged for that part of the request.
+6. Images may be referenced two ways — preserve whichever is in use:
    - Hotlinked absolute https URLs pointing at the original business website. Keep them as-is.
    - Local files under assets/ (referenced as ./assets/file.ext or /preview/${slug}/assets/file.ext). Keep those paths intact.
    If the edit asks for new imagery, use existing local assets first, then only use URLs explicitly provided by the user or present in the original source context. Never invent image paths.
-6. Videos may appear as YouTube/Vimeo iframes or hotlinked <video> tags pointing at the original site — preserve them as-is. If the edit asks for a new video, only use an embed or URL that exists on the source site or that the user provided; never download video files or invent video URLs.
-7. Update site.json only if the edit changes metadata, page titles, or page structure.
-8. Commit the finished edit to the repo.
+7. Videos may appear as YouTube/Vimeo iframes or hotlinked <video> tags pointing at the original site — preserve them as-is. If the edit asks for a new video, only use an embed or URL that exists on the source site or that the user provided; never download video files or invent video URLs.
+8. Update site.json only if the edit changes metadata or titles on existing pages. Never add new entries to site.json pages.
+9. Commit the finished edit to the repo.
 
 ${buildFormRules(slug)}
 

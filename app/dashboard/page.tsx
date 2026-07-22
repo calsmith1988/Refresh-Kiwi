@@ -8,6 +8,10 @@ import CurrencySelector from "@/components/CurrencySelector";
 import { usePricing } from "@/components/usePricing";
 import kiwiGroupBackground from "../../kiwi-group-background.png";
 import {
+  isNewPageEditRequest,
+  NEW_PAGE_EDIT_MESSAGE,
+} from "@/lib/edits/pageRequest";
+import {
   createMetaEventId,
   trackMetaBrowserEvent,
 } from "@/lib/meta/browser";
@@ -949,6 +953,13 @@ export default function DashboardPage() {
 
     if (prompt.length < 5) {
       setErrorMessage("Tell us what you want changed");
+      return;
+    }
+
+    // New pages belong in the Pages flow — catch this before burning an edit.
+    if (website && isNewPageEditRequest(prompt)) {
+      setErrorMessage(NEW_PAGE_EDIT_MESSAGE);
+      openWebsiteActionModal(website, "pages");
       return;
     }
 
@@ -4080,7 +4091,7 @@ export default function DashboardPage() {
                         <p className="mt-2 text-xs leading-5 text-black/45">
                           {hasActiveEditForWebsite
                             ? "One change at a time — you can type your next one now and send it as soon as the current change is finished."
-                            : "We'll make your change — it usually takes a few minutes. Check back here to see when it's done."}
+                            : "We'll make your change — it usually takes a few minutes. Check back here to see when it's done. Need a new page? Use Add pages instead."}
                         </p>
                       </form>
                       </div>

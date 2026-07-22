@@ -2588,21 +2588,21 @@ export default function RefreshPage({
             <div className="preview-pop">
               <div className="text-center">
                 <span className="inline-flex items-center gap-2 rounded-full bg-kiwi-green px-4 py-1.5 text-sm font-bold">
-                  Your new website is ready ✨
+                  Your homepage is ready ✨
                 </span>
                 <h1 className="mx-auto mt-5 max-w-full font-fraunces text-[clamp(1.75rem,7vw,2.25rem)] font-semibold leading-[1.12] tracking-tight break-words sm:text-5xl">
                   {"Here's "}
                   {breakableLabel(activeLabel)}
                   {activeMode === "fresh" ? "." : ", refreshed."}
                 </h1>
-                <p className="mx-auto mt-3 max-w-md text-base leading-7 text-black/55">
+                <p className="mx-auto mt-3 max-w-lg text-base leading-7 text-black/55">
                   {job?.isClaimed
                     ? expiryLabel
-                      ? `Saved to your account — yours free until ${expiryLabel}.`
-                      : "Saved to your account."
+                      ? `Saved to your account — yours free until ${expiryLabel}. Add your other pages when you take it online.`
+                      : "Saved to your account. Add your other pages when you take it online."
                     : expiryLabel
-                      ? `Like it? Take it online now, or keep the preview free until ${expiryLabel} while you decide.`
-                      : "Like it? Take it online now, or keep the preview free for 7 days while you decide."}
+                      ? `This is your homepage to start with. Take it online to add your other pages and keep making changes — or keep the preview free until ${expiryLabel} while you decide.`
+                      : "This is your homepage to start with. Take it online to add your other pages and keep making changes — or keep the preview free for 7 days while you decide."}
                 </p>
               </div>
 
@@ -2646,8 +2646,8 @@ export default function RefreshPage({
                             Make this my website — {pricing.proPriceShort}
                           </span>
                           <span className="mt-1 text-xs leading-5 text-black/60">
-                            We host it online, with unlimited changes and your own
-                            web address.
+                            Add your other pages, keep making changes, and go live
+                            on your own web address.
                           </span>
                         </button>
                       ) : null}
@@ -3525,7 +3525,7 @@ export default function RefreshPage({
                       },
                       {
                         q: `What happens after I pay ${pricing.proPriceMonthly}?`,
-                        a: "Your new website goes online and we host it for you. You can ask for changes and connect your own web address. Cancel anytime.",
+                        a: "Your new website goes online and we host it for you. You can ask for changes, add extra pages, and connect your own web address. Cancel anytime.",
                       },
                       {
                         q: "What if I don't like the result?",
