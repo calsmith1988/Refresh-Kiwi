@@ -134,6 +134,47 @@ button:disabled,
   animation: before-after-handle 8s ease-in-out infinite;
 }
 
+/* Chips fade with the sweep: "After" while the after image dominates,
+   "Before" while the before image is revealed (45–58% of the cycle). */
+@keyframes before-chip-fade {
+  0%,
+  22% {
+    opacity: 0;
+  }
+  42%,
+  62% {
+    opacity: 1;
+  }
+  82%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes after-chip-fade {
+  0%,
+  22% {
+    opacity: 1;
+  }
+  42%,
+  62% {
+    opacity: 0;
+  }
+  82%,
+  100% {
+    opacity: 1;
+  }
+}
+
+.before-after-chip-before {
+  opacity: 0;
+  animation: before-chip-fade 8s ease-in-out infinite;
+}
+
+.before-after-chip-after {
+  animation: after-chip-fade 8s ease-in-out infinite;
+}
+
 .before-after-reveal-fast {
   animation-duration: 4.8s;
 }
@@ -148,6 +189,8 @@ button:disabled,
   .preview-pop,
   .before-after-reveal-clip,
   .before-after-reveal-handle,
+  .before-after-chip-before,
+  .before-after-chip-after,
   .hero-kiwi-drift {
     animation: none;
   }
@@ -158,6 +201,12 @@ button:disabled,
 
   .before-after-reveal-handle {
     left: 62%;
+  }
+
+  /* Static split view shows both halves, so keep both labels visible. */
+  .before-after-chip-before,
+  .before-after-chip-after {
+    opacity: 1;
   }
 }
 
