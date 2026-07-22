@@ -854,6 +854,93 @@ const EXAMPLE_SHOWCASES = [
   },
 ] as const;
 
+// Little illustrative mock-UI shown at the top of each "How it works" card.
+// Pure CSS so it stays crisp and weightless — echoes the preview browser chrome.
+function StepVignette({
+  type,
+}: {
+  type: "url" | "brief" | "building" | "online";
+}) {
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none select-none overflow-hidden rounded-2xl border border-black/10 bg-[#faf8f1]"
+    >
+      <div className="flex items-center gap-1.5 border-b border-black/5 bg-white/70 px-3 py-2">
+        <span className="h-2 w-2 rounded-full bg-red-300" />
+        <span className="h-2 w-2 rounded-full bg-yellow-300" />
+        <span className="h-2 w-2 rounded-full bg-green-300" />
+        {type === "online" ? (
+          <>
+            <span className="ml-2 flex min-w-0 items-center gap-1 rounded-full bg-white px-2 py-0.5 text-[9px] font-semibold text-black/50">
+              <svg
+                viewBox="0 0 24 24"
+                className="h-2.5 w-2.5 shrink-0"
+                fill="currentColor"
+              >
+                <path d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5Zm-3 8V7a3 3 0 1 1 6 0v3H9Z" />
+              </svg>
+              <span className="truncate">yourbusiness.co.uk</span>
+            </span>
+            <span className="ml-auto flex items-center gap-1 rounded-full bg-kiwi-green px-2 py-0.5 text-[8px] font-black uppercase tracking-wide text-black">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#3f8f22]" />
+              Live
+            </span>
+          </>
+        ) : null}
+      </div>
+
+      <div className="flex h-[104px] flex-col justify-center gap-2 p-3">
+        {type === "url" ? (
+          <div className="flex items-center justify-between gap-2 rounded-full border border-black/10 bg-white px-3 py-2 shadow-sm">
+            <span className="truncate text-[11px] text-black/45">
+              www.yourbusiness.co.uk
+            </span>
+            <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-kiwi-green text-[11px] font-black text-black">
+              ↻
+            </span>
+          </div>
+        ) : null}
+
+        {type === "brief" ? (
+          <div className="rounded-2xl border border-black/10 bg-white p-2.5 shadow-sm">
+            <p className="text-[11px] leading-4 text-black/50">
+              &ldquo;Family-run bakery in Leeds — warm, modern, easy to
+              order&hellip;&rdquo;
+            </p>
+            <span className="mt-2 inline-flex rounded-full bg-kiwi-green px-2.5 py-1 text-[9px] font-black text-black">
+              Create my site →
+            </span>
+          </div>
+        ) : null}
+
+        {type === "building" ? (
+          <>
+            <div className="h-7 animate-pulse rounded-lg bg-kiwi-green/60 motion-reduce:animate-none" />
+            <div className="h-2.5 w-3/4 animate-pulse rounded-full bg-black/10 [animation-delay:150ms] motion-reduce:animate-none" />
+            <div className="h-2.5 w-1/2 animate-pulse rounded-full bg-black/10 [animation-delay:300ms] motion-reduce:animate-none" />
+            <span className="mt-1 flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-wide text-black/40">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-kiwi-green motion-reduce:animate-none" />
+              Building your new design…
+            </span>
+          </>
+        ) : null}
+
+        {type === "online" ? (
+          <>
+            <div className="flex items-center justify-between rounded-lg bg-[#141811] px-2.5 py-2">
+              <span className="h-1.5 w-12 rounded-full bg-white/70" />
+              <span className="h-3.5 w-10 rounded-full bg-kiwi-green" />
+            </div>
+            <div className="h-2.5 w-3/4 rounded-full bg-black/10" />
+            <div className="h-2.5 w-1/2 rounded-full bg-black/10" />
+          </>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 function BeforeAfterReveal({
   before,
   after,
@@ -886,7 +973,7 @@ function BeforeAfterReveal({
       } ${className}`}
     >
       <div
-        className={`relative overflow-hidden ${
+        className={`@container relative overflow-hidden ${
           soft ? "rounded-[2rem]" : "rounded-2xl"
         } bg-white ${aspectClassName}`}
       >
@@ -899,16 +986,18 @@ function BeforeAfterReveal({
           quality={90}
           className={imageClassName}
         />
-        <div className="before-after-reveal-clip absolute inset-0">
-          <Image
-            src={before}
-            alt={beforeAlt}
-            fill
-            priority={priority}
-            sizes={sizes}
-            quality={90}
-            className={imageClassName}
-          />
+        <div className="before-after-reveal-clip absolute z-[1]">
+          <div className="before-after-reveal-panel relative">
+            <Image
+              src={before}
+              alt={beforeAlt}
+              fill
+              priority={priority}
+              sizes={sizes}
+              quality={90}
+              className={imageClassName}
+            />
+          </div>
         </div>
         <div
           className="before-after-reveal-handle absolute bottom-0 top-0 z-10 w-0.5 bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.12),0_0_24px_rgba(0,0,0,0.25)]"
@@ -3283,23 +3372,26 @@ export default function RefreshPage({
                   : "If you can copy and paste, you can start a small business website redesign."}
               </p>
 
-              <div className="mt-10 grid gap-4 md:grid-cols-3">
+              <div className="mt-10 grid gap-4 md:grid-cols-3 md:gap-10">
                 {(flowMode === "fresh"
                   ? [
                       {
                         n: "01",
                         title: "Describe your business",
                         body: "Tell us what you do, who you help, and what style you like. Add a logo or photos if you have them.",
+                        vignette: "brief" as const,
                       },
                       {
                         n: "02",
                         title: "Get your new website",
                         body: "In about 2 minutes we turn your notes into a modern website with words, design, colours, and buttons ready to go.",
+                        vignette: "building" as const,
                       },
                       {
                         n: "03",
                         title: "Take it online when you're happy",
                         body: "Save it, ask for changes in normal everyday language, add pages, and put it online when you're ready.",
+                        vignette: "online" as const,
                       },
                     ]
                   : [
@@ -3307,28 +3399,46 @@ export default function RefreshPage({
                         n: "01",
                         title: "Paste your address",
                         body: "Pop in your current website — Wix, WordPress, anything. No account, no card.",
+                        vignette: "url" as const,
                       },
                       {
                         n: "02",
                         title: "Watch the site redesign happen",
                         body: "In about 2 minutes we rebuild it with a clean, modern design. Your words and photos stay.",
+                        vignette: "building" as const,
                       },
                       {
                         n: "03",
                         title: "Take it online when you're happy",
                         body: `${pricing.proPriceMonthly} puts it online with as many changes as you need — just ask normally.`,
+                        vignette: "online" as const,
                       },
                     ]
-                ).map((step) => (
+                ).map((step, index) => (
                   <div
                     key={step.n}
-                    className="rounded-3xl border border-black/10 bg-white p-7"
+                    className={`relative rounded-3xl border bg-white p-6 transition duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/10 sm:p-7 ${
+                      step.n === "02"
+                        ? "border-kiwi-green/60 shadow-lg shadow-[#8bbf4d]/15"
+                        : "border-black/10 shadow-sm shadow-black/5"
+                    }`}
                   >
-                    <span className="font-fraunces text-3xl font-semibold text-kiwi-green [text-shadow:0_1px_0_rgba(0,0,0,0.15)]">
-                      {step.n}
-                    </span>
-                    <h3 className="mt-4 text-lg font-bold">{step.title}</h3>
-                    <p className="mt-2 text-sm leading-6 text-black/55">
+                    {index > 0 ? (
+                      <span
+                        aria-hidden
+                        className="absolute -left-[31px] top-1/2 z-10 hidden h-9 w-9 -translate-y-1/2 place-items-center rounded-full border border-black/10 bg-white text-sm font-bold text-black/35 shadow-sm md:grid"
+                      >
+                        →
+                      </span>
+                    ) : null}
+                    <StepVignette type={step.vignette} />
+                    <h3 className="mt-5 flex items-center gap-2.5 text-lg font-bold">
+                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-kiwi-green text-xs font-black text-black">
+                        {step.n}
+                      </span>
+                      {step.title}
+                    </h3>
+                    <p className="mt-2.5 text-sm leading-6 text-black/55">
                       {step.body}
                     </p>
                   </div>
@@ -3351,7 +3461,7 @@ export default function RefreshPage({
               <p className="mt-3 max-w-md text-base leading-7 text-white/55">
                 {flowMode === "fresh"
                   ? "Start from scratch or refresh what you already have. Refresh Kiwi gives local businesses a modern website they can edit by asking for changes."
-                  : "Real site redesign examples for the kinds of websites that haven't changed since 2012."}
+                  : "Real site redesign examples — same business, cleaner homepage."}
               </p>
 
               <div

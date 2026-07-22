@@ -91,14 +91,16 @@ button:disabled,
   animation: preview-pop 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Width + overflow (not clip-path): Chrome can fail to paint Next/Image
+   layers inside an animated clip-path, so the before shot never appears. */
 @keyframes before-after-reveal {
   0%,
   100% {
-    clip-path: inset(0 100% 0 0);
+    width: 0%;
   }
   45%,
   58% {
-    clip-path: inset(0 0 0 0);
+    width: 100%;
   }
 }
 
@@ -125,8 +127,18 @@ button:disabled,
 }
 
 .before-after-reveal-clip {
-  clip-path: inset(0 100% 0 0);
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 0%;
+  overflow: hidden;
   animation: before-after-reveal 8s ease-in-out infinite;
+}
+
+/* Keep the before image sized to the full panel while the clip grows/shrinks. */
+.before-after-reveal-panel {
+  width: 100cqw;
+  height: 100%;
 }
 
 .before-after-reveal-handle {
@@ -196,7 +208,7 @@ button:disabled,
   }
 
   .before-after-reveal-clip {
-    clip-path: inset(0 38% 0 0);
+    width: 62%;
   }
 
   .before-after-reveal-handle {
