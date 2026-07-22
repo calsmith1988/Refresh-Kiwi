@@ -1,6 +1,9 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { eq } from "drizzle-orm";
+
+import { getDb, schema } from "@/lib/db";
 import { getAppUrl } from "@/lib/stripe/config";
 import { commitFilesToSitesRepo, type RepoFile } from "@/lib/github/commit";
 import { logMemoryUsage } from "@/lib/observability/memory";
@@ -10,6 +13,8 @@ import {
   HOMEPAGE_SCREENSHOT_PATH,
 } from "@/lib/screenshots/paths";
 import { putSiteFile } from "@/lib/storage/r2";
+
+const { websites } = schema;
 
 const VIEWPORT = { width: 1440, height: 1100 };
 const CAPTURE_TIMEOUT_MS = 45_000;
@@ -201,14 +206,27 @@ async function saveHomepageScreenshot(slug: string, buffer: Buffer) {
   });
 }
 
+async function touchWebsiteUpdatedAt(websiteId: string): Promise<void> {
+  await getDb()
+    .update(websites)
+    .set({ updatedAt: new Date() })
+    .where(eq(websites.id, websiteId));
+}
+
 export async function captureAndSaveHomepageScreenshot(
   slug: string,
+  options?: { websiteId?: string },
 ): Promise<void> {
   const startedAt = Date.now();
   logMemoryUsage("screenshot:start", { slug });
   const screenshot = await captureHomepageScreenshot(slug);
 
   await saveHomepageScreenshot(slug, screenshot);
+
+  // Bump after the file is written so dashboard `?v=` cache-busts to the new image.
+  if (options?.websiteId) {
+    await touchWebsiteUpdatedAt(options.websiteId);
+  }
 
   console.info(
     `[refresh-kiwi] screenshot: captured homepage for ${slug} in ${(
@@ -218,7 +236,10 @@ export async function captureAndSaveHomepageScreenshot(
   );
 }
 
-export async function tryCaptureHomepageScreenshot(slug: string): Promise<void> {
+export async function tryCaptureHomepageScreenshot(
+  slug: string,
+  options?: { websiteId?: string },
+): Promise<void> {
   if (!screenshotsEnabled()) {
     console.info(`[refresh-kiwi] screenshot: skipped for ${slug}; disabled by env`);
     return;
@@ -230,7 +251,7 @@ export async function tryCaptureHomepageScreenshot(slug: string): Promise<void> 
     })
     .then(async () => {
       try {
-        await captureAndSaveHomepageScreenshot(slug);
+        await captureAndSaveHomepageScreenshot(slug, options);
       } catch (error) {
         console.error(
           `[refresh-kiwi] screenshot: failed to capture homepage for ${slug}:`,

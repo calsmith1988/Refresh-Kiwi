@@ -221,15 +221,18 @@ export async function processAdditionalPages(
       `[refresh-kiwi] ${generationType} pages registered ${generatedPages.length} pages websiteId=${websiteId} slug=${website.slug}`,
     );
 
-    await updateJob(job.id, { status: "complete" });
-    await db
-      .update(websites)
-      .set({ updatedAt: new Date() })
-      .where(eq(websites.id, website.id));
-
     if (generationType === "business" || generationType === "custom") {
-      await tryCaptureHomepageScreenshot(website.slug);
+      await tryCaptureHomepageScreenshot(website.slug, {
+        websiteId: website.id,
+      });
+    } else {
+      await db
+        .update(websites)
+        .set({ updatedAt: new Date() })
+        .where(eq(websites.id, website.id));
     }
+
+    await updateJob(job.id, { status: "complete" });
   } catch (error) {
     const message = isCursorStartupError(error)
       ? `Cursor agent failed to start: ${error.message}`

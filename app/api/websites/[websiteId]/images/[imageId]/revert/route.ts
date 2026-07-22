@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { revertLocalizedImage } from "@/lib/assets/localize";
 import { getCurrentUser } from "@/lib/auth/session";
+import { enqueueHomepageScreenshotRefresh } from "@/lib/screenshots/queue";
 import { getOwnedWebsite } from "@/lib/websites/service";
 
 export const runtime = "nodejs";
@@ -45,6 +46,11 @@ export async function POST(request: Request, context: RouteContext) {
       slug: website.slug,
       imageId,
       file,
+    });
+
+    await enqueueHomepageScreenshotRefresh({
+      slug: website.slug,
+      websiteId: website.id,
     });
 
     return NextResponse.json({ image });

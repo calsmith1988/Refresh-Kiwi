@@ -116,7 +116,10 @@ export async function GET() {
       return {
         ...toWebsiteResponse(website),
         jobStatus: statusByJob.get(website.jobId),
-        homepageScreenshotUrl: homepageScreenshotPath(website.slug),
+        homepageScreenshotUrl: homepageScreenshotPath(
+          website.slug,
+          website.updatedAt,
+        ),
         customDomainDnsRecords: domainDnsRecords,
         customDomainProvider: providerByWebsite.get(website.id) ?? genericDomainProvider(),
         customDomainHelpUrl: website.customDomain

@@ -1330,6 +1330,17 @@ export default function DashboardPage() {
     }
   };
 
+  // Image replace/remix queues a worker screenshot — reload a couple of times
+  // so the dashboard thumbnail picks up the cache-busted URL once it's ready.
+  const refreshScreenshotSoon = () => {
+    window.setTimeout(() => {
+      void loadDashboard();
+    }, 8_000);
+    window.setTimeout(() => {
+      void loadDashboard();
+    }, 20_000);
+  };
+
   const replaceImage = async (
     websiteId: string,
     imageId: string,
@@ -1369,6 +1380,7 @@ export default function DashboardPage() {
           },
         };
       });
+      refreshScreenshotSoon();
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : "Failed to replace image",
@@ -1470,6 +1482,7 @@ export default function DashboardPage() {
           ),
         );
       }
+      refreshScreenshotSoon();
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : "Failed to remix image",
@@ -1555,6 +1568,7 @@ export default function DashboardPage() {
       }
 
       updateImageInState(websiteId, payload.image as WebsiteImage);
+      refreshScreenshotSoon();
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : "Failed to restore image",
@@ -2216,6 +2230,7 @@ export default function DashboardPage() {
                           >
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
+                              key={screenshotUrl}
                               src={screenshotUrl}
                               alt={`${website.brandName || website.slug} homepage screenshot`}
                               loading="lazy"

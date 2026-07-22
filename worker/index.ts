@@ -5,6 +5,7 @@ import { processEditRequest } from "@/lib/edits/processor";
 import { processRefreshJob, processFreshJob } from "@/lib/jobs/processor";
 import type { LegalAnswers } from "@/lib/legal/draft";
 import { processAdditionalPages } from "@/lib/pages/processor";
+import { tryCaptureHomepageScreenshot } from "@/lib/screenshots/homepage";
 import {
   claimNextBackgroundTask,
   completeBackgroundTask,
@@ -108,6 +109,16 @@ async function processTask(task: BackgroundTask): Promise<void> {
     case "localize-images": {
       const payload = payloadValue<{ slug: string }>(task.payload);
       await localizeWebsiteImages(payload.slug);
+      break;
+    }
+
+    case "homepage-screenshot": {
+      const payload = payloadValue<{ slug: string; websiteId?: string }>(
+        task.payload,
+      );
+      await tryCaptureHomepageScreenshot(payload.slug, {
+        websiteId: payload.websiteId,
+      });
       break;
     }
 

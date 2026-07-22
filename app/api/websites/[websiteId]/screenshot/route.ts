@@ -30,7 +30,9 @@ export async function POST(_request: Request, context: RouteContext) {
   }
 
   try {
-    await captureAndSaveHomepageScreenshot(website.slug);
+    await captureAndSaveHomepageScreenshot(website.slug, {
+      websiteId: website.id,
+    });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to refresh screenshot";
@@ -39,6 +41,6 @@ export async function POST(_request: Request, context: RouteContext) {
   }
 
   return NextResponse.json({
-    screenshotUrl: homepageScreenshotPath(website.slug),
+    screenshotUrl: homepageScreenshotPath(website.slug, Date.now()),
   });
 }

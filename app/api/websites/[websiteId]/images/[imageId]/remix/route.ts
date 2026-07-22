@@ -10,6 +10,7 @@ import { isRemixableImageType, remixImage } from "@/lib/assets/remix";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getDb, schema } from "@/lib/db";
 import { readPreviewFile } from "@/lib/preview/serve";
+import { enqueueHomepageScreenshotRefresh } from "@/lib/screenshots/queue";
 import {
   getOwnedWebsite,
   toWebsiteResponse,
@@ -138,6 +139,11 @@ export async function POST(request: Request, context: RouteContext) {
       })
       .where(eq(websites.id, website.id))
       .returning();
+
+    await enqueueHomepageScreenshotRefresh({
+      slug: website.slug,
+      websiteId: website.id,
+    });
 
     return NextResponse.json({
       image: updated,

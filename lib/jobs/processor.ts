@@ -137,7 +137,7 @@ export async function processRefreshJob(jobId: string): Promise<void> {
       websiteId: website.id,
       userOwned: Boolean(website.userId),
     });
-    await tryCaptureHomepageScreenshot(job.slug);
+    await tryCaptureHomepageScreenshot(job.slug, { websiteId: website.id });
     logMemoryUsage("refresh:after-screenshot", {
       ...memoryContext,
       websiteId: website.id,
@@ -179,7 +179,7 @@ export async function processRefreshJob(jobId: string): Promise<void> {
               to: user.email,
               brandName: website.brandName,
               previewUrl: `/preview/${website.slug}/index.html`,
-              screenshotUrl: homepageScreenshotPath(website.slug),
+              screenshotUrl: homepageScreenshotPath(website.slug, Date.now()),
             }),
         );
       }
@@ -329,7 +329,7 @@ export async function processFreshJob(
       websiteId: website.id,
       userOwned: Boolean(website.userId),
     });
-    await tryCaptureHomepageScreenshot(job.slug);
+    await tryCaptureHomepageScreenshot(job.slug, { websiteId: website.id });
     logMemoryUsage("fresh:after-screenshot", {
       ...memoryContext,
       websiteId: website.id,
@@ -368,7 +368,7 @@ export async function processFreshJob(
               to: user.email,
               brandName: website.brandName,
               previewUrl: `/preview/${website.slug}/index.html`,
-              screenshotUrl: homepageScreenshotPath(website.slug),
+              screenshotUrl: homepageScreenshotPath(website.slug, Date.now()),
             }),
         );
       }

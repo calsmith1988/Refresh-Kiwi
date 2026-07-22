@@ -7,6 +7,7 @@ import {
 } from "@/lib/assets/localize";
 import { optimizeImage } from "@/lib/assets/optimize";
 import { getCurrentUser } from "@/lib/auth/session";
+import { enqueueHomepageScreenshotRefresh } from "@/lib/screenshots/queue";
 import { getOwnedWebsite } from "@/lib/websites/service";
 
 export const runtime = "nodejs";
@@ -70,6 +71,11 @@ export async function POST(request: Request, context: RouteContext) {
       buffer: optimized.buffer,
       contentType: optimized.contentType,
       source: "upload",
+    });
+
+    await enqueueHomepageScreenshotRefresh({
+      slug: website.slug,
+      websiteId: website.id,
     });
 
     return NextResponse.json({ image });

@@ -88,14 +88,13 @@ export async function processEditRequest(editRequestId: string): Promise<void> {
       return;
     }
 
+    // Capture before marking complete so the dashboard's last poll already
+    // includes a cache-busted screenshot URL for the updated homepage.
+    await tryCaptureHomepageScreenshot(editRequest.website.slug, {
+      websiteId: editRequest.website.id,
+    });
+
     await updateEditRequest(editRequest.id, { status: "complete" });
-
-    await db
-      .update(websites)
-      .set({ updatedAt: new Date() })
-      .where(eq(websites.id, editRequest.website.id));
-
-    await tryCaptureHomepageScreenshot(editRequest.website.slug);
   } catch (error) {
     const message = isCursorStartupError(error)
       ? `Cursor edit agent failed to start: ${error.message}`

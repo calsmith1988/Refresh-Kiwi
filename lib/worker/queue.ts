@@ -9,7 +9,8 @@ export type BackgroundTaskType =
   | "fresh-homepage"
   | "edit-request"
   | "additional-pages"
-  | "localize-images";
+  | "localize-images"
+  | "homepage-screenshot";
 
 export type BackgroundTaskPayload = typeof backgroundTasks.$inferSelect.payload;
 export type BackgroundTask = typeof backgroundTasks.$inferSelect;
