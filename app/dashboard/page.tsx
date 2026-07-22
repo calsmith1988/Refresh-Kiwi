@@ -644,6 +644,8 @@ export default function DashboardPage() {
       ),
     [websites],
   );
+  // Inline card progress is hidden; status lives in this popup (and the shimmer
+  // Edit button). Auto-open for new edits; reopen anytime via Editing….
   const activeEditWebsite = useMemo(
     () =>
       activeEditWebsites.find(
@@ -2046,7 +2048,7 @@ export default function DashboardPage() {
                   body: "This shows the website you just made, its web address, free changes left, and whether it is online or still a free preview.",
                 },
                 {
-                  title: "Edit website",
+                  title: "Edit",
                   body: "Use this when you want wording, layout, colours, sections, or contact details changed. Just type what you want.",
                 },
                 {
@@ -2340,9 +2342,7 @@ export default function DashboardPage() {
                                 className="inline-flex items-center gap-2 rounded-2xl bg-[#141811] px-4 py-2 text-xs font-semibold text-white transition hover:bg-black"
                               >
                                 <DashboardIcon name="external" />
-                                {website.status === "live" || isPro
-                                  ? "View website"
-                                  : "View preview"}
+                                View
                               </Link>
                             ) : null}
                             {!isPro && state.showUpgrade ? (
@@ -2365,6 +2365,11 @@ export default function DashboardPage() {
                                     hasActiveEditForWebsite &&
                                     website.latestEditRequest
                                   ) {
+                                    setDismissedEditRequestIds((current) => {
+                                      const next = { ...current };
+                                      delete next[website.latestEditRequest!.id];
+                                      return next;
+                                    });
                                     setActiveEditModalRequestId(
                                       website.latestEditRequest.id,
                                     );
@@ -2373,10 +2378,22 @@ export default function DashboardPage() {
 
                                   openWebsiteActionModal(website, "edit");
                                 }}
-                                className="inline-flex items-center gap-2 rounded-2xl border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-black transition hover:border-black/25"
+                                aria-busy={hasActiveEditForWebsite}
+                                aria-label={
+                                  hasActiveEditForWebsite
+                                    ? "Edit in progress — view status"
+                                    : "Edit website"
+                                }
+                                className={`inline-flex items-center gap-2 rounded-2xl border px-4 py-2 text-xs font-semibold transition ${
+                                  hasActiveEditForWebsite
+                                    ? "edit-button-shimmer border-transparent text-black hover:brightness-95"
+                                    : "border-black/10 bg-white text-black hover:border-black/25"
+                                }`}
                               >
                                 <DashboardIcon name="edit" />
-                                {hasActiveEditForWebsite ? "Edit status" : "Edit website"}
+                                {hasActiveEditForWebsite
+                                  ? "Editing…"
+                                  : "Edit"}
                               </button>
                             ) : null}
                             {state.canEdit ? (
@@ -2415,7 +2432,7 @@ export default function DashboardPage() {
                                 className="inline-flex items-center gap-2 rounded-2xl border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-black transition hover:border-black/25"
                               >
                                 <DashboardIcon name="globe" />
-                                Manage domain
+                                Domain
                               </button>
                             ) : null}
                             {state.canView ? (
@@ -2437,58 +2454,17 @@ export default function DashboardPage() {
                               className="inline-flex items-center gap-2 rounded-2xl border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-red-600 transition hover:border-red-200 hover:text-red-700"
                             >
                               <DashboardIcon name="trash" />
-                              Delete website
+                              Delete
                             </button>
                           </div>
                         </div>
 
-                        {website.latestEditRequest ? (
-                          website.latestEditRequest.status === "queued" ||
-                          website.latestEditRequest.status === "running" ? (
-                            <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
-                              <Image
-                                src="/refresh-kiwi-favicon-v2.png"
-                                alt=""
-                                width={18}
-                                height={18}
-                                className="kiwi-bob shrink-0"
-                              />
-                              <span
-                                key={editProgressMessage(
-                                  website.latestEditRequest.createdAt,
-                                  progressTick,
-                                )}
-                                className="edit-message-in text-xs font-medium text-black/55"
-                              >
-                                {editProgressMessage(
-                                  website.latestEditRequest.createdAt,
-                                  progressTick,
-                                )}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  void cancelEditRequest(
-                                    website.id,
-                                    website.latestEditRequest!.id,
-                                  );
-                                }}
-                                disabled={
-                                  cancellingEditRequestId ===
-                                  website.latestEditRequest.id
-                                }
-                                className="text-xs font-semibold text-black/45 underline underline-offset-2 transition hover:text-black disabled:opacity-50"
-                              >
-                                {cancellingEditRequestId ===
-                                website.latestEditRequest.id
-                                  ? "Cancelling..."
-                                  : "Cancel edit"}
-                              </button>
-                            </div>
-                          ) : website.latestEditRequest.status === "complete" ? (
-                            null
-                          ) : website.latestEditRequest.errorMessage ===
-                            "Edit cancelled." ? (
+                        {website.latestEditRequest &&
+                        website.latestEditRequest.status !== "queued" &&
+                        website.latestEditRequest.status !== "running" &&
+                        website.latestEditRequest.status !== "complete" ? (
+                          website.latestEditRequest.errorMessage ===
+                          "Edit cancelled." ? (
                             <p className="mt-3 text-xs font-medium text-black/45">
                               Edit cancelled. You can request another change.
                             </p>
@@ -2576,7 +2552,7 @@ export default function DashboardPage() {
                                   Current pages
                                 </p>
                                 <p className="mt-1 text-xs text-black/45">
-                                  View any page, then use Edit website for changes.
+                                  View any page, then use Edit for changes.
                                 </p>
                               </div>
                               <span className="text-xs font-medium text-black/40">
@@ -3990,7 +3966,7 @@ export default function DashboardPage() {
                         <div className="mb-6 flex items-start justify-between gap-4">
                           <div>
                             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-black/40">
-                              Edit website
+                              Edit
                             </p>
                             <h2
                               id={`edit-modal-${website.id}`}
@@ -4157,7 +4133,7 @@ export default function DashboardPage() {
           aria-labelledby="active-pages-title"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-5 backdrop-blur-sm"
         >
-          <div className="preview-pop w-full max-w-md rounded-3xl border border-black/10 bg-white p-6 text-center shadow-2xl sm:max-w-lg sm:p-8">
+          <div className="preview-pop w-full max-w-md rounded-3xl border border-black/10 bg-white p-6 text-center shadow-2xl sm:max-w-xl sm:p-8 md:max-w-2xl">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-white">
               <Image
                 src="/refresh-kiwi-favicon-v2.png"
@@ -4252,7 +4228,7 @@ export default function DashboardPage() {
           aria-labelledby="active-edit-title"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-5 backdrop-blur-sm"
         >
-          <div className="preview-pop w-full max-w-md rounded-3xl border border-black/10 bg-white p-6 text-center shadow-2xl sm:max-w-lg sm:p-8">
+          <div className="preview-pop w-full max-w-md rounded-3xl border border-black/10 bg-white p-6 text-center shadow-2xl sm:max-w-xl sm:p-8 md:max-w-2xl">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-white">
               <Image
                 src="/refresh-kiwi-favicon-v2.png"

@@ -211,6 +211,30 @@ button:disabled,
   animation: edit-message-in 0.4s ease-out both;
 }
 
+/* Soft green skeleton shimmer for in-progress Edit button */
+@keyframes edit-button-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+.edit-button-shimmer {
+  border-color: transparent;
+  background-image: linear-gradient(
+    110deg,
+    #e7f4c4 0%,
+    #e7f4c4 35%,
+    #c5e66a 50%,
+    #e7f4c4 65%,
+    #e7f4c4 100%
+  );
+  background-size: 220% 100%;
+  animation: edit-button-shimmer 1.6s ease-in-out infinite;
+}
+
 .prompt-starter-scroll {
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -224,7 +248,13 @@ button:disabled,
 @media (prefers-reduced-motion: reduce) {
   .kiwi-bob,
   .kiwi-pop,
-  .edit-message-in {
+  .edit-message-in,
+  .edit-button-shimmer {
     animation: none;
+  }
+
+  .edit-button-shimmer {
+    background-image: none;
+    background-color: #e7f4c4;
   }
 }
