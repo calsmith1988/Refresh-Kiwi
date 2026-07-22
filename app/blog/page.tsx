@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import SiteLogo from "@/components/SiteLogo";
 import {
   contentClusters,
   getAbsoluteUrl,
@@ -35,12 +36,7 @@ export default function BlogIndexPage() {
     <main className="min-h-screen bg-[#fbfaf5] text-black">
       <header className="border-b border-black/10 bg-white/80 px-5 py-5 backdrop-blur sm:px-8">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4">
-          <Link
-            href="/"
-            className="inline-block font-roboto text-[30px] font-[350] leading-none tracking-tight"
-          >
-            refresh kiwi
-          </Link>
+          <SiteLogo />
           <Link
             href="/"
             className="rounded-full bg-kiwi-green px-4 py-2 text-sm font-bold transition hover:bg-kiwi-green-hover"

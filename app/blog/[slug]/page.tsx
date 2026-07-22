@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import BlogRefreshForm from "@/components/BlogRefreshForm";
+import SiteLogo from "@/components/SiteLogo";
 import {
   blogAuthor,
   getArticleBySlug,
@@ -122,9 +123,15 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
 
       <header className="border-b border-black/10 bg-white/80 px-5 py-5 backdrop-blur sm:px-8">
         <div className="mx-auto flex w-full max-w-4xl items-center justify-between gap-4">
-          <Link href="/blog" className="text-sm font-medium text-black/60">
-            Back to blog
-          </Link>
+          <div className="flex min-w-0 items-center gap-4">
+            <SiteLogo />
+            <Link
+              href="/blog"
+              className="hidden text-sm font-medium text-black/60 transition hover:text-black sm:inline"
+            >
+              Blog
+            </Link>
+          </div>
           <Link
             href="/#refresh-input"
             className="rounded-full bg-kiwi-green px-4 py-2 text-sm font-bold transition hover:bg-kiwi-green-hover"

@@ -26,6 +26,7 @@ import kiwiGroupBackground from "../kiwi-group-background.png";
 import ActivityToast from "@/components/ActivityToast";
 import CookieSettingsButton from "@/components/CookieSettingsButton";
 import CurrencySelector from "@/components/CurrencySelector";
+import SiteLogo from "@/components/SiteLogo";
 import TurnstileWidget from "@/components/TurnstileWidget";
 import { usePricing } from "@/components/usePricing";
 import type { JobResponse } from "@/lib/jobs/types";
@@ -2226,20 +2227,7 @@ export default function RefreshPage({
       {/* ───────────────────────── Header ───────────────────────── */}
       <header className="sticky top-0 z-40 border-b border-black/5 bg-[#faf8f1]/85 backdrop-blur-md">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-5 sm:px-8">
-          <Link href="/" className="flex items-center gap-2.5">
-            <Image
-              src="/refresh-kiwi-favicon-v2.png"
-              alt=""
-              width={30}
-              height={30}
-              priority
-              aria-hidden
-              className="rounded-full"
-            />
-            <span className="hidden truncate font-dosis text-[27px] font-medium leading-none tracking-tight min-[400px]:inline-block">
-              Refresh Kiwi
-            </span>
-          </Link>
+          <SiteLogo priority />
           <nav
             className="hidden items-center gap-7 whitespace-nowrap text-sm font-medium text-black/60 md:flex"
             aria-label="Primary"
@@ -3674,19 +3662,7 @@ export default function RefreshPage({
           <footer className="border-t border-black/5 px-5 py-12 sm:px-8">
             <div className="mx-auto grid w-full max-w-6xl gap-10 text-center lg:grid-cols-[minmax(0,1.2fr)_minmax(0,2.2fr)] lg:gap-8 lg:text-left">
               <div className="flex flex-col items-center lg:items-start">
-                <Link href="/" className="inline-flex items-center gap-2.5">
-                  <Image
-                    src="/refresh-kiwi-favicon-v2.png"
-                    alt=""
-                    width={30}
-                    height={30}
-                    aria-hidden
-                    className="rounded-full"
-                  />
-                  <span className="inline-block font-dosis text-[27px] font-medium leading-none tracking-tight">
-                    Refresh Kiwi
-                  </span>
-                </Link>
+                <SiteLogo wordmark="always" />
                 <p className="mt-3 max-w-xs text-xs leading-5 text-black/60 lg:max-w-none">
                   Create a new website in about two minutes.
                 </p>

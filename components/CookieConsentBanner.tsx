@@ -89,57 +89,59 @@ export default function CookieConsentBanner() {
   }
 
   return (
-    <div className="fixed inset-x-4 bottom-4 z-[100] mx-auto max-w-3xl rounded-3xl border border-black/10 bg-white p-5 shadow-2xl sm:p-6">
-      <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h2 className="font-fraunces text-2xl font-semibold tracking-tight">
-            Cookies on Refresh Kiwi
-          </h2>
-          <p className="mt-2 text-sm leading-6 text-black/60">
-            We use essential cookies to run the site. With your permission, we
-            also use Google Analytics and Meta Pixel to understand what people
-            read, improve the service, and measure ads or campaigns.
-          </p>
-          <label className="mt-4 flex items-start gap-3 text-sm text-black/70">
-            <input
-              type="checkbox"
-              checked={analyticsEnabled}
-              onChange={(event) => setAnalyticsEnabled(event.target.checked)}
-              className="mt-1"
-            />
-            <span>Allow analytics cookies</span>
-          </label>
-          <p className="mt-3 text-xs leading-5 text-black/45">
-            Read more in our{" "}
-            <Link href="/cookie-policy" className="underline underline-offset-4">
-              Cookie Policy
-            </Link>
-            .
-          </p>
-        </div>
+    <div className="fixed inset-x-0 bottom-4 z-[100] px-5 sm:px-8">
+      <div className="mx-auto w-full max-w-6xl rounded-3xl border border-black/10 bg-white p-5 shadow-2xl sm:p-6">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="font-fraunces text-2xl font-semibold tracking-tight">
+              Cookies on Refresh Kiwi
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-black/60">
+              We use essential cookies to run the site. With your permission, we
+              also use Google Analytics and Meta Pixel to understand what people
+              read, improve the service, and measure ads or campaigns.
+            </p>
+            <label className="mt-4 flex items-start gap-3 text-sm text-black/70">
+              <input
+                type="checkbox"
+                checked={analyticsEnabled}
+                onChange={(event) => setAnalyticsEnabled(event.target.checked)}
+                className="mt-1"
+              />
+              <span>Allow analytics cookies</span>
+            </label>
+            <p className="mt-3 text-xs leading-5 text-black/45">
+              Read more in our{" "}
+              <Link href="/cookie-policy" className="underline underline-offset-4">
+                Cookie Policy
+              </Link>
+              .
+            </p>
+          </div>
 
-        <div className="flex shrink-0 flex-col gap-2 sm:min-w-40">
-          <button
-            type="button"
-            onClick={() => applyChoice(true)}
-            className="rounded-full bg-kiwi-green px-5 py-3 text-sm font-bold transition hover:bg-kiwi-green-hover"
-          >
-            Accept analytics
-          </button>
-          <button
-            type="button"
-            onClick={() => applyChoice(analyticsEnabled)}
-            className="rounded-full border border-black/10 px-5 py-3 text-sm font-bold transition hover:border-black/25"
-          >
-            Save choice
-          </button>
-          <button
-            type="button"
-            onClick={() => applyChoice(false)}
-            className="text-sm font-medium text-black/55 underline underline-offset-4"
-          >
-            Reject analytics
-          </button>
+          <div className="flex shrink-0 flex-col gap-2 sm:min-w-40">
+            <button
+              type="button"
+              onClick={() => applyChoice(true)}
+              className="rounded-full bg-kiwi-green px-5 py-3 text-sm font-bold transition hover:bg-kiwi-green-hover"
+            >
+              Accept analytics
+            </button>
+            <button
+              type="button"
+              onClick={() => applyChoice(analyticsEnabled)}
+              className="rounded-full border border-black/10 px-5 py-3 text-sm font-bold transition hover:border-black/25"
+            >
+              Save choice
+            </button>
+            <button
+              type="button"
+              onClick={() => applyChoice(false)}
+              className="text-sm font-medium text-black/55 underline underline-offset-4"
+            >
+              Reject analytics
+            </button>
+          </div>
         </div>
       </div>
     </div>

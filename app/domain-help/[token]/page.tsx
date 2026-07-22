@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import SiteLogo from "@/components/SiteLogo";
 import { getDb, schema } from "@/lib/db";
 import { verifyDomainHelpToken } from "@/lib/domains/help-token";
 import { detectDomainProvider } from "@/lib/domains/providers";
@@ -52,12 +52,7 @@ export default async function DomainHelpPage({ params }: PageProps) {
   return (
     <main className="min-h-screen bg-[#faf8f1] px-5 py-8 text-[#141811]">
       <div className="mx-auto w-full max-w-3xl">
-        <Link href="/" className="inline-flex items-center gap-2 text-sm font-semibold">
-          <span className="grid h-8 w-8 place-items-center rounded-full bg-kiwi-green">
-            RK
-          </span>
-          Refresh Kiwi
-        </Link>
+        <SiteLogo wordmark="always" />
 
         <section className="mt-8 rounded-3xl border border-black/10 bg-white p-6 shadow-sm sm:p-8">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-black/40">

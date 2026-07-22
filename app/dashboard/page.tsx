@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import CurrencySelector from "@/components/CurrencySelector";
+import SiteLogo from "@/components/SiteLogo";
 import { usePricing } from "@/components/usePricing";
 import kiwiGroupBackground from "../../kiwi-group-background.png";
 import {
@@ -1801,19 +1802,7 @@ export default function DashboardPage() {
     <main className="min-h-screen bg-[#faf8f1] px-5 py-5 text-[#141811] sm:px-8 lg:px-10">
       <div className="mx-auto w-full max-w-6xl">
         <header className="relative flex items-center justify-between gap-4 border-b border-black/5 pb-5">
-          <Link href="/" className="flex min-w-0 items-center gap-2.5">
-            <Image
-              src="/refresh-kiwi-favicon-v2.png"
-              alt=""
-              width={34}
-              height={34}
-              aria-hidden
-              className="shrink-0 rounded-full"
-            />
-            <span className="hidden truncate font-dosis text-[27px] font-medium leading-tight tracking-tight min-[380px]:inline-block">
-              Refresh Kiwi
-            </span>
-          </Link>
+          <SiteLogo />
           <div className="hidden items-center gap-2 md:flex">
             {isPro ? (
               <button

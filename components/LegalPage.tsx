@@ -1,9 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 
+import SiteLogo from "@/components/SiteLogo";
 import { legalPageList, type LegalPageContent } from "@/lib/legal/pages";
 
 type LegalPageProps = {
@@ -18,19 +18,7 @@ export default function LegalPage({ page }: LegalPageProps) {
       <header className="border-b border-black/10 bg-white/80 px-5 py-5 backdrop-blur sm:px-8">
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center justify-between gap-4">
-            <Link href="/" className="flex min-w-0 items-center gap-2.5">
-              <Image
-                src="/refresh-kiwi-favicon-v2.png"
-                alt=""
-                width={34}
-                height={34}
-                aria-hidden
-                className="shrink-0 rounded-full"
-              />
-              <span className="inline-block truncate font-roboto text-[34px] font-[350] leading-none tracking-tight">
-                refresh kiwi
-              </span>
-            </Link>
+            <SiteLogo />
             <button
               type="button"
               className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-black/10 bg-white text-black transition hover:border-black/20 sm:hidden"

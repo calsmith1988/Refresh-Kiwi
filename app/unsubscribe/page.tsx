@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import SiteLogo from "@/components/SiteLogo";
+
 export default function UnsubscribePage() {
   const [message, setMessage] = useState("Updating your email preferences...");
   const [isError, setIsError] = useState(false);
@@ -39,7 +41,7 @@ export default function UnsubscribePage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-white px-5">
       <div className="w-full max-w-md rounded-[2rem] border border-black/10 bg-white p-6 text-center shadow-xl">
-        <p className="font-roboto text-[32px] font-[350] tracking-tight">refresh kiwi</p>
+        <SiteLogo wordmark="always" className="justify-center" />
         <h1 className="mt-6 text-3xl font-bold tracking-tight">
           Email preferences
         </h1>
