@@ -26,6 +26,7 @@ import kiwiGroupBackground from "../kiwi-group-background.png";
 import ActivityToast from "@/components/ActivityToast";
 import CookieSettingsButton from "@/components/CookieSettingsButton";
 import CurrencySelector from "@/components/CurrencySelector";
+import ModalCloseButton from "@/components/ModalCloseButton";
 import SiteLogo from "@/components/SiteLogo";
 import TurnstileWidget from "@/components/TurnstileWidget";
 import { usePricing } from "@/components/usePricing";
@@ -3912,7 +3913,11 @@ export default function RefreshPage({
           aria-labelledby="website-limit-error-title"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-5 backdrop-blur-sm"
         >
-          <div className="w-full max-w-md rounded-3xl border border-black/10 bg-white p-6 text-center shadow-2xl sm:p-8">
+          <div className="relative w-full max-w-md rounded-3xl border border-black/10 bg-white p-6 text-center shadow-2xl sm:p-8">
+            <ModalCloseButton
+              onClick={() => setWebsiteLimitErrorMessage(null)}
+              className="absolute right-4 top-4"
+            />
             <Image
               src="/refresh-kiwi-favicon-v2.png"
               alt=""
@@ -3936,13 +3941,6 @@ export default function RefreshPage({
             >
               Go to dashboard
             </Link>
-            <button
-              type="button"
-              onClick={() => setWebsiteLimitErrorMessage(null)}
-              className="mt-4 text-sm font-medium text-black/50 underline decoration-black/20 underline-offset-4 transition hover:text-black"
-            >
-              Close
-            </button>
           </div>
         </div>
       ) : null}
@@ -4075,13 +4073,7 @@ export default function RefreshPage({
               <h2 className="font-fraunces text-2xl font-semibold tracking-tight">
                 Kiwi Pro — {pricing.proPriceMonthly}
               </h2>
-              <button
-                type="button"
-                onClick={() => setShowProSheet(false)}
-                className="rounded-full border border-black/10 px-3 py-1 text-sm text-black/60"
-              >
-                Close
-              </button>
+              <ModalCloseButton onClick={() => setShowProSheet(false)} />
             </div>
             <ul className="mt-5 space-y-2.5 text-sm leading-6 text-black/60">
               <li>✓ Your new website online — we host it</li>
@@ -4152,17 +4144,13 @@ export default function RefreshPage({
                         : "Not ready to decide? Keep it free for 7 days and get 3 changes included."}
                 </p>
               </div>
-              <button
-                type="button"
+              <ModalCloseButton
                 onClick={() => {
                   setAccountMode("closed");
                   setPendingUpgrade(false);
                   setAuthErrorMessage(null);
                 }}
-                className="rounded-full border border-black/10 px-3 py-1 text-sm text-black/60"
-              >
-                Close
-              </button>
+              />
             </div>
 
             {twoFactorChallengeToken ? (

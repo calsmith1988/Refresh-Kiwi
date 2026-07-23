@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import CurrencySelector from "@/components/CurrencySelector";
+import ModalCloseButton from "@/components/ModalCloseButton";
 import SiteLogo from "@/components/SiteLogo";
 import { usePricing } from "@/components/usePricing";
 import kiwiGroupBackground from "../../kiwi-group-background.png";
@@ -130,16 +131,6 @@ const REMIXABLE_IMAGE_TYPES = new Set([
   "image/jpeg",
   "image/webp",
 ]);
-const IMAGE_PLACEMENT_OPTIONS = [
-  { value: "library", label: "Just add to image library" },
-  { value: "auto", label: "Let Refresh Kiwi choose" },
-  { value: "hero", label: "Hero section" },
-  { value: "gallery", label: "Gallery / portfolio" },
-  { value: "services", label: "Services section" },
-  { value: "about", label: "About section" },
-  { value: "header_logo", label: "Header logo / brand mark" },
-] as const;
-
 type DashboardIconName =
   | "copy"
   | "check"
@@ -205,7 +196,7 @@ function imageSourceLabel(source: WebsiteImage["source"]): string {
 }
 
 function imageRoleLabel(role: WebsiteImage["role"]): string {
-  return role === "logo" ? "Logo / brand mark" : "Site image";
+  return role === "logo" ? "Logo" : "Image";
 }
 
 type WebsiteImagesState =
@@ -213,7 +204,6 @@ type WebsiteImagesState =
   | { status: "error" }
   | { status: "ready"; images: WebsiteImage[] };
 
-type ImagesModalTab = "gallery" | "upload" | "generate";
 type PageGenerationType = "business" | "legal" | "custom";
 type WebsiteActionModalType =
   | "edit"
@@ -580,8 +570,7 @@ export default function DashboardPage() {
   const [websiteImages, setWebsiteImages] = useState<
     Record<string, WebsiteImagesState>
   >({});
-  const [imagesModalTab, setImagesModalTab] =
-    useState<ImagesModalTab>("gallery");
+  const [imagesAssetsExpanded, setImagesAssetsExpanded] = useState(false);
   const [uploadingImagesWebsiteId, setUploadingImagesWebsiteId] = useState<
     string | null
   >(null);
@@ -1126,7 +1115,6 @@ export default function DashboardPage() {
         ...current,
         [websiteId]: { status: "ready", images },
       }));
-      setImagesModalTab(images.length > 0 ? "gallery" : "upload");
     } catch {
       setWebsiteImages((current) => ({
         ...current,
@@ -1180,17 +1168,11 @@ export default function DashboardPage() {
       preparePageGeneration(website);
     }
 
-    const currentImagesState = websiteImages[website.id];
-
-    if (type === "images" && currentImagesState?.status !== "ready") {
-      setImagesModalTab("gallery");
-      void loadWebsiteImages(website.id);
-    }
-
-    if (type === "images" && currentImagesState?.status === "ready") {
-      setImagesModalTab(
-        currentImagesState.images.length > 0 ? "gallery" : "upload",
-      );
+    if (type === "images") {
+      setImagesAssetsExpanded(false);
+      if (websiteImages[website.id]?.status !== "ready") {
+        void loadWebsiteImages(website.id);
+      }
     }
 
     if (type === "domain" || type === "rename" || type === "delete") {
@@ -1206,15 +1188,17 @@ export default function DashboardPage() {
     }
   };
 
-  const uploadImages = async (websiteId: string, form: HTMLFormElement) => {
-    const body = new FormData(form);
-    const files = body
-      .getAll("files")
-      .filter((entry): entry is File => entry instanceof File && entry.size > 0);
+  const uploadImages = async (websiteId: string, files: File[]) => {
+    const selected = files.filter((file) => file.size > 0);
 
-    if (files.length === 0) {
+    if (selected.length === 0) {
       setErrorMessage("Choose at least one image to upload");
       return;
+    }
+
+    const body = new FormData();
+    for (const file of selected) {
+      body.append("files", file);
     }
 
     setUploadingImagesWebsiteId(websiteId);
@@ -1250,8 +1234,6 @@ export default function DashboardPage() {
         };
       });
 
-      form.reset();
-
       if (payload.queued) {
         await loadDashboard();
         setWebsiteActionModal({ websiteId, type: "images" });
@@ -1283,9 +1265,8 @@ export default function DashboardPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prompt,
-          role: String(body.get("role") ?? "image"),
-          placement: String(body.get("placement") ?? "auto"),
-          note: String(body.get("note") ?? "").trim() || undefined,
+          role: "image",
+          placement: "library",
         }),
       });
       const payload = await response.json();
@@ -1903,14 +1884,11 @@ export default function DashboardPage() {
                 extra pages, and you can connect your own web address below.
               </p>
             </div>
-            <button
-              type="button"
+            <ModalCloseButton
               onClick={() => setCelebration(null)}
-              className="rounded-full border border-black/10 bg-white px-3 py-1 text-sm text-black/60"
-              aria-label="Dismiss"
-            >
-              Close
-            </button>
+              label="Dismiss"
+              className="bg-white"
+            />
           </div>
         ) : celebration === "cancelled" ? (
           <div className="mt-6 flex items-start justify-between gap-4 rounded-3xl border border-black/10 bg-white p-5 sm:p-6">
@@ -1918,14 +1896,11 @@ export default function DashboardPage() {
               No problem — nothing was charged and your preview is safe. You
               can go Pro whenever you&apos;re ready.
             </p>
-            <button
-              type="button"
+            <ModalCloseButton
               onClick={() => setCelebration(null)}
-              className="rounded-full border border-black/10 bg-white px-3 py-1 text-sm text-black/60"
-              aria-label="Dismiss"
-            >
-              Close
-            </button>
+              label="Dismiss"
+              className="bg-white"
+            />
           </div>
         ) : null}
 
@@ -2545,13 +2520,7 @@ export default function DashboardPage() {
                                 {website.brandName || website.slug}.
                               </p>
                             </div>
-                            <button
-                              type="button"
-                              onClick={closeWebsiteActionModal}
-                              className="rounded-full border border-black/10 px-3 py-1 text-sm text-black/60 transition hover:border-black/25 hover:text-black"
-                            >
-                              Close
-                            </button>
+                            <ModalCloseButton onClick={closeWebsiteActionModal} />
                           </div>
 
                           {generatedPages.length > 0 ? (
@@ -2876,496 +2845,490 @@ export default function DashboardPage() {
                       >
                         <div
                           id={`images-panel-${website.id}`}
-                          className="preview-pop max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-3xl border border-black/10 bg-[#faf8f1] p-5 shadow-2xl sm:p-6"
+                          className="preview-pop max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-black/10 bg-white p-6 shadow-2xl sm:p-8"
                         >
-                        <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-                          <div>
-                            <h2
-                              id={`images-modal-${website.id}`}
-                              className="font-fraunces text-3xl font-semibold tracking-tight"
-                            >
-                              Your images
-                            </h2>
-                            <p className="mt-1 text-xs text-black/45">
-                              Swap any photo for your own, or let AI recreate
-                              it. Changes appear online straight away — and we keep
-                              every old version so you can always go back.
-                            </p>
-                          </div>
-                          {imagesState?.status === "ready" ? (
-                            <span className="text-xs font-medium text-black/40">
-                              {imagesState.images.length}{" "}
-                              {pluralise(imagesState.images.length, "image")}
-                            </span>
-                          ) : null}
-                          <button
-                            type="button"
-                            onClick={closeWebsiteActionModal}
-                            className="rounded-full border border-black/10 bg-white px-3 py-1 text-sm text-black/60 transition hover:border-black/25 hover:text-black"
-                          >
-                            Close
-                          </button>
-                        </div>
-
-                        <div className="mt-5 grid gap-2 rounded-full bg-white p-1 shadow-sm sm:inline-grid sm:grid-cols-3">
-                          {[
-                            { id: "gallery" as const, label: "Your images" },
-                            { id: "upload" as const, label: "Upload photos" },
-                            { id: "generate" as const, label: "Create with AI" },
-                          ].map((tab) => (
-                            <button
-                              key={tab.id}
-                              type="button"
-                              onClick={() => setImagesModalTab(tab.id)}
-                              className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                                imagesModalTab === tab.id
-                                  ? "bg-[#141811] text-white"
-                                  : "text-black/50 hover:text-black"
-                              }`}
-                            >
-                              {tab.label}
-                            </button>
-                          ))}
-                        </div>
-
-                        {imagesModalTab === "upload" ? (
-                        <form
-                          className="mt-4 rounded-2xl border border-black/10 bg-white p-3"
-                          onSubmit={(event) => {
-                            event.preventDefault();
-                            void uploadImages(website.id, event.currentTarget);
-                          }}
-                        >
-                          <div className="grid gap-3 lg:grid-cols-[1.1fr_0.7fr_0.9fr]">
-                            <label className="block">
-                              <span className="text-xs font-semibold text-black/60">
-                                Upload images
-                              </span>
-                              <input
-                                name="files"
-                                type="file"
-                                multiple
-                                accept="image/png,image/jpeg,image/webp,image/gif,image/avif,image/svg+xml"
-                                disabled={imageActionBusy || !state.canEdit}
-                                className="mt-1 block w-full rounded-2xl border border-black/10 bg-[#faf8f1] px-3 py-2 text-xs text-black/60 file:mr-3 file:rounded-full file:border-0 file:bg-white file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-black disabled:cursor-not-allowed disabled:opacity-50"
-                              />
-                            </label>
-
-                            <label className="block">
-                              <span className="text-xs font-semibold text-black/60">
-                                Asset type
-                              </span>
-                              <select
-                                name="role"
-                                disabled={imageActionBusy || !state.canEdit}
-                                defaultValue="image"
-                                className="mt-1 h-10 w-full rounded-full border border-black/10 bg-[#faf8f1] px-3 text-xs font-medium text-black/70 outline-none disabled:cursor-not-allowed disabled:opacity-50"
-                              >
-                                <option value="image">Images</option>
-                                <option value="logo">Logo / brand mark</option>
-                              </select>
-                            </label>
-
-                            <label className="block">
-                              <span className="text-xs font-semibold text-black/60">
-                                Placement
-                              </span>
-                              <select
-                                name="placement"
-                                disabled={imageActionBusy || !state.canEdit}
-                                defaultValue="auto"
-                                className="mt-1 h-10 w-full rounded-full border border-black/10 bg-[#faf8f1] px-3 text-xs font-medium text-black/70 outline-none disabled:cursor-not-allowed disabled:opacity-50"
-                              >
-                                {IMAGE_PLACEMENT_OPTIONS.map((option) => (
-                                  <option key={option.value} value={option.value}>
-                                    {option.label}
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
-                          </div>
-
-                          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                            <input
-                              name="note"
-                              maxLength={500}
-                              disabled={imageActionBusy || !state.canEdit}
-                              placeholder="Optional — e.g. use these in the hero, or add a small gallery"
-                              className="h-10 flex-1 rounded-full border border-black/10 bg-[#faf8f1] px-3 text-xs outline-none placeholder:text-black/30 focus:border-black/30 disabled:cursor-not-allowed disabled:opacity-50"
-                            />
-                            <button
-                              type="submit"
-                              disabled={imageActionBusy || !state.canEdit}
-                              className="h-10 rounded-full bg-kiwi-green px-4 text-xs font-semibold text-black transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                              {isUploadingImages
-                                ? "Uploading..."
-                                : hasActiveEditForWebsite
-                                  ? "Edit in progress"
-                                  : "Upload images"}
-                            </button>
-                          </div>
-                          <p className="mt-2 text-[11px] leading-4 text-black/40">
-                            Add up to 8 images. Choosing a placement queues a
-                            design edit; “Just add to image library” stores the
-                            files for later.
-                          </p>
-                        </form>
-                        ) : null}
-
-                        {imagesModalTab === "generate" ? (
-                        <form
-                          className="mt-4 rounded-2xl border border-black/10 bg-white p-3"
-                          onSubmit={(event) => {
-                            event.preventDefault();
-                            void generateImage(website.id, event.currentTarget);
-                          }}
-                        >
-                          <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-                            <div>
-                              <p className="text-xs font-semibold text-black/70">
-                                Generate image with AI
-                              </p>
-                              <p className="mt-1 text-[11px] leading-4 text-black/40">
-                                Creates one new asset, saves it here, and can
-                                place it into your design.
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <h2
+                                  id={`images-modal-${website.id}`}
+                                  className="font-fraunces text-3xl font-semibold tracking-tight"
+                                >
+                                  Your images
+                                </h2>
+                                {imagesState?.status === "ready" ? (
+                                  <span className="rounded-full bg-kiwi-green/40 px-2.5 py-1 text-xs font-semibold text-black/70">
+                                    {imagesState.images.length}{" "}
+                                    {pluralise(
+                                      imagesState.images.length,
+                                      "image",
+                                    )}
+                                  </span>
+                                ) : null}
+                              </div>
+                              <p className="mt-2 text-sm leading-6 text-black/55">
+                                Swap any photo or let AI recreate it. We keep
+                                every old version so you can always go back.
                               </p>
                             </div>
-                            {!isPro ? (
-                              <span className="text-[11px] font-medium text-black/40">
-                                Uses 1 free change
-                              </span>
-                            ) : null}
+                            <ModalCloseButton onClick={closeWebsiteActionModal} />
                           </div>
 
-                          <textarea
-                            name="prompt"
-                            required
-                            minLength={10}
-                            maxLength={1000}
-                            disabled={imageActionBusy || !state.canEdit}
-                            placeholder="Describe the image — e.g. warm photo-style hero image of a tidy local plumbing team beside a van"
-                            className="mt-3 min-h-20 w-full resize-none rounded-2xl border border-black/10 bg-[#faf8f1] px-3 py-2 text-xs leading-5 outline-none placeholder:text-black/30 focus:border-black/30 disabled:cursor-not-allowed disabled:opacity-50"
-                          />
-
-                          <div className="mt-3 grid gap-3 lg:grid-cols-[0.7fr_0.9fr_1fr]">
-                            <label className="block">
-                              <span className="text-xs font-semibold text-black/60">
-                                Asset type
-                              </span>
-                              <select
-                                name="role"
-                                disabled={imageActionBusy || !state.canEdit}
-                                defaultValue="image"
-                                className="mt-1 h-10 w-full rounded-full border border-black/10 bg-[#faf8f1] px-3 text-xs font-medium text-black/70 outline-none disabled:cursor-not-allowed disabled:opacity-50"
-                              >
-                                <option value="image">Image</option>
-                                <option value="logo">Logo / brand mark</option>
-                              </select>
-                            </label>
-
-                            <label className="block">
-                              <span className="text-xs font-semibold text-black/60">
-                                Placement
-                              </span>
-                              <select
-                                name="placement"
-                                disabled={imageActionBusy || !state.canEdit}
-                                defaultValue="auto"
-                                className="mt-1 h-10 w-full rounded-full border border-black/10 bg-[#faf8f1] px-3 text-xs font-medium text-black/70 outline-none disabled:cursor-not-allowed disabled:opacity-50"
-                              >
-                                {IMAGE_PLACEMENT_OPTIONS.map((option) => (
-                                  <option key={option.value} value={option.value}>
-                                    {option.label}
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
-
-                            <label className="block">
-                              <span className="text-xs font-semibold text-black/60">
-                                Placement note
-                              </span>
-                              <input
-                                name="note"
-                                maxLength={500}
-                                disabled={imageActionBusy || !state.canEdit}
-                                placeholder="Optional — e.g. make it the main hero visual"
-                                className="mt-1 h-10 w-full rounded-full border border-black/10 bg-[#faf8f1] px-3 text-xs outline-none placeholder:text-black/30 focus:border-black/30 disabled:cursor-not-allowed disabled:opacity-50"
-                              />
-                            </label>
-                          </div>
-
-                          <button
-                            type="submit"
-                            disabled={imageActionBusy || !state.canEdit}
-                            className="mt-3 h-10 rounded-full bg-[#141811] px-4 text-xs font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            {isGeneratingImage
-                              ? "Generating..."
-                              : hasActiveEditForWebsite
-                                ? "Edit in progress"
-                                : "Generate image"}
-                          </button>
-                        </form>
-                        ) : null}
-
-                        {imagesModalTab === "gallery" ? (
-                          <>
-                        {(() => {
-                          if (!imagesState || imagesState.status === "loading") {
-                            return (
-                              <p className="mt-4 text-sm text-black/45">
-                                Loading your images…
-                              </p>
-                            );
-                          }
-
-                          if (imagesState.status === "error") {
-                            return (
-                              <p className="mt-4 text-sm text-black/45">
-                                We couldn&apos;t load your images just now —
-                                close this and try again.
-                              </p>
-                            );
-                          }
-
-                          if (imagesState.images.length === 0) {
-                            return (
-                              <div className="mt-4 rounded-2xl bg-white/70 p-4">
-                                <p className="text-sm font-semibold text-black">
-                                  No images yet
-                                </p>
-                                <p className="mt-1 text-sm text-black/45">
-                                  Upload images above and choose where they
-                                  should go. Refresh Kiwi will save them here
-                                  and can place them into your design.
-                                </p>
-                              </div>
-                            );
-                          }
-
-                          return (
-                            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                              {imagesState.images.map((image) => {
-                                const isBusy =
-                                  replacingImageId === image.id ||
-                                  remixingImageId === image.id ||
-                                  placingImageId === image.id ||
-                                  revertingImageId === image.id;
-                                const anyBusy =
-                                  imageActionBusy;
-                                const versions = image.history ?? [];
-
-                                return (
-                                  <div
-                                    key={image.id}
-                                    className="overflow-hidden rounded-2xl border border-black/10 bg-white"
+                          <section className="mt-6">
+                            <h3 className="text-sm font-semibold text-black">
+                              Upload images
+                            </h3>
+                            <div
+                              className={`mt-2.5 rounded-2xl border border-dashed px-4 py-5 transition ${
+                                imageActionBusy || !state.canEdit
+                                  ? "cursor-not-allowed border-black/10 bg-[#faf8f1]/60 opacity-60"
+                                  : "border-black/15 bg-[#faf8f1]/40 hover:border-black/25"
+                              }`}
+                              onDragOver={(event) => {
+                                event.preventDefault();
+                              }}
+                              onDrop={(event) => {
+                                event.preventDefault();
+                                if (imageActionBusy || !state.canEdit) {
+                                  return;
+                                }
+                                const files = [...event.dataTransfer.files].filter(
+                                  (file) => file.type.startsWith("image/"),
+                                );
+                                if (files.length > 0) {
+                                  void uploadImages(website.id, files);
+                                }
+                              }}
+                            >
+                              <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+                                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-kiwi-green/30 text-[#3f8f22]">
+                                  <svg
+                                    aria-hidden
+                                    viewBox="0 0 24 24"
+                                    className="h-5 w-5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="1.8"
                                   >
-                                    <button
-                                      type="button"
-                                      onClick={() => setLightboxUrl(image.url)}
-                                      className="block w-full cursor-zoom-in"
-                                      title="Click to see full size"
-                                    >
-                                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                                      <img
-                                        src={image.url}
-                                        alt=""
-                                        loading="lazy"
-                                        className="h-32 w-full bg-[#f0f4e7] object-cover transition hover:opacity-90"
-                                      />
-                                    </button>
-                                    <div className="p-2.5">
-                                      <div className="flex items-start justify-between gap-2">
-                                        <div className="min-w-0">
-                                          <span className="inline-flex rounded-full bg-[#f0f4e7] px-2 py-0.5 text-[10px] font-semibold text-black/60">
-                                            {imageRoleLabel(image.role)}
-                                          </span>
-                                          <p className="mt-1 truncate text-[11px] font-medium text-black/40">
-                                            {imageSourceLabel(image.source)}
-                                          </p>
-                                        </div>
-                                        {versions.length > 0 ? (
-                                          <button
-                                            type="button"
-                                            onClick={() =>
-                                              setHistoryOpenImageId((current) =>
-                                                current === image.id
-                                                  ? null
-                                                  : image.id,
-                                              )
-                                            }
-                                            className="shrink-0 text-[11px] font-semibold text-black/45 underline-offset-2 hover:underline"
-                                          >
-                                            {historyOpenImageId === image.id
-                                              ? "Hide previous"
-                                              : `Previous (${versions.length})`}
-                                          </button>
-                                        ) : null}
-                                      </div>
+                                    <rect
+                                      x="3.5"
+                                      y="3.5"
+                                      width="17"
+                                      height="17"
+                                      rx="4"
+                                    />
+                                    <path
+                                      d="M12 8v8M8 12h8"
+                                      strokeLinecap="round"
+                                    />
+                                  </svg>
+                                </span>
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-medium text-black/70">
+                                    Drag and drop images here or tap to choose
+                                    files
+                                  </p>
+                                  <ul className="mt-1 space-y-0.5 text-xs leading-5 text-black/45">
+                                    <li>• JPG, PNG, or WebP</li>
+                                    <li>• Up to 15MB per file</li>
+                                    <li>• Add up to 8 images</li>
+                                  </ul>
+                                </div>
+                              </div>
+                              <label
+                                className={`mt-4 inline-flex h-11 cursor-pointer items-center justify-center rounded-full bg-kiwi-green px-5 text-sm font-semibold text-black transition hover:bg-kiwi-green-hover ${
+                                  imageActionBusy || !state.canEdit
+                                    ? "pointer-events-none opacity-50"
+                                    : ""
+                                }`}
+                              >
+                                {isUploadingImages
+                                  ? "Uploading…"
+                                  : hasActiveEditForWebsite
+                                    ? "Edit in progress"
+                                    : "Choose files"}
+                                <input
+                                  type="file"
+                                  multiple
+                                  accept="image/png,image/jpeg,image/webp,image/gif,image/avif,image/svg+xml"
+                                  disabled={imageActionBusy || !state.canEdit}
+                                  className="hidden"
+                                  onChange={(event) => {
+                                    const files = [
+                                      ...(event.target.files ?? []),
+                                    ];
+                                    if (files.length > 0) {
+                                      void uploadImages(website.id, files);
+                                    }
+                                    event.target.value = "";
+                                  }}
+                                />
+                              </label>
+                            </div>
+                          </section>
 
-                                      <div className="mt-2 flex flex-wrap gap-1.5">
-                                        <label
-                                          className={`cursor-pointer rounded-full border border-black/10 px-3 py-1 text-xs font-semibold transition hover:border-black/25 ${
-                                            isBusy ? "cursor-wait opacity-50" : ""
-                                          }`}
+                          <section className="mt-6">
+                            <h3 className="text-sm font-semibold text-black">
+                              Generate an image
+                            </h3>
+                            <p className="mt-1 text-sm leading-6 text-black/55">
+                              Describe the image you want and we&apos;ll create
+                              it for you.
+                              {!isPro ? (
+                                <span className="text-black/40">
+                                  {" "}
+                                  Uses 1 free change.
+                                </span>
+                              ) : null}
+                            </p>
+                            <form
+                              className="mt-2.5"
+                              onSubmit={(event) => {
+                                event.preventDefault();
+                                void generateImage(
+                                  website.id,
+                                  event.currentTarget,
+                                );
+                              }}
+                            >
+                              <textarea
+                                name="prompt"
+                                required
+                                minLength={10}
+                                maxLength={1000}
+                                disabled={imageActionBusy || !state.canEdit}
+                                placeholder="e.g. warm photo-style hero image of a tidy local plumbing team beside a van"
+                                className="min-h-24 w-full resize-none rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm leading-6 outline-none placeholder:text-black/30 focus:border-black/30 disabled:cursor-not-allowed disabled:opacity-50"
+                              />
+                              <button
+                                type="submit"
+                                disabled={imageActionBusy || !state.canEdit}
+                                className="mt-3 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-kiwi-green px-5 text-sm font-semibold text-black transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                {isGeneratingImage
+                                  ? "Generating…"
+                                  : hasActiveEditForWebsite
+                                    ? "Edit in progress"
+                                    : "Generate image"}
+                                <svg
+                                  aria-hidden
+                                  viewBox="0 0 24 24"
+                                  className="h-4 w-4"
+                                  fill="currentColor"
+                                >
+                                  <path d="M12 2.5 13.4 9l6.6 1.4-6.6 1.4L12 18.5 10.6 11.8 4 10.4l6.6-1.4L12 2.5Zm7 11.2 1 3.3 3.3 1-3.3 1-1 3.3-1-3.3-3.3-1 3.3-1 1-3.3Z" />
+                                </svg>
+                              </button>
+                            </form>
+                          </section>
+
+                          <section className="mt-6">
+                            <h3 className="text-sm font-semibold text-black">
+                              Your assets
+                            </h3>
+                            {(() => {
+                              if (
+                                !imagesState ||
+                                imagesState.status === "loading"
+                              ) {
+                                return (
+                                  <p className="mt-2.5 text-sm text-black/45">
+                                    Loading your images…
+                                  </p>
+                                );
+                              }
+
+                              if (imagesState.status === "error") {
+                                return (
+                                  <p className="mt-2.5 text-sm text-black/45">
+                                    We couldn&apos;t load your images just now —
+                                    close this and try again.
+                                  </p>
+                                );
+                              }
+
+                              if (imagesState.images.length === 0) {
+                                return (
+                                  <p className="mt-2.5 text-sm text-black/45">
+                                    No images yet. Upload or generate one above
+                                    and it will show up here.
+                                  </p>
+                                );
+                              }
+
+                              const visibleImages = imagesAssetsExpanded
+                                ? imagesState.images
+                                : imagesState.images.slice(0, 3);
+                              const canExpand =
+                                imagesState.images.length > 3;
+
+                              return (
+                                <>
+                                  <div className="mt-2.5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                                    {visibleImages.map((image) => {
+                                      const isBusy =
+                                        replacingImageId === image.id ||
+                                        remixingImageId === image.id ||
+                                        placingImageId === image.id ||
+                                        revertingImageId === image.id;
+                                      const anyBusy = imageActionBusy;
+                                      const versions = image.history ?? [];
+
+                                      return (
+                                        <div
+                                          key={image.id}
+                                          className="overflow-hidden rounded-2xl border border-black/10 bg-white"
                                         >
-                                          {replacingImageId === image.id
-                                            ? "Uploading…"
-                                            : "Replace"}
-                                          <input
-                                            type="file"
-                                            accept="image/png,image/jpeg,image/webp,image/gif,image/avif,image/svg+xml"
-                                            className="hidden"
-                                            disabled={anyBusy}
-                                            onChange={(event) => {
-                                              const file =
-                                                event.target.files?.[0];
-
-                                              if (file) {
-                                                void replaceImage(
-                                                  website.id,
-                                                  image.id,
-                                                  file,
-                                                );
-                                              }
-
-                                              event.target.value = "";
-                                            }}
-                                          />
-                                        </label>
-                                        {image.role !== "logo" ? (
                                           <button
                                             type="button"
-                                            disabled={anyBusy}
                                             onClick={() =>
-                                              void placeImageAsLogo(
-                                                website.id,
-                                                image.id,
-                                              )
+                                              setLightboxUrl(image.url)
                                             }
-                                            className="rounded-full border border-black/10 px-3 py-1 text-xs font-semibold transition hover:border-black/25 disabled:cursor-not-allowed disabled:opacity-50"
+                                            className="block w-full cursor-zoom-in"
+                                            title="Click to see full size"
                                           >
-                                            {placingImageId === image.id
-                                              ? "Placing..."
-                                              : "Use as logo"}
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                                            <img
+                                              src={image.url}
+                                              alt=""
+                                              loading="lazy"
+                                              className="h-32 w-full bg-[#f0f4e7] object-cover transition hover:opacity-90"
+                                            />
                                           </button>
-                                        ) : null}
-                                        {REMIXABLE_IMAGE_TYPES.has(
-                                          image.contentType,
-                                        ) ? (
-                                          <button
-                                            type="button"
-                                            disabled={anyBusy}
-                                            onClick={() =>
-                                              setRemixNoteImageId((current) =>
-                                                current === image.id
-                                                  ? null
-                                                  : image.id,
-                                              )
-                                            }
-                                            className="rounded-full border border-black/10 px-3 py-1 text-xs font-semibold transition hover:border-black/25 disabled:cursor-not-allowed disabled:opacity-50"
-                                          >
-                                            {remixingImageId === image.id
-                                              ? "Remixing…"
-                                              : "AI remix"}
-                                          </button>
-                                        ) : null}
-                                      </div>
-
-                                      {remixNoteImageId === image.id ? (
-                                        <form
-                                          className="mt-2 flex flex-col gap-1.5"
-                                          onSubmit={(event) => {
-                                            event.preventDefault();
-                                            void remixImage(
-                                              website.id,
-                                              image.id,
-                                            );
-                                          }}
-                                        >
-                                          <input
-                                            value={remixNotes[image.id] ?? ""}
-                                            onChange={(event) =>
-                                              setRemixNotes((current) => ({
-                                                ...current,
-                                                [image.id]: event.target.value,
-                                              }))
-                                            }
-                                            placeholder="Optional — e.g. remove the text"
-                                            maxLength={500}
-                                            className="h-9 rounded-full border border-black/10 bg-white px-3 text-xs outline-none placeholder:text-black/30 focus:border-black/30"
-                                          />
-                                          <button
-                                            type="submit"
-                                            disabled={anyBusy}
-                                            className="h-9 rounded-full bg-kiwi-green px-3 text-xs font-semibold text-black transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-50"
-                                          >
-                                            {remixingImageId === image.id
-                                              ? "Remixing — takes up to a minute…"
-                                              : isPro
-                                                ? "Remix this image"
-                                                : "Remix this image (uses 1 free change)"}
-                                          </button>
-                                        </form>
-                                      ) : null}
-
-                                      {historyOpenImageId === image.id &&
-                                      versions.length > 0 ? (
-                                        <div className="mt-2 grid grid-cols-3 gap-1.5">
-                                          {[...versions]
-                                            .reverse()
-                                            .map((version) => (
-                                              <div
-                                                key={version.file}
-                                                className="overflow-hidden rounded-xl border border-black/10"
-                                              >
+                                          <div className="p-2.5">
+                                            <div className="flex items-start justify-between gap-2">
+                                              <div className="min-w-0">
+                                                <p className="truncate text-xs font-semibold text-black/70">
+                                                  {imageRoleLabel(image.role)}
+                                                </p>
+                                                <p className="mt-0.5 truncate text-[11px] font-medium text-black/40">
+                                                  {imageSourceLabel(
+                                                    image.source,
+                                                  )}
+                                                </p>
+                                              </div>
+                                              {versions.length > 0 ? (
                                                 <button
                                                   type="button"
                                                   onClick={() =>
-                                                    setLightboxUrl(version.url)
+                                                    setHistoryOpenImageId(
+                                                      (current) =>
+                                                        current === image.id
+                                                          ? null
+                                                          : image.id,
+                                                    )
                                                   }
-                                                  className="block w-full cursor-zoom-in"
-                                                  title="Click to see full size"
+                                                  className="shrink-0 text-[11px] font-semibold text-black/45 underline-offset-2 hover:underline"
                                                 >
-                                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                  <img
-                                                    src={version.url}
-                                                    alt=""
-                                                    loading="lazy"
-                                                    className="h-12 w-full bg-[#f0f4e7] object-cover"
-                                                  />
+                                                  {historyOpenImageId ===
+                                                  image.id
+                                                    ? "Hide"
+                                                    : `Previous (${versions.length})`}
                                                 </button>
+                                              ) : null}
+                                            </div>
+
+                                            <div className="mt-2 flex flex-wrap gap-1.5">
+                                              <label
+                                                className={`cursor-pointer rounded-full border border-black/10 px-3 py-1 text-xs font-semibold transition hover:border-black/25 ${
+                                                  isBusy
+                                                    ? "cursor-wait opacity-50"
+                                                    : ""
+                                                }`}
+                                              >
+                                                {replacingImageId === image.id
+                                                  ? "Uploading…"
+                                                  : "Replace"}
+                                                <input
+                                                  type="file"
+                                                  accept="image/png,image/jpeg,image/webp,image/gif,image/avif,image/svg+xml"
+                                                  className="hidden"
+                                                  disabled={anyBusy}
+                                                  onChange={(event) => {
+                                                    const file =
+                                                      event.target.files?.[0];
+
+                                                    if (file) {
+                                                      void replaceImage(
+                                                        website.id,
+                                                        image.id,
+                                                        file,
+                                                      );
+                                                    }
+
+                                                    event.target.value = "";
+                                                  }}
+                                                />
+                                              </label>
+                                              {image.role !== "logo" ? (
                                                 <button
                                                   type="button"
                                                   disabled={anyBusy}
                                                   onClick={() =>
-                                                    void revertImage(
+                                                    void placeImageAsLogo(
                                                       website.id,
                                                       image.id,
-                                                      version.file,
                                                     )
                                                   }
-                                                  className="w-full bg-white py-1 text-[10px] font-semibold text-black/60 transition hover:bg-[#f0f4e7] hover:text-black disabled:cursor-not-allowed disabled:opacity-50"
+                                                  className="rounded-full border border-black/10 px-3 py-1 text-xs font-semibold transition hover:border-black/25 disabled:cursor-not-allowed disabled:opacity-50"
                                                 >
-                                                  {revertingImageId === image.id
-                                                    ? "Restoring…"
-                                                    : "Use this"}
+                                                  {placingImageId === image.id
+                                                    ? "Placing..."
+                                                    : "Use as logo"}
                                                 </button>
+                                              ) : null}
+                                              {REMIXABLE_IMAGE_TYPES.has(
+                                                image.contentType,
+                                              ) ? (
+                                                <button
+                                                  type="button"
+                                                  disabled={anyBusy}
+                                                  onClick={() =>
+                                                    setRemixNoteImageId(
+                                                      (current) =>
+                                                        current === image.id
+                                                          ? null
+                                                          : image.id,
+                                                    )
+                                                  }
+                                                  className="rounded-full border border-black/10 px-3 py-1 text-xs font-semibold transition hover:border-black/25 disabled:cursor-not-allowed disabled:opacity-50"
+                                                >
+                                                  {remixingImageId === image.id
+                                                    ? "Remixing…"
+                                                    : "AI remix"}
+                                                </button>
+                                              ) : null}
+                                            </div>
+
+                                            {remixNoteImageId === image.id ? (
+                                              <form
+                                                className="mt-2 flex flex-col gap-1.5"
+                                                onSubmit={(event) => {
+                                                  event.preventDefault();
+                                                  void remixImage(
+                                                    website.id,
+                                                    image.id,
+                                                  );
+                                                }}
+                                              >
+                                                <input
+                                                  value={
+                                                    remixNotes[image.id] ?? ""
+                                                  }
+                                                  onChange={(event) =>
+                                                    setRemixNotes(
+                                                      (current) => ({
+                                                        ...current,
+                                                        [image.id]:
+                                                          event.target.value,
+                                                      }),
+                                                    )
+                                                  }
+                                                  placeholder="Optional — e.g. remove the text"
+                                                  maxLength={500}
+                                                  className="h-9 rounded-full border border-black/10 bg-white px-3 text-xs outline-none placeholder:text-black/30 focus:border-black/30"
+                                                />
+                                                <button
+                                                  type="submit"
+                                                  disabled={anyBusy}
+                                                  className="h-9 rounded-full bg-kiwi-green px-3 text-xs font-semibold text-black transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-50"
+                                                >
+                                                  {remixingImageId === image.id
+                                                    ? "Remixing — takes up to a minute…"
+                                                    : isPro
+                                                      ? "Remix this image"
+                                                      : "Remix this image (uses 1 free change)"}
+                                                </button>
+                                              </form>
+                                            ) : null}
+
+                                            {historyOpenImageId === image.id &&
+                                            versions.length > 0 ? (
+                                              <div className="mt-2 grid grid-cols-3 gap-1.5">
+                                                {[...versions]
+                                                  .reverse()
+                                                  .map((version) => (
+                                                    <div
+                                                      key={version.file}
+                                                      className="overflow-hidden rounded-xl border border-black/10"
+                                                    >
+                                                      <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                          setLightboxUrl(
+                                                            version.url,
+                                                          )
+                                                        }
+                                                        className="block w-full cursor-zoom-in"
+                                                        title="Click to see full size"
+                                                      >
+                                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                        <img
+                                                          src={version.url}
+                                                          alt=""
+                                                          loading="lazy"
+                                                          className="h-12 w-full bg-[#f0f4e7] object-cover"
+                                                        />
+                                                      </button>
+                                                      <button
+                                                        type="button"
+                                                        disabled={anyBusy}
+                                                        onClick={() =>
+                                                          void revertImage(
+                                                            website.id,
+                                                            image.id,
+                                                            version.file,
+                                                          )
+                                                        }
+                                                        className="w-full bg-white py-1 text-[10px] font-semibold text-black/60 transition hover:bg-[#f0f4e7] hover:text-black disabled:cursor-not-allowed disabled:opacity-50"
+                                                      >
+                                                        {revertingImageId ===
+                                                        image.id
+                                                          ? "Restoring…"
+                                                          : "Use this"}
+                                                      </button>
+                                                    </div>
+                                                  ))}
                                               </div>
-                                            ))}
+                                            ) : null}
+                                          </div>
                                         </div>
-                                      ) : null}
-                                    </div>
+                                      );
+                                    })}
                                   </div>
-                                );
-                              })}
-                            </div>
-                          );
-                        })()}
-                          </>
-                        ) : null}
+                                  {canExpand ? (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setImagesAssetsExpanded((current) => !current)
+                                      }
+                                      className="mt-4 inline-flex w-full items-center justify-center gap-1.5 text-sm font-semibold text-black/55 transition hover:text-black"
+                                    >
+                                      {imagesAssetsExpanded
+                                        ? "Show fewer assets"
+                                        : "View all assets"}
+                                      <svg
+                                        aria-hidden
+                                        viewBox="0 0 24 24"
+                                        className={`h-4 w-4 transition ${
+                                          imagesAssetsExpanded
+                                            ? "rotate-180"
+                                            : ""
+                                        }`}
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                      >
+                                        <path d="M6 9l6 6 6-6" />
+                                      </svg>
+                                    </button>
+                                  ) : null}
+                                </>
+                              );
+                            })()}
+                          </section>
                         </div>
                       </div>
                     ) : null}
@@ -3420,13 +3383,10 @@ export default function DashboardPage() {
                                 Open domain
                               </a>
                             ) : null}
-                            <button
-                              type="button"
+                            <ModalCloseButton
                               onClick={closeWebsiteActionModal}
-                              className="rounded-full border border-black/10 bg-white px-3 py-1 text-sm text-black/60 transition hover:border-black/25 hover:text-black"
-                            >
-                              Close
-                            </button>
+                              className="bg-white"
+                            />
                           </div>
 
                           <form
@@ -3620,13 +3580,7 @@ export default function DashboardPage() {
                                 ask you to paste a code here.
                               </p>
                             </div>
-                            <button
-                              type="button"
-                              onClick={closeWebsiteActionModal}
-                              className="rounded-full border border-black/10 px-3 py-1 text-sm text-black/60 transition hover:border-black/25 hover:text-black"
-                            >
-                              Close
-                            </button>
+                            <ModalCloseButton onClick={closeWebsiteActionModal} />
                           </div>
 
                           <form
@@ -3789,13 +3743,7 @@ export default function DashboardPage() {
                                 Choose the display name shown on your dashboard.
                               </p>
                             </div>
-                            <button
-                              type="button"
-                              onClick={closeWebsiteActionModal}
-                              className="rounded-full border border-black/10 px-3 py-1 text-sm text-black/60 transition hover:border-black/25 hover:text-black"
-                            >
-                              Close
-                            </button>
+                            <ModalCloseButton onClick={closeWebsiteActionModal} />
                           </div>
                           <form
                             className="mt-6"
@@ -3864,13 +3812,7 @@ export default function DashboardPage() {
                                 This action can&apos;t be undone.
                               </p>
                             </div>
-                            <button
-                              type="button"
-                              onClick={closeWebsiteActionModal}
-                              className="rounded-full border border-black/10 px-3 py-1 text-sm text-black/60 transition hover:border-black/25 hover:text-black"
-                            >
-                              Close
-                            </button>
+                            <ModalCloseButton onClick={closeWebsiteActionModal} />
                           </div>
                           <div className="mt-6 rounded-2xl border border-red-100 bg-red-50/50 p-4">
                             <p className="text-sm leading-6 text-black/60">
@@ -3986,24 +3928,7 @@ export default function DashboardPage() {
                               {website.brandName || website.slug}.
                             </p>
                           </div>
-                          <button
-                            type="button"
-                            onClick={closeWebsiteActionModal}
-                            aria-label="Close"
-                            className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-black/10 text-black/50 transition hover:border-black/25 hover:text-black"
-                          >
-                            <svg
-                              aria-hidden
-                              viewBox="0 0 24 24"
-                              className="h-4 w-4"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                            >
-                              <path d="M6 6l12 12M18 6L6 18" />
-                            </svg>
-                          </button>
+                          <ModalCloseButton onClick={closeWebsiteActionModal} />
                         </div>
 
                         <div>
@@ -4476,13 +4401,7 @@ export default function DashboardPage() {
               <h2 className="font-fraunces text-2xl font-semibold tracking-tight">
                 Kiwi Pro — {pricing.proPriceMonthly}
               </h2>
-              <button
-                type="button"
-                onClick={() => setShowProSheet(false)}
-                className="rounded-full border border-black/10 px-3 py-1 text-sm text-black/60"
-              >
-                Close
-              </button>
+              <ModalCloseButton onClick={() => setShowProSheet(false)} />
             </div>
             <ul className="mt-5 space-y-2.5 text-sm leading-6 text-black/60">
               <li>Your new website online — we host it</li>
