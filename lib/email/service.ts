@@ -76,6 +76,18 @@ function button(url: string, label: string): string {
   return `<a href="${escapeHtml(url)}" style="display:inline-block;background:#c5e66a;color:#111;padding:12px 18px;border-radius:999px;text-decoration:none;font-weight:700">${escapeHtml(label)}</a>`;
 }
 
+function heading(text: string): string {
+  return `<h1 style="font-family:Georgia,'Times New Roman',serif;font-size:24px;line-height:1.3;letter-spacing:-0.02em;margin:0 0 16px">${escapeHtml(text)}</h1>`;
+}
+
+function card(innerHtml: string): string {
+  return `<div style="background:#faf8f1;border:1px solid #ebe7da;border-radius:16px;padding:16px 20px;margin:18px 0">${innerHtml}</div>`;
+}
+
+function feature(title: string, body: string): string {
+  return `<p style="margin:8px 0"><strong>${escapeHtml(title)}</strong> — ${escapeHtml(body)}</p>`;
+}
+
 function preserveLineBreaks(value: string): string {
   return escapeHtml(value).replaceAll("\n", "<br />");
 }
@@ -102,18 +114,50 @@ function previewReadyCopy(brandName?: string | null) {
 export async function sendWelcomeEmail(params: {
   to: string;
   name?: string | null;
+  verificationToken: string;
 }) {
   const greeting = params.name ? `Hi ${params.name},` : "Hi,";
   const htmlGreeting = escapeHtml(greeting);
+  const verifyUrl = buildAppUrl(
+    `/verify-email?token=${encodeURIComponent(params.verificationToken)}`,
+  );
+  const dashboardUrl = buildAppUrl("/dashboard");
+  const homeUrl = buildAppUrl("/");
 
   await sendEmail({
     to: params.to,
     subject: "Welcome to Refresh Kiwi",
-    text: `${greeting}\n\nWelcome to Refresh Kiwi. Paste your current website and we'll help you turn it into a fresher preview.\n\n${buildAppUrl("/")}`,
+    text: [
+      greeting,
+      "",
+      "Thanks for joining Refresh Kiwi. If you've just built a preview, it's saved to your dashboard — that's where everything happens from here.",
+      "",
+      `First, verify your email so account and preview updates reach you (the link expires in 24 hours): ${verifyUrl}`,
+      "",
+      "What you can do next:",
+      "- Make changes — ask in plain English and we'll update your site",
+      "- Add pages — About, Services, Contact, whatever you need",
+      "- Go live — Kiwi Pro puts your site online with hosting and your own web address",
+      "",
+      `Open your dashboard: ${dashboardUrl}`,
+      "",
+      `Haven't built a preview yet? Paste your current website — or just describe your business — and we'll have one ready in about two minutes: ${homeUrl}`,
+    ].join("\n"),
     html: shell(`
+      ${heading("Nice — you're in.")}
       <p>${htmlGreeting}</p>
-      <p>Welcome to Refresh Kiwi. Paste your current website and we'll help you turn it into a fresher preview.</p>
-      <p>${button(buildAppUrl("/"), "Start a refresh")}</p>
+      <p>Thanks for joining Refresh Kiwi. If you've just built a preview, it's saved to your dashboard — that's where everything happens from here.</p>
+      <p>First, verify your email so account and preview updates reach you.</p>
+      <p>${button(verifyUrl, "Verify email")}</p>
+      <p style="color:#666;font-size:13px">The verification link expires in 24 hours.</p>
+      ${card(`
+        <p style="margin:0 0 8px;font-weight:700">What you can do next</p>
+        ${feature("Make changes", "ask in plain English and we'll update your site")}
+        ${feature("Add pages", "About, Services, Contact, whatever you need")}
+        ${feature("Go live", "Kiwi Pro puts your site online with hosting and your own web address")}
+      `)}
+      <p><a href="${escapeHtml(dashboardUrl)}" style="color:#111;font-weight:700">Open your dashboard</a></p>
+      <p style="color:#666">Haven't built a preview yet? <a href="${escapeHtml(homeUrl)}" style="color:#111">Paste your current website — or just describe your business</a> — and we'll have one ready in about two minutes.</p>
     `),
   });
 }
@@ -145,14 +189,14 @@ export async function sendContactEnquiryEmail(params: {
     ].join("\n"),
     html: shell(
       `
-      <h1 style="font-size:22px;line-height:1.25;margin:0 0 16px">You've received a new enquiry through your website contact form.</h1>
+      ${heading("You've received a new enquiry through your website contact form.")}
       <p style="margin:0 0 18px;color:#555">Website: <strong>${escapeHtml(siteName)}</strong></p>
       <p><strong>Name:</strong> ${escapeHtml(params.visitorName)}</p>
       <p><strong>Email:</strong> ${escapeHtml(params.visitorEmail)}</p>
-      <div style="margin-top:18px;padding:16px;border:1px solid #e5e5e5;border-radius:16px;background:#fafafa">
+      ${card(`
         <p style="margin:0 0 8px;font-weight:700">Message</p>
         <p style="margin:0">${preserveLineBreaks(params.message)}</p>
-      </div>
+      `)}
       `,
       "This enquiry was sent through your website contact form. Powered by Refresh Kiwi.",
       { showBrandHeader: false },
@@ -171,6 +215,7 @@ export async function sendVerificationEmail(params: {
     subject: "Verify your Refresh Kiwi email",
     text: `Please verify your email address so we know where to send account and preview updates.\n\n${url}\n\nThis link expires in 24 hours.`,
     html: shell(`
+      ${heading("Verify your email.")}
       <p>Please verify your email address so we know where to send account and preview updates.</p>
       <p>${button(url, "Verify email")}</p>
       <p style="color:#666">This link expires in 24 hours.</p>
@@ -189,6 +234,7 @@ export async function sendEmailChangeVerificationEmail(params: {
     subject: "Confirm your new Refresh Kiwi email",
     text: `Use this link to confirm this as your new Refresh Kiwi email address:\n\n${url}\n\nThis link expires in 24 hours. If you did not request it, you can ignore this email.`,
     html: shell(`
+      ${heading("Confirm your new email.")}
       <p>Use the button below to confirm this as your new Refresh Kiwi email address.</p>
       <p>${button(url, "Confirm new email")}</p>
       <p style="color:#666">This link expires in 24 hours. If you did not request it, you can ignore this email.</p>
@@ -202,6 +248,7 @@ export async function sendEmailChangedEmail(params: { to: string }) {
     subject: "Your Refresh Kiwi email was changed",
     text: `Your Refresh Kiwi account email was changed. If this was not you, reset your password now:\n\n${buildAppUrl("/forgot-password")}`,
     html: shell(`
+      ${heading("Your email was changed.")}
       <p>Your Refresh Kiwi account email was changed.</p>
       <p>If this was not you, reset your password now.</p>
       <p>${button(buildAppUrl("/forgot-password"), "Reset password")}</p>
@@ -220,6 +267,7 @@ export async function sendPasswordResetEmail(params: {
     subject: "Reset your Refresh Kiwi password",
     text: `Use this link to reset your Refresh Kiwi password:\n\n${url}\n\nThis link expires in 30 minutes. If you did not request it, you can ignore this email.`,
     html: shell(`
+      ${heading("Reset your password.")}
       <p>Use the button below to reset your Refresh Kiwi password.</p>
       <p>${button(url, "Reset password")}</p>
       <p style="color:#666">This link expires in 30 minutes. If you did not request it, you can ignore this email.</p>
@@ -233,6 +281,7 @@ export async function sendPasswordChangedEmail(params: { to: string }) {
     subject: "Your Refresh Kiwi password was changed",
     text: `Your Refresh Kiwi password was changed. If this was not you, reset your password now:\n\n${buildAppUrl("/forgot-password")}`,
     html: shell(`
+      ${heading("Your password was changed.")}
       <p>Your Refresh Kiwi password was changed.</p>
       <p>If this was not you, reset your password now.</p>
       <p>${button(buildAppUrl("/forgot-password"), "Reset password")}</p>
@@ -251,14 +300,13 @@ export async function sendPreviewReadyEmail(params: {
     ? buildAppUrl(params.screenshotUrl)
     : null;
   const copy = previewReadyCopy(params.brandName);
-  const htmlHeadline = escapeHtml(copy.headline);
 
   await sendEmail({
     to: params.to,
     subject: copy.subject,
     text: `${copy.text}\n\n${url}`,
     html: shell(`
-      <p><strong>${htmlHeadline}</strong></p>
+      ${heading(copy.headline)}
       ${
         screenshotUrl
           ? `<p><img src="${escapeHtml(screenshotUrl)}" alt="" style="display:block;width:100%;max-width:512px;border-radius:18px;border:1px solid #e5e5e5;margin:18px 0" /></p>`
@@ -271,14 +319,40 @@ export async function sendPreviewReadyEmail(params: {
 }
 
 export async function sendUpgradeSuccessEmail(params: { to: string }) {
+  const dashboardUrl = buildAppUrl("/dashboard");
+
   await sendEmail({
     to: params.to,
-    subject: "Welcome to Kiwi Pro",
-    text: `You're on Kiwi Pro. Your refreshed websites can stay live, and you can manage everything from your dashboard:\n\n${buildAppUrl("/dashboard")}`,
+    subject: "You're on Kiwi Pro — your website is going live",
+    text: [
+      "Welcome to Kiwi Pro. Your website is now online, hosted by us.",
+      "",
+      "Your plan includes:",
+      "- Live hosting — we keep your site online, no tech setup",
+      "- Unlimited changes — just ask in plain English",
+      "- Your own web address — connect www.yourbusiness.com",
+      "- Extra pages — add them whenever you need",
+      "- Up to 3 websites saved to your account",
+      "",
+      "Worth doing now: connect your own domain — it takes a few minutes and we walk you through the DNS steps.",
+      "",
+      `Open your dashboard: ${dashboardUrl}`,
+      "",
+      "Stripe will send your receipt separately. Manage or cancel anytime from your account — no contracts, no hidden fees.",
+    ].join("\n"),
     html: shell(`
-      <p>You're on <strong>Kiwi Pro</strong>.</p>
-      <p>Your refreshed websites can stay live, and you can manage everything from your dashboard.</p>
-      <p>${button(buildAppUrl("/dashboard"), "Open dashboard")}</p>
+      ${heading("Welcome to Kiwi Pro.")}
+      <p>Your website is now online, hosted by us. Here's what your plan includes:</p>
+      ${card(`
+        ${feature("Live hosting", "we keep your site online, no tech setup")}
+        ${feature("Unlimited changes", "just ask in plain English")}
+        ${feature("Your own web address", "connect www.yourbusiness.com")}
+        ${feature("Extra pages", "add them whenever you need")}
+        ${feature("Up to 3 websites", "saved to your account")}
+      `)}
+      <p><strong>Worth doing now:</strong> connect your own domain — it takes a few minutes and we walk you through the DNS steps.</p>
+      <p>${button(dashboardUrl, "Open dashboard")}</p>
+      <p style="color:#666;font-size:13px">Stripe will send your receipt separately. Manage or cancel anytime from your account — no contracts, no hidden fees.</p>
     `),
   });
 }
@@ -289,6 +363,7 @@ export async function sendPaymentFailedEmail(params: { to: string }) {
     subject: "Refresh Kiwi payment failed",
     text: `We couldn't collect your latest Kiwi Pro payment. Please update your billing details to avoid losing Pro access:\n\n${buildAppUrl("/dashboard")}`,
     html: shell(`
+      ${heading("We couldn't collect your payment.")}
       <p>We couldn't collect your latest Kiwi Pro payment.</p>
       <p>Please update your billing details to avoid losing Pro access.</p>
       <p>${button(buildAppUrl("/dashboard"), "Manage billing")}</p>
@@ -302,6 +377,7 @@ export async function sendSubscriptionCanceledEmail(params: { to: string }) {
     subject: "Kiwi Pro has been cancelled",
     text: `Your Kiwi Pro subscription has been cancelled. You can restart it anytime from your dashboard:\n\n${buildAppUrl("/dashboard")}`,
     html: shell(`
+      ${heading("Kiwi Pro has been cancelled.")}
       <p>Your Kiwi Pro subscription has been cancelled.</p>
       <p>You can restart it anytime from your dashboard.</p>
       <p>${button(buildAppUrl("/dashboard"), "Open dashboard")}</p>
@@ -320,6 +396,7 @@ export async function sendDomainConnectedEmail(params: {
     subject: "Your domain is connected",
     text: `Your Refresh Kiwi website is now connected to ${params.domain}.\n\nOpen your website: ${url}`,
     html: shell(`
+      ${heading("Your domain is connected.")}
       <p>Your Refresh Kiwi website is now connected to <strong>${escapeHtml(params.domain)}</strong>.</p>
       <p>${button(url, "Open your website")}</p>
     `),
@@ -341,6 +418,7 @@ export async function sendFreeFollowUpEmail(params: {
     text: `Your refreshed website is waiting in Refresh Kiwi. If you're ready, Kiwi Pro puts it online with hosting, extra pages, custom domain support, and unlimited changes.\n\nOpen dashboard: ${dashboardUrl}\n\nUnsubscribe from follow-up emails: ${unsubscribeUrl}`,
     html: shell(
       `
+      ${heading("Want to put your refreshed website online?")}
       <p>Your refreshed website is waiting in Refresh Kiwi.</p>
       <p>If you're ready, Kiwi Pro puts it online with hosting, extra pages, custom domain support, and unlimited changes.</p>
       <p>${button(dashboardUrl, "Open dashboard")}</p>

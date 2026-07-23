@@ -117,10 +117,11 @@ export async function signUp(params: {
   await setSessionCookie(token);
   const verificationToken = await createEmailVerificationToken(user.id);
 
-  await Promise.all([
-    sendWelcomeEmail({ to: user.email, name: user.name }),
-    sendVerificationEmail({ to: user.email, token: verificationToken }),
-  ]);
+  await sendWelcomeEmail({
+    to: user.email,
+    name: user.name,
+    verificationToken,
+  });
 
   return user;
 }
