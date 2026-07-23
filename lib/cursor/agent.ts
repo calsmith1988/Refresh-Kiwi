@@ -1,6 +1,6 @@
 import { Agent, CursorAgentError } from "@cursor/sdk";
 
-import { getCursorApiKey, getSitesRepoUrl } from "@/lib/cursor/config";
+import { getCursorApiKey } from "@/lib/cursor/config";
 import { pickDesignDirection } from "@/lib/cursor/design-directions";
 import {
   buildAdditionalPagesPrompt,
@@ -31,9 +31,9 @@ function logRunSummary(phase: string, slug: string, result: RunResult): void {
   }
 }
 
-function cloudOptions() {
+function cloudOptions(repoUrl: string) {
   return {
-    repos: [{ url: getSitesRepoUrl(), startingRef: "main" }],
+    repos: [{ url: repoUrl, startingRef: "main" }],
     workOnCurrentBranch: true,
     skipReviewerRequest: true,
   };
@@ -52,6 +52,7 @@ export async function runHomepagePhase(
   params: {
     sourceUrl: string;
     slug: string;
+    repoUrl: string;
   },
   onStarted?: (info: PhaseRunResult) => Promise<void>,
 ): Promise<PhaseRunResult> {
@@ -60,7 +61,7 @@ export async function runHomepagePhase(
     apiKey,
     model: MODEL,
     name: `Refresh Kiwi — ${params.slug} (homepage)`,
-    cloud: cloudOptions(),
+    cloud: cloudOptions(params.repoUrl),
   });
 
   try {
@@ -99,6 +100,7 @@ export async function runFreshHomepagePhase(
     creationPrompt: string;
     slug: string;
     seedAssets: PromptSeedAsset[];
+    repoUrl: string;
   },
   onStarted?: (info: PhaseRunResult) => Promise<void>,
 ): Promise<PhaseRunResult> {
@@ -107,7 +109,7 @@ export async function runFreshHomepagePhase(
     apiKey,
     model: MODEL,
     name: `Refresh Kiwi — ${params.slug} (fresh homepage)`,
-    cloud: cloudOptions(),
+    cloud: cloudOptions(params.repoUrl),
   });
 
   try {
@@ -153,6 +155,7 @@ export async function runAdditionalPagesPhase(
   params: {
     sourceUrl: string | null;
     slug: string;
+    repoUrl: string;
     agentId?: string | null;
     generationMode?: "refresh" | "fresh";
     creationPrompt?: string | null;
@@ -164,13 +167,13 @@ export async function runAdditionalPagesPhase(
     ? await Agent.resume(params.agentId, {
         apiKey,
         model: MODEL,
-        cloud: cloudOptions(),
+        cloud: cloudOptions(params.repoUrl),
       })
     : await Agent.create({
         apiKey,
         model: MODEL,
         name: `Refresh Kiwi — ${params.slug} (pages)`,
-        cloud: cloudOptions(),
+        cloud: cloudOptions(params.repoUrl),
       });
 
   try {
@@ -207,6 +210,7 @@ export async function runCustomPagePhase(
   params: {
     sourceUrl: string | null;
     slug: string;
+    repoUrl: string;
     agentId?: string | null;
     generationMode?: "refresh" | "fresh";
     creationPrompt?: string | null;
@@ -220,13 +224,13 @@ export async function runCustomPagePhase(
     ? await Agent.resume(params.agentId, {
         apiKey,
         model: MODEL,
-        cloud: cloudOptions(),
+        cloud: cloudOptions(params.repoUrl),
       })
     : await Agent.create({
         apiKey,
         model: MODEL,
         name: `Refresh Kiwi — ${params.slug} (custom page)`,
-        cloud: cloudOptions(),
+        cloud: cloudOptions(params.repoUrl),
       });
 
   try {
@@ -263,6 +267,7 @@ export async function runLegalPagesPhase(
   params: {
     sourceUrl: string | null;
     slug: string;
+    repoUrl: string;
     agentId?: string | null;
     generationMode?: "refresh" | "fresh";
     creationPrompt?: string | null;
@@ -276,13 +281,13 @@ export async function runLegalPagesPhase(
     ? await Agent.resume(params.agentId, {
         apiKey,
         model: MODEL,
-        cloud: cloudOptions(),
+        cloud: cloudOptions(params.repoUrl),
       })
     : await Agent.create({
         apiKey,
         model: MODEL,
         name: `Refresh Kiwi — ${params.slug} (legal pages)`,
-        cloud: cloudOptions(),
+        cloud: cloudOptions(params.repoUrl),
       });
 
   try {
@@ -319,6 +324,7 @@ export async function runEditPhase(
   params: {
     sourceUrl: string | null;
     slug: string;
+    repoUrl: string;
     editPrompt: string;
     generationMode?: "refresh" | "fresh";
     creationPrompt?: string | null;
@@ -339,7 +345,7 @@ export async function runEditPhase(
       agent = await Agent.resume(params.resumeAgentId, {
         apiKey,
         model: MODEL,
-        cloud: cloudOptions(),
+        cloud: cloudOptions(params.repoUrl),
       });
       console.info(
         `[refresh-kiwi] edit agent resumed agentId=${params.resumeAgentId} slug=${params.slug}`,
@@ -357,7 +363,7 @@ export async function runEditPhase(
     apiKey,
     model: MODEL,
     name: `Refresh Kiwi — ${params.slug} (edit)`,
-    cloud: cloudOptions(),
+    cloud: cloudOptions(params.repoUrl),
   });
 
   try {

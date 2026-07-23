@@ -218,6 +218,9 @@ export const jobs = pgTable("jobs", {
   clientIp: text("client_ip"),
   brandName: text("brand_name"),
   status: jobStatusEnum("status").notNull().default("queued"),
+  // Per-site GitHub repo for this job's generated site. NULL for sites built
+  // before per-site repos existed — those fall back to CURSOR_SITES_REPO_URL.
+  sitesRepoUrl: text("sites_repo_url"),
   homepageAgentId: text("homepage_agent_id"),
   homepageRunId: text("homepage_run_id"),
   pagesAgentId: text("pages_agent_id"),

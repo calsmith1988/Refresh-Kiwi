@@ -3,10 +3,10 @@ import path from "node:path";
 
 import { NextResponse } from "next/server";
 
-import { getSitesRepoUrl } from "@/lib/cursor/config";
+import { githubHeaders, parseGithubRepo } from "@/lib/github/api";
+import { resolveSitesRepoUrlForSlug } from "@/lib/github/repos";
 import { isValidSlug } from "@/lib/jobs/slug";
 import { previewDirectory } from "@/lib/preview/paths";
-import { githubHeaders, parseGithubRepo } from "@/lib/preview/sync";
 import { isInternalRequestAuthorized } from "@/lib/security/internal";
 import { listR2Keys } from "@/lib/storage/r2";
 
@@ -34,7 +34,7 @@ async function listFiles(dir: string, baseDir = dir): Promise<string[]> {
 }
 
 async function listGithubPreviewFiles(slug: string): Promise<string[]> {
-  const parsed = parseGithubRepo(getSitesRepoUrl());
+  const parsed = parseGithubRepo(await resolveSitesRepoUrlForSlug(slug));
 
   if (!parsed) {
     return [];

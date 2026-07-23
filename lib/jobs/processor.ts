@@ -14,6 +14,7 @@ import {
 import { getDb, schema } from "@/lib/db";
 import { sendOnce } from "@/lib/email/events";
 import { sendPreviewReadyEmail } from "@/lib/email/service";
+import { ensureSiteRepo } from "@/lib/github/repos";
 import { logMemoryUsage } from "@/lib/observability/memory";
 import { syncPreviewFromAgent } from "@/lib/preview/sync";
 import { tryCaptureHomepageScreenshot } from "@/lib/screenshots/homepage";
@@ -78,6 +79,14 @@ export async function processRefreshJob(jobId: string): Promise<void> {
 
     logMemoryUsage("refresh:start", memoryContext);
     await updateJob(jobId, { status: "analyzing" });
+
+    // Each site gets its own repo so the agent clones one site, not the
+    // whole customer base. Reuses the job's repo on worker retries.
+    const sitesRepoUrl = job.sitesRepoUrl ?? (await ensureSiteRepo(job.slug));
+    if (!job.sitesRepoUrl) {
+      await updateJob(jobId, { sitesRepoUrl });
+    }
+
     await updateJob(jobId, { status: "building_homepage" });
 
     console.info(`[refresh-kiwi] job ${jobId} starting homepage phase slug=${job.slug}`);
@@ -88,6 +97,7 @@ export async function processRefreshJob(jobId: string): Promise<void> {
       {
         sourceUrl: job.sourceUrl ?? "",
         slug: job.slug,
+        repoUrl: sitesRepoUrl,
       },
       async (started) => {
         await updateJob(jobId, {
@@ -245,6 +255,12 @@ export async function processFreshJob(
     logMemoryUsage("fresh:start", memoryContext);
     await updateJob(jobId, { status: "analyzing" });
 
+    // Must exist before seedWebsiteAssets, which commits seed files into it.
+    const sitesRepoUrl = job.sitesRepoUrl ?? (await ensureSiteRepo(job.slug));
+    if (!job.sitesRepoUrl) {
+      await updateJob(jobId, { sitesRepoUrl });
+    }
+
     logMemoryUsage("fresh:before-seed-assets", {
       ...memoryContext,
       seedAssetInputs: seedAssetInputs.length,
@@ -273,6 +289,7 @@ export async function processFreshJob(
       {
         creationPrompt: job.creationPrompt ?? "",
         slug: job.slug,
+        repoUrl: sitesRepoUrl,
         seedAssets: seedAssets.map((asset) => ({
           role: asset.role,
           file: asset.file,

@@ -103,7 +103,7 @@ export async function seedWebsiteAssets(
   }
 
   try {
-    await commitFilesToSitesRepo(repoFiles, `Seed uploaded assets for ${slug}`);
+    await commitFilesToSitesRepo(slug, repoFiles, `Seed uploaded assets for ${slug}`);
   } catch (error) {
     console.error(
       `[refresh-kiwi] failed to commit seed assets for ${slug}:`,

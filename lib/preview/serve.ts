@@ -1,9 +1,9 @@
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 
-import { getSitesRepoUrl } from "@/lib/cursor/config";
+import { githubHeaders, parseGithubRepo } from "@/lib/github/api";
+import { resolveSitesRepoUrlForSlug } from "@/lib/github/repos";
 import { previewDirectory } from "@/lib/preview/paths";
-import { githubHeaders, parseGithubRepo } from "@/lib/preview/sync";
 import { getR2Object } from "@/lib/storage/r2";
 
 const MIME_TYPES: Record<string, string> = {
@@ -125,10 +125,11 @@ async function resolveFile(
 }
 
 async function readGithubPreviewFile(slug: string, segments: string[]) {
-  const parsed = parseGithubRepo(getSitesRepoUrl());
+  const repoUrl = await resolveSitesRepoUrlForSlug(slug);
+  const parsed = parseGithubRepo(repoUrl);
 
   if (!parsed) {
-    throw new Error("CURSOR_SITES_REPO_URL is not a GitHub repository URL");
+    throw new Error(`Sites repo for ${slug} is not a GitHub repository URL`);
   }
 
   const relativePath = segments.length > 0 ? segments.join("/") : "index.html";

@@ -2,6 +2,7 @@ import { and, desc, eq, isNotNull } from "drizzle-orm";
 
 import { localizeWebsiteImages } from "@/lib/assets/localize";
 import { isCursorStartupError, runEditPhase } from "@/lib/cursor/agent";
+import { getSitesRepoUrl } from "@/lib/cursor/config";
 import { RunTimeoutError } from "@/lib/cursor/run";
 import {
   EDIT_CANCELLED_USER_MESSAGE,
@@ -18,39 +19,46 @@ const { editRequests, jobs, websites } = schema;
  * The agent that most recently committed to this site has the freshest cloud
  * workspace, so resuming it skips VM provisioning + repo clone. Preference:
  * latest edit agent, then the pages agent, then the homepage build agent.
+ * Also resolves the site's repo (per-site when present, legacy shared repo
+ * otherwise) so the resumed/fresh agent targets the right one.
  */
-async function findResumeAgentId(website: {
+async function findEditRunContext(website: {
   id: string;
   jobId: string;
-}): Promise<string | null> {
+}): Promise<{ resumeAgentId: string | null; repoUrl: string }> {
   const db = getDb();
 
-  const [previousEdit] = await db
-    .select({ agentId: editRequests.agentId })
-    .from(editRequests)
-    .where(
-      and(
-        eq(editRequests.websiteId, website.id),
-        isNotNull(editRequests.agentId),
-      ),
-    )
-    .orderBy(desc(editRequests.createdAt))
-    .limit(1);
+  const [[previousEdit], [job]] = await Promise.all([
+    db
+      .select({ agentId: editRequests.agentId })
+      .from(editRequests)
+      .where(
+        and(
+          eq(editRequests.websiteId, website.id),
+          isNotNull(editRequests.agentId),
+        ),
+      )
+      .orderBy(desc(editRequests.createdAt))
+      .limit(1),
+    db
+      .select({
+        pagesAgentId: jobs.pagesAgentId,
+        homepageAgentId: jobs.homepageAgentId,
+        sitesRepoUrl: jobs.sitesRepoUrl,
+      })
+      .from(jobs)
+      .where(eq(jobs.id, website.jobId))
+      .limit(1),
+  ]);
 
-  if (previousEdit?.agentId) {
-    return previousEdit.agentId;
-  }
-
-  const [job] = await db
-    .select({
-      pagesAgentId: jobs.pagesAgentId,
-      homepageAgentId: jobs.homepageAgentId,
-    })
-    .from(jobs)
-    .where(eq(jobs.id, website.jobId))
-    .limit(1);
-
-  return job?.pagesAgentId ?? job?.homepageAgentId ?? null;
+  return {
+    resumeAgentId:
+      previousEdit?.agentId ??
+      job?.pagesAgentId ??
+      job?.homepageAgentId ??
+      null,
+    repoUrl: job?.sitesRepoUrl ?? getSitesRepoUrl(),
+  };
 }
 
 async function updateEditRequest(
@@ -94,12 +102,15 @@ export async function processEditRequest(editRequestId: string): Promise<void> {
   try {
     await updateEditRequest(editRequest.id, { status: "running" });
 
-    const resumeAgentId = await findResumeAgentId(editRequest.website);
+    const { resumeAgentId, repoUrl } = await findEditRunContext(
+      editRequest.website,
+    );
 
     const editRun = await runEditPhase(
       {
         sourceUrl: editRequest.website.sourceUrl,
         slug: editRequest.website.slug,
+        repoUrl,
         editPrompt: editRequest.prompt,
         generationMode: editRequest.website.generationMode,
         creationPrompt: editRequest.website.creationPrompt,

@@ -10,6 +10,7 @@ import {
   runCustomPagePhase,
   runLegalPagesPhase,
 } from "@/lib/cursor/agent";
+import { getSitesRepoUrl } from "@/lib/cursor/config";
 import { getDb, schema } from "@/lib/db";
 import { draftLegalPages, type LegalAnswers } from "@/lib/legal/draft";
 import { discoverLegalPagesFromSource } from "@/lib/legal/source";
@@ -158,6 +159,8 @@ export async function processAdditionalPages(
       });
     };
 
+    const repoUrl = job.sitesRepoUrl ?? getSitesRepoUrl();
+
     const pagesRun =
       options.type === "legal"
         ? await runLegalPagesPhase(
@@ -165,6 +168,7 @@ export async function processAdditionalPages(
               sourceUrl:
                 website.generationMode === "fresh" ? null : website.sourceUrl,
               slug: website.slug,
+              repoUrl,
               agentId: job.homepageAgentId,
               generationMode: website.generationMode,
               creationPrompt: website.creationPrompt,
@@ -179,6 +183,7 @@ export async function processAdditionalPages(
                 sourceUrl:
                   website.generationMode === "fresh" ? null : website.sourceUrl,
                 slug: website.slug,
+                repoUrl,
                 agentId: job.homepageAgentId,
                 generationMode: website.generationMode,
                 creationPrompt: website.creationPrompt,
@@ -191,6 +196,7 @@ export async function processAdditionalPages(
               {
                 sourceUrl: website.sourceUrl,
                 slug: website.slug,
+                repoUrl,
                 agentId: job.homepageAgentId,
                 generationMode: website.generationMode,
                 creationPrompt: website.creationPrompt,

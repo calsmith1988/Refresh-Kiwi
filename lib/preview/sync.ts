@@ -3,7 +3,9 @@ import path from "node:path";
 
 import { Agent } from "@cursor/sdk";
 
-import { getCursorApiKey, getSitesRepoUrl } from "@/lib/cursor/config";
+import { getCursorApiKey } from "@/lib/cursor/config";
+import { githubHeaders, parseGithubRepo } from "@/lib/github/api";
+import { resolveSitesRepoUrlForSlug } from "@/lib/github/repos";
 import { logMemoryUsage } from "@/lib/observability/memory";
 import { previewDirectory } from "@/lib/preview/paths";
 import { uploadSiteDirectoryToR2 } from "@/lib/storage/r2";
@@ -14,32 +16,7 @@ const ARTIFACT_SYNC_ATTEMPTS = 5;
 const ARTIFACT_SYNC_DELAY_MS = 2_000;
 const REQUIRED_HOMEPAGE_FILES = ["index.html", "site.json"] as const;
 
-export function githubHeaders(): Record<string, string> {
-  const token = process.env.GITHUB_TOKEN?.trim() || process.env.GH_TOKEN?.trim();
-  const headers: Record<string, string> = {
-    Accept: "application/vnd.github+json",
-    "User-Agent": "refresh-kiwi",
-    "X-GitHub-Api-Version": "2022-11-28",
-  };
-
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-
-  return headers;
-}
-
-export function parseGithubRepo(
-  repoUrl: string,
-): { owner: string; repo: string } | null {
-  const match = repoUrl.match(/github\.com[/:]([^/]+)\/([^/.]+)/i);
-
-  if (!match) {
-    return null;
-  }
-
-  return { owner: match[1], repo: match[2] };
-}
+export { githubHeaders, parseGithubRepo };
 
 async function sleep(ms: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, ms));
@@ -171,10 +148,11 @@ async function uploadSyncedPreview(slug: string, outputDir: string): Promise<voi
 }
 
 export async function syncFromGithubMain(slug: string, outputDir: string): Promise<boolean> {
-  const parsed = parseGithubRepo(getSitesRepoUrl());
+  const repoUrl = await resolveSitesRepoUrlForSlug(slug);
+  const parsed = parseGithubRepo(repoUrl);
 
   if (!parsed) {
-    throw new Error("CURSOR_SITES_REPO_URL is not a GitHub repository URL");
+    throw new Error(`Sites repo for ${slug} is not a GitHub repository URL`);
   }
 
   const prefix = `sites/${slug}/`;
@@ -186,7 +164,7 @@ export async function syncFromGithubMain(slug: string, outputDir: string): Promi
   if (!treeResponse.ok) {
     if (treeResponse.status === 403 || treeResponse.status === 404) {
       throw new Error(
-        `GitHub sync cannot access ${parsed.owner}/${parsed.repo} (${treeResponse.status}). Set GITHUB_TOKEN on Render with contents read access for CURSOR_SITES_REPO_URL.`,
+        `GitHub sync cannot access ${parsed.owner}/${parsed.repo} (${treeResponse.status}). Set GITHUB_TOKEN on Render with contents read access for the sites repo(s).`,
       );
     }
 

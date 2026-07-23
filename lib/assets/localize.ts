@@ -645,7 +645,7 @@ export async function appendLocalizedImages(params: {
   });
 
   try {
-    await commitFilesToSitesRepo(repoFiles, `Add uploaded image(s) for ${slug}`);
+    await commitFilesToSitesRepo(slug, repoFiles, `Add uploaded image(s) for ${slug}`);
   } catch (error) {
     console.error(
       `[refresh-kiwi] image upload: failed to commit ${slug} to sites repo:`,
@@ -689,6 +689,7 @@ export async function updateLocalizedImageRole(params: {
 
   try {
     await commitFilesToSitesRepo(
+      params.slug,
       [
         {
           path: `sites/${params.slug}/assets/manifest.json`,
@@ -772,7 +773,7 @@ async function persistImageChange(params: {
       });
     }
 
-    await commitFilesToSitesRepo(repoFiles, params.commitMessage);
+    await commitFilesToSitesRepo(slug, repoFiles, params.commitMessage);
   } catch (error) {
     console.error(
       `[refresh-kiwi] image change: failed to commit ${slug} to sites repo:`,
@@ -1131,6 +1132,7 @@ export async function localizeWebsiteImages(
       });
 
       const commitSha = await commitFilesToSitesRepo(
+        slug,
         repoFiles,
         `Localise ${localized.length} image(s) for ${slug}`,
       );

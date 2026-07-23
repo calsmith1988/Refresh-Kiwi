@@ -1,5 +1,5 @@
-import { getSitesRepoUrl } from "@/lib/cursor/config";
-import { githubHeaders, parseGithubRepo } from "@/lib/preview/sync";
+import { githubHeaders, parseGithubRepo } from "@/lib/github/api";
+import { resolveSitesRepoUrlForSlug } from "@/lib/github/repos";
 
 export type RepoFile = {
   /** Path inside the repo, e.g. "sites/my-slug/index.html" */
@@ -36,11 +36,13 @@ async function githubRequest<T>(
 }
 
 /**
- * Commits a batch of files to the sites repo `main` branch as a single commit
- * using the Git data API (blobs -> tree -> commit -> ref). Requires
- * GITHUB_TOKEN to have contents write access on the sites repo.
+ * Commits a batch of files to the site's repo `main` branch as a single
+ * commit using the Git data API (blobs -> tree -> commit -> ref). The target
+ * repo is the site's own repo when it has one, else the shared legacy repo.
+ * Requires GITHUB_TOKEN to have contents write access.
  */
 export async function commitFilesToSitesRepo(
+  slug: string,
   files: RepoFile[],
   message: string,
 ): Promise<string> {
@@ -48,10 +50,11 @@ export async function commitFilesToSitesRepo(
     throw new Error("No files to commit");
   }
 
-  const parsed = parseGithubRepo(getSitesRepoUrl());
+  const repoUrl = await resolveSitesRepoUrlForSlug(slug);
+  const parsed = parseGithubRepo(repoUrl);
 
   if (!parsed) {
-    throw new Error("CURSOR_SITES_REPO_URL is not a GitHub repository URL");
+    throw new Error(`Sites repo for ${slug} is not a GitHub repository URL`);
   }
 
   const base = `https://api.github.com/repos/${parsed.owner}/${parsed.repo}`;

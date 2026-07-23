@@ -20,7 +20,7 @@ The core user journey is:
 2. A job is created in the database.
 3. A durable `background_tasks` row is queued in Postgres.
 4. A Render worker service claims the task and starts a Cursor cloud agent.
-5. The Cursor agent writes generated site files under `sites/{slug}/` in the external sites repository.
+5. The Cursor agent writes generated site files under `sites/{slug}/` in the site's own GitHub repo (`site-{slug}`, created per job by `lib/github/repos.ts`). Sites built before per-site repos have `jobs.sites_repo_url = NULL` and live in the shared `CURSOR_SITES_REPO_URL` repo instead.
 6. Refresh Kiwi syncs those files into `/previews/{slug}` and Cloudflare R2.
 7. The preview is served from `/preview/{slug}/...`.
 8. Users can claim the site, request edits, generate pages, upload/remix images, upgrade to Pro, publish, and connect a custom domain.
@@ -174,7 +174,7 @@ Preview serving checks sources in this broad order:
 
 1. local `/previews/{slug}`
 2. Cloudflare R2
-3. GitHub contents fallback from `CURSOR_SITES_REPO_URL`
+3. GitHub contents fallback from the site's repo (per-site repo when the job has one, else `CURSOR_SITES_REPO_URL`)
 
 R2 is accessed through a custom S3-compatible SigV4 implementation, not an AWS SDK dependency.
 
