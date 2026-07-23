@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import ModalCloseButton from "@/components/ModalCloseButton";
 import SiteLogo from "@/components/SiteLogo";
 
 interface AuthUser {
@@ -20,6 +21,69 @@ type WebsiteSummary = {
   id: string;
 };
 
+type AccountModal =
+  | "name"
+  | "email"
+  | "password"
+  | "twofactor"
+  | "delete"
+  | null;
+
+function SettingRow({
+  label,
+  value,
+  chip,
+  action,
+}: {
+  label: string;
+  value: React.ReactNode;
+  chip?: React.ReactNode;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-3 border-t border-black/5 py-4 first:border-t-0 first:pt-0 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-black">{label}</p>
+        <div className="mt-1 flex flex-wrap items-center gap-2">
+          <div className="break-all text-sm leading-6 text-black/55">{value}</div>
+          {chip}
+        </div>
+      </div>
+      {action ? <div className="shrink-0">{action}</div> : null}
+    </div>
+  );
+}
+
+function RowButton({
+  children,
+  onClick,
+  variant = "default",
+  disabled,
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  variant?: "default" | "danger" | "primary";
+  disabled?: boolean;
+}) {
+  const styles =
+    variant === "danger"
+      ? "border-red-200 bg-red-50 text-red-700 hover:border-red-300"
+      : variant === "primary"
+        ? "border-transparent bg-kiwi-green text-black hover:bg-kiwi-green-hover"
+        : "border-black/10 bg-white text-black hover:border-black/25";
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`h-10 rounded-full border px-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${styles}`}
+    >
+      {children}
+    </button>
+  );
+}
+
 export default function AccountPage() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [websiteCount, setWebsiteCount] = useState<number | null>(null);
@@ -35,10 +99,12 @@ export default function AccountPage() {
   const [isSigningOutEverywhere, setIsSigningOutEverywhere] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [modalError, setModalError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [billingAction, setBillingAction] = useState<"checkout" | "portal" | null>(
     null,
   );
+  const [activeModal, setActiveModal] = useState<AccountModal>(null);
   const [twoFactorSetup, setTwoFactorSetup] = useState<{
     secret: string;
     otpauthUrl: string;
@@ -46,6 +112,8 @@ export default function AccountPage() {
   const [twoFactorCode, setTwoFactorCode] = useState("");
   const [twoFactorPassword, setTwoFactorPassword] = useState("");
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
+  const [isSavingName, setIsSavingName] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -81,10 +149,32 @@ export default function AccountPage() {
     };
   }, []);
 
+  const openModal = (modal: AccountModal) => {
+    setModalError(null);
+    setError(null);
+    setActiveModal(modal);
+  };
+
+  const closeModal = () => {
+    setActiveModal(null);
+    setModalError(null);
+    setTwoFactorSetup(null);
+    setTwoFactorCode("");
+    setTwoFactorPassword("");
+    setCurrentPassword("");
+    setNewPassword("");
+    setNewEmail("");
+    setEmailChangePassword("");
+    setDeletePassword("");
+    setDeleteConfirmation("");
+    setName(user?.name ?? "");
+  };
+
   const updateProfile = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setMessage(null);
-    setError(null);
+    setModalError(null);
+    setIsSavingName(true);
 
     try {
       const response = await fetch("/api/account", {
@@ -99,16 +189,22 @@ export default function AccountPage() {
       }
 
       setUser(payload.user);
-      setMessage("Account updated.");
+      setMessage("Name updated.");
+      setActiveModal(null);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unable to update account");
+      setModalError(
+        caught instanceof Error ? caught.message : "Unable to update account",
+      );
+    } finally {
+      setIsSavingName(false);
     }
   };
 
   const changePassword = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setMessage(null);
-    setError(null);
+    setModalError(null);
+    setIsChangingPassword(true);
 
     try {
       const response = await fetch("/api/account/password", {
@@ -126,15 +222,20 @@ export default function AccountPage() {
       setCurrentPassword("");
       setNewPassword("");
       setMessage("Password changed.");
+      setActiveModal(null);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unable to change password");
+      setModalError(
+        caught instanceof Error ? caught.message : "Unable to change password",
+      );
+    } finally {
+      setIsChangingPassword(false);
     }
   };
 
   const requestEmailUpdate = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setMessage(null);
-    setError(null);
+    setModalError(null);
     setIsRequestingEmailChange(true);
 
     try {
@@ -157,8 +258,9 @@ export default function AccountPage() {
       setMessage(
         `Check ${payload.newEmail} to confirm your new email address. Your account email will not change until you open that link.`,
       );
+      setActiveModal(null);
     } catch (caught) {
-      setError(
+      setModalError(
         caught instanceof Error ? caught.message : "Unable to request email change",
       );
     } finally {
@@ -220,7 +322,7 @@ export default function AccountPage() {
   const deleteCurrentAccount = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setMessage(null);
-    setError(null);
+    setModalError(null);
     setIsDeletingAccount(true);
 
     try {
@@ -241,7 +343,9 @@ export default function AccountPage() {
       window.localStorage.removeItem("refresh-kiwi:active-job");
       window.location.href = "/";
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unable to delete account");
+      setModalError(
+        caught instanceof Error ? caught.message : "Unable to delete account",
+      );
       setIsDeletingAccount(false);
     }
   };
@@ -272,7 +376,7 @@ export default function AccountPage() {
 
   const startTwoFactorSetup = async () => {
     setMessage(null);
-    setError(null);
+    setModalError(null);
     setRecoveryCodes([]);
 
     try {
@@ -284,16 +388,17 @@ export default function AccountPage() {
       }
 
       setTwoFactorSetup(payload);
-      setMessage("Scan the setup link or enter the secret in your authenticator app.");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unable to start 2FA setup");
+      setModalError(
+        caught instanceof Error ? caught.message : "Unable to start 2FA setup",
+      );
     }
   };
 
   const enableTwoFactor = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setMessage(null);
-    setError(null);
+    setModalError(null);
 
     try {
       const response = await fetch("/api/account/2fa/enable", {
@@ -313,13 +418,15 @@ export default function AccountPage() {
       setTwoFactorCode("");
       setMessage("Two-factor authentication is now enabled.");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unable to enable 2FA");
+      setModalError(
+        caught instanceof Error ? caught.message : "Unable to enable 2FA",
+      );
     }
   };
 
   const disableTwoFactor = async () => {
     setMessage(null);
-    setError(null);
+    setModalError(null);
 
     try {
       const response = await fetch("/api/account/2fa/disable", {
@@ -337,14 +444,17 @@ export default function AccountPage() {
       setTwoFactorPassword("");
       setRecoveryCodes([]);
       setMessage("Two-factor authentication has been disabled.");
+      setActiveModal(null);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unable to disable 2FA");
+      setModalError(
+        caught instanceof Error ? caught.message : "Unable to disable 2FA",
+      );
     }
   };
 
   const regenerateRecoveryCodes = async () => {
     setMessage(null);
-    setError(null);
+    setModalError(null);
 
     try {
       const response = await fetch("/api/account/2fa/recovery-codes", {
@@ -362,7 +472,7 @@ export default function AccountPage() {
       setTwoFactorPassword("");
       setMessage("New recovery codes generated. Save them now.");
     } catch (caught) {
-      setError(
+      setModalError(
         caught instanceof Error ? caught.message : "Unable to regenerate recovery codes",
       );
     }
@@ -402,10 +512,22 @@ export default function AccountPage() {
     }
   };
 
+  const closeModalOnBackdrop = (
+    event: React.MouseEvent<HTMLDivElement>,
+  ) => {
+    if (event.target === event.currentTarget) {
+      // Don't dismiss while recovery codes are shown — user must acknowledge.
+      if (recoveryCodes.length > 0 && activeModal === "twofactor") {
+        return;
+      }
+      closeModal();
+    }
+  };
+
   if (isLoading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#faf8f1] px-5 text-[#141811]">
-        <div className="rounded-[2rem] border border-black/10 bg-white p-6 text-sm font-medium text-black/55 shadow-xl">
+        <div className="rounded-3xl border border-black/10 bg-white p-6 text-sm font-medium text-black/55 shadow-xl">
           Loading account settings...
         </div>
       </main>
@@ -415,8 +537,8 @@ export default function AccountPage() {
   if (!user) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#faf8f1] px-5 text-[#141811]">
-        <div className="w-full max-w-md rounded-[2rem] border border-black/10 bg-white p-7 text-center shadow-xl">
-          <h1 className="font-fraunces text-3xl font-semibold tracking-tight">
+        <div className="w-full max-w-md rounded-3xl border border-black/10 bg-white p-6 text-center shadow-2xl sm:p-8">
+          <h1 className="font-fraunces text-2xl font-semibold tracking-tight">
             Sign in required
           </h1>
           <p className="mt-2 text-sm leading-6 text-black/55">
@@ -425,7 +547,7 @@ export default function AccountPage() {
           </p>
           <Link
             href="/"
-            className="mt-5 inline-flex h-11 items-center justify-center rounded-full bg-[#141811] px-5 text-sm font-semibold text-white transition hover:bg-black"
+            className="mt-6 inline-flex h-12 w-full items-center justify-center rounded-full bg-[#141811] px-5 text-sm font-semibold text-white transition hover:bg-black"
           >
             Back to homepage
           </Link>
@@ -437,10 +559,11 @@ export default function AccountPage() {
   const planLabel = user.plan === "pro" ? "Kiwi Pro" : "Free";
   const subscriptionLabel = user.subscriptionStatus.replaceAll("_", " ");
   const websiteLimit = user.plan === "pro" ? 3 : 1;
+  const displayName = user.name?.trim() || "Not set";
 
   return (
     <main className="min-h-screen bg-[#faf8f1] px-5 py-5 text-[#141811] sm:px-8 lg:px-10">
-      <div className="mx-auto w-full max-w-6xl">
+      <div className="mx-auto w-full max-w-3xl">
         <header className="flex flex-col gap-4 border-b border-black/5 pb-5 sm:flex-row sm:items-center sm:justify-between">
           <SiteLogo />
           <div className="flex flex-wrap items-center gap-2">
@@ -460,255 +583,582 @@ export default function AccountPage() {
           </div>
         </header>
 
-        <section className="mt-10 rounded-[2rem] border border-black/10 bg-white p-6 shadow-2xl shadow-black/5 sm:p-8">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="inline-flex items-center gap-2 rounded-full bg-[#f0f4e7] px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-black/45">
-                Account
-              </p>
-              <h1 className="mt-4 font-fraunces text-4xl font-semibold tracking-tight sm:text-5xl">
-                Profile &amp; settings
-              </h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-black/55">
-                Manage how you sign in, keep your account secure, and update the
-                billing or email preferences for your Refresh Kiwi websites.
-              </p>
-            </div>
-            <div className="grid gap-2 text-sm sm:min-w-72">
-              <div className="rounded-2xl bg-[#faf8f1] px-4 py-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-black/35">
-                  Signed in as
-                </p>
-                <p className="mt-1 break-all font-semibold">{user.email}</p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <span className="rounded-full bg-kiwi-green px-3 py-1 text-xs font-bold capitalize text-black">
-                  {planLabel}
-                </span>
-                <span className="rounded-full bg-black/5 px-3 py-1 text-xs font-semibold capitalize text-black/55">
-                  {subscriptionLabel}
-                </span>
-                <span
-                  className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                    user.emailVerified
-                      ? "bg-[#f0f4e7] text-black/60"
-                      : "bg-yellow-50 text-yellow-800"
-                  }`}
-                >
-                  {user.emailVerified ? "Email verified" : "Email not verified"}
-                </span>
-              </div>
-            </div>
+        <section className="mt-8">
+          <h1 className="font-fraunces text-3xl font-semibold tracking-tight sm:text-4xl">
+            Account
+          </h1>
+          <p className="mt-2 text-sm leading-6 text-black/55">
+            Signed in as{" "}
+            <span className="font-semibold text-black">{user.email}</span>
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <span className="rounded-full bg-kiwi-green px-3 py-1 text-xs font-semibold capitalize text-black">
+              {planLabel}
+            </span>
+            <span className="rounded-full bg-black/5 px-3 py-1 text-xs font-semibold capitalize text-black/55">
+              {subscriptionLabel}
+            </span>
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                user.emailVerified
+                  ? "bg-[#f0f4e7] text-black/60"
+                  : "bg-yellow-50 text-yellow-800"
+              }`}
+            >
+              {user.emailVerified ? "Email verified" : "Email not verified"}
+            </span>
           </div>
         </section>
 
         {message ? (
-          <div className="mt-5 rounded-3xl border border-[#bfe262] bg-[#f4fbe8] p-4 text-sm font-medium text-[#315a16]">
+          <div className="mt-5 rounded-2xl border border-[#bfe262] bg-[#f4fbe8] px-4 py-3 text-sm font-medium text-[#315a16]">
             {message}
           </div>
         ) : null}
         {error ? (
-          <div className="mt-5 rounded-3xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">
+          <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
             {error}
           </div>
         ) : null}
 
         {!user.emailVerified ? (
-          <div className="mt-6 flex flex-col gap-4 rounded-3xl border border-yellow-200 bg-yellow-50 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-yellow-200 bg-yellow-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-semibold">Verify your email address</p>
               <p className="mt-1 text-sm leading-6 text-black/60">
-                Verification helps keep password resets and account emails
-                reliable.
+                Helps keep password resets and account emails reliable.
               </p>
             </div>
             <button
               type="button"
               onClick={() => void resendVerification()}
-              className="h-11 shrink-0 rounded-full border border-black/10 bg-white px-5 text-sm font-semibold transition hover:border-black/25"
+              className="h-10 shrink-0 rounded-full border border-black/10 bg-white px-4 text-sm font-semibold transition hover:border-black/25"
             >
               Resend verification
             </button>
           </div>
         ) : null}
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.72fr)]">
-          <div className="space-y-6">
-            <section className="rounded-[2rem] border border-black/10 bg-white p-6 shadow-xl shadow-black/5">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-black/35">
-                    Profile
-                  </p>
-                  <h2 className="mt-1 font-fraunces text-2xl font-semibold tracking-tight">
-                    Your details
-                  </h2>
-                </div>
-              </div>
-              <form onSubmit={updateProfile} className="mt-5">
-                <label className="block text-sm font-semibold" htmlFor="name">
-                  Name
-                </label>
-                <input
-                  id="name"
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  placeholder="Your name"
-                  className="mt-2 h-12 w-full rounded-full border border-black/10 bg-white px-4 text-sm outline-none transition placeholder:text-black/30 focus:border-black/30"
-                />
-                <button className="mt-4 h-11 rounded-full bg-kiwi-green px-5 text-sm font-bold text-black transition hover:bg-kiwi-green-hover">
-                  Save profile
-                </button>
-              </form>
-
-              <form
-                onSubmit={requestEmailUpdate}
-                className="mt-6 rounded-3xl bg-[#faf8f1] p-5"
-              >
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <p className="text-sm font-semibold">Email address</p>
-                    <p className="mt-1 break-all text-sm text-black/60">
-                      {user.email}
-                    </p>
-                  </div>
+        <div className="mt-6 space-y-4">
+          {/* Profile & sign-in */}
+          <section className="rounded-3xl border border-black/10 bg-white p-5 shadow-xl shadow-black/5 sm:p-6">
+            <h2 className="font-fraunces text-xl font-semibold tracking-tight">
+              Profile &amp; sign-in
+            </h2>
+            <p className="mt-1 text-sm leading-6 text-black/55">
+              Your name, email, and password.
+            </p>
+            <div className="mt-4">
+              <SettingRow
+                label="Name"
+                value={displayName}
+                action={
+                  <RowButton
+                    onClick={() => {
+                      setName(user.name ?? "");
+                      openModal("name");
+                    }}
+                  >
+                    Change
+                  </RowButton>
+                }
+              />
+              <SettingRow
+                label="Email"
+                value={user.email}
+                chip={
                   <span
-                    className={`w-fit rounded-full px-3 py-1 text-xs font-semibold ${
+                    className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                       user.emailVerified
-                        ? "bg-white text-black/45"
+                        ? "bg-[#f0f4e7] text-black/55"
                         : "bg-yellow-50 text-yellow-800"
                     }`}
                   >
-                    {user.emailVerified ? "Verified" : "Needs verification"}
+                    {user.emailVerified ? "Verified" : "Not verified"}
                   </span>
-                </div>
-                <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                  <label className="block">
-                    <span className="text-sm font-semibold">New email</span>
-                    <input
-                      type="email"
-                      value={newEmail}
-                      onChange={(event) => setNewEmail(event.target.value)}
-                      placeholder="new@email.com"
-                      autoComplete="email"
-                      className="mt-2 h-11 w-full rounded-full border border-black/10 bg-white px-4 text-sm outline-none transition placeholder:text-black/30 focus:border-black/30"
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="text-sm font-semibold">Current password</span>
-                    <input
-                      type="password"
-                      value={emailChangePassword}
-                      onChange={(event) =>
-                        setEmailChangePassword(event.target.value)
-                      }
-                      autoComplete="current-password"
-                      className="mt-2 h-11 w-full rounded-full border border-black/10 bg-white px-4 text-sm outline-none transition focus:border-black/30"
-                    />
-                  </label>
-                </div>
-                <button
-                  disabled={
-                    isRequestingEmailChange ||
-                    !newEmail.trim() ||
-                    !emailChangePassword
-                  }
-                  className="mt-4 h-11 rounded-full border border-black/10 bg-white px-5 text-sm font-semibold text-black transition hover:border-black/25 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {isRequestingEmailChange
-                    ? "Sending confirmation..."
-                    : "Send confirmation link"}
-                </button>
-                <p className="mt-3 text-xs leading-5 text-black/45">
-                  We will send a confirmation link to the new address. Your email
-                  changes only after that link is opened.
-                </p>
-              </form>
-            </section>
+                }
+                action={
+                  <RowButton onClick={() => openModal("email")}>Change</RowButton>
+                }
+              />
+              <SettingRow
+                label="Password"
+                value="••••••••"
+                action={
+                  <RowButton onClick={() => openModal("password")}>
+                    Change
+                  </RowButton>
+                }
+              />
+            </div>
+          </section>
 
-            <section className="rounded-[2rem] border border-black/10 bg-white p-6 shadow-xl shadow-black/5">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-black/35">
-                Password
-              </p>
-              <h2 className="mt-1 font-fraunces text-2xl font-semibold tracking-tight">
-                Change password
-              </h2>
-              <p className="mt-2 text-sm leading-6 text-black/55">
-                Use a password with at least 8 characters. You will keep your
-                current session after changing it.
-              </p>
-              <form onSubmit={changePassword} className="mt-5 space-y-3">
-                <label className="block">
-                  <span className="text-sm font-semibold">Current password</span>
-                  <input
-                    type="password"
-                    value={currentPassword}
-                    onChange={(event) => setCurrentPassword(event.target.value)}
-                    autoComplete="current-password"
-                    className="mt-2 h-12 w-full rounded-full border border-black/10 px-4 text-sm outline-none transition focus:border-black/30"
-                  />
-                </label>
-                <label className="block">
-                  <span className="text-sm font-semibold">New password</span>
-                  <input
-                    type="password"
-                    value={newPassword}
-                    onChange={(event) => setNewPassword(event.target.value)}
-                    autoComplete="new-password"
-                    className="mt-2 h-12 w-full rounded-full border border-black/10 px-4 text-sm outline-none transition focus:border-black/30"
-                  />
-                </label>
-                <button
-                  disabled={!currentPassword || newPassword.length < 8}
-                  className="h-11 rounded-full bg-[#141811] px-5 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Change password
-                </button>
-              </form>
-            </section>
+          {/* Security */}
+          <section className="rounded-3xl border border-black/10 bg-white p-5 shadow-xl shadow-black/5 sm:p-6">
+            <h2 className="font-fraunces text-xl font-semibold tracking-tight">
+              Security
+            </h2>
+            <p className="mt-1 text-sm leading-6 text-black/55">
+              Extra protection and signed-in devices.
+            </p>
+            <div className="mt-4">
+              <SettingRow
+                label="Two-factor authentication"
+                value={
+                  user.twoFactorEnabled
+                    ? "Authenticator app required at login"
+                    : "Optional — add an authenticator app"
+                }
+                chip={
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                      user.twoFactorEnabled
+                        ? "bg-kiwi-green text-black"
+                        : "bg-black/5 text-black/45"
+                    }`}
+                  >
+                    {user.twoFactorEnabled ? "Enabled" : "Off"}
+                  </span>
+                }
+                action={
+                  <RowButton
+                    variant={user.twoFactorEnabled ? "default" : "primary"}
+                    onClick={() => {
+                      setRecoveryCodes([]);
+                      setTwoFactorSetup(null);
+                      openModal("twofactor");
+                    }}
+                  >
+                    {user.twoFactorEnabled ? "Manage" : "Set up"}
+                  </RowButton>
+                }
+              />
+              <SettingRow
+                label="Sessions"
+                value="Sign out of this device, or everywhere if you used a shared computer."
+                action={
+                  <div className="flex flex-col gap-2 sm:items-end">
+                    <RowButton onClick={() => void logout()}>
+                      Log out of this device
+                    </RowButton>
+                    <RowButton
+                      disabled={isSigningOutEverywhere}
+                      onClick={() => void signOutEverywhere()}
+                    >
+                      {isSigningOutEverywhere
+                        ? "Signing out..."
+                        : "Sign out everywhere"}
+                    </RowButton>
+                  </div>
+                }
+              />
+            </div>
+          </section>
 
-            <section className="rounded-[2rem] border border-black/10 bg-white p-6 shadow-xl shadow-black/5">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-black/35">
-                    Security
-                  </p>
-                  <h2 className="mt-1 font-fraunces text-2xl font-semibold tracking-tight">
-                    Two-factor authentication
-                  </h2>
-                  <p className="mt-2 text-sm leading-6 text-black/55">
-                    {user.twoFactorEnabled
-                      ? "2FA is enabled. You will need an authenticator code when logging in."
-                      : "Add an authenticator app code for extra protection."}
-                  </p>
-                </div>
-                <span
-                  className={`w-fit rounded-full px-3 py-1 text-xs font-bold ${
-                    user.twoFactorEnabled
-                      ? "bg-kiwi-green text-black"
-                      : "bg-black/5 text-black/45"
-                  }`}
-                >
-                  {user.twoFactorEnabled ? "Enabled" : "Optional"}
-                </span>
-              </div>
-
-              {!user.twoFactorEnabled ? (
+          {/* Billing & emails */}
+          <section className="rounded-3xl border border-black/10 bg-white p-5 shadow-xl shadow-black/5 sm:p-6">
+            <h2 className="font-fraunces text-xl font-semibold tracking-tight">
+              Billing &amp; emails
+            </h2>
+            <p className="mt-1 text-sm leading-6 text-black/55">
+              Your plan, payments, and optional follow-ups.
+            </p>
+            <div className="mt-4">
+              <SettingRow
+                label="Current plan"
+                value={planLabel}
+                chip={
+                  <span className="rounded-full bg-black/5 px-2.5 py-0.5 text-xs font-semibold capitalize text-black/55">
+                    {subscriptionLabel}
+                  </span>
+                }
+              />
+              <SettingRow
+                label="Websites"
+                value={
+                  websiteCount !== null
+                    ? `Using ${websiteCount} of ${websiteLimit}`
+                    : `Up to ${websiteLimit} ${websiteLimit === 1 ? "website" : "websites"}`
+                }
+              />
+              <div className="border-t border-black/5 py-4">
                 <button
                   type="button"
-                  onClick={() => void startTwoFactorSetup()}
-                  className="mt-5 h-11 rounded-full bg-kiwi-green px-5 text-sm font-bold text-black transition hover:bg-kiwi-green-hover"
+                  onClick={() => void startBillingFlow()}
+                  disabled={billingAction !== null}
+                  className="h-12 w-full rounded-full bg-kiwi-green px-5 text-sm font-semibold text-black transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                 >
-                  Set up 2FA
+                  {billingAction
+                    ? "Opening..."
+                    : user.plan === "pro"
+                      ? "Manage billing"
+                      : "Go Pro"}
                 </button>
-              ) : null}
-
-              {twoFactorSetup ? (
-                <form
-                  onSubmit={enableTwoFactor}
-                  className="mt-5 rounded-3xl bg-[#faf8f1] p-5"
+                {user.plan === "pro" ? (
+                  <button
+                    type="button"
+                    onClick={() => void startBillingFlow()}
+                    disabled={billingAction !== null}
+                    className="mt-2 h-11 w-full rounded-full border border-black/10 bg-white px-5 text-sm font-semibold text-black transition hover:border-black/25 disabled:cursor-not-allowed disabled:opacity-50 sm:ml-2 sm:mt-0 sm:w-auto"
+                  >
+                    View invoices
+                  </button>
+                ) : null}
+                <p className="mt-3 text-xs leading-5 text-black/45">
+                  Payments and invoices are handled securely by Stripe.
+                </p>
+              </div>
+              <div className="flex flex-col gap-3 border-t border-black/5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-black">
+                    Follow-up emails
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-black/55">
+                    Optional emails about your previews and Kiwi Pro.
+                    Password resets and billing notices always send.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={user.marketingEmailsEnabled}
+                  onClick={() =>
+                    void updateEmailPreferences(!user.marketingEmailsEnabled)
+                  }
+                  className={`relative h-7 w-12 shrink-0 rounded-full transition ${
+                    user.marketingEmailsEnabled
+                      ? "bg-kiwi-green"
+                      : "bg-black/15"
+                  }`}
                 >
-                  <p className="text-sm font-semibold">
+                  <span
+                    aria-hidden
+                    className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition ${
+                      user.marketingEmailsEnabled ? "left-[22px]" : "left-0.5"
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+          </section>
+
+          {/* Danger zone */}
+          <section className="rounded-3xl border border-red-100 bg-white p-5 shadow-xl shadow-black/5 sm:p-6">
+            <h2 className="font-fraunces text-xl font-semibold tracking-tight">
+              Danger zone
+            </h2>
+            <p className="mt-1 text-sm leading-6 text-black/55">
+              Permanent actions for this account.
+            </p>
+            <div className="mt-4">
+              <SettingRow
+                label="Delete account"
+                value="Archives your websites, removes custom domains, and deletes your login. Pro users should cancel billing first."
+                action={
+                  <RowButton
+                    variant="danger"
+                    onClick={() => openModal("delete")}
+                  >
+                    Delete account
+                  </RowButton>
+                }
+              />
+            </div>
+          </section>
+        </div>
+      </div>
+
+      {/* ─── Name modal ─── */}
+      {activeModal === "name" ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="account-name-title"
+          onMouseDown={closeModalOnBackdrop}
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/35 px-5 py-4 backdrop-blur-sm sm:items-center"
+        >
+          <div className="preview-pop max-h-[90vh] w-full max-w-md modal-scroll overflow-y-auto rounded-3xl border border-black/10 bg-white p-6 shadow-2xl sm:p-8">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2
+                  id="account-name-title"
+                  className="font-fraunces text-2xl font-semibold tracking-tight"
+                >
+                  Change name
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-black/55">
+                  This is the display name on your account.
+                </p>
+              </div>
+              <ModalCloseButton onClick={closeModal} />
+            </div>
+            <form onSubmit={updateProfile} className="mt-6 space-y-4">
+              <label className="block">
+                <span className="text-sm font-semibold text-black">Name</span>
+                <input
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  placeholder="Your name"
+                  autoComplete="name"
+                  className="mt-2 h-12 w-full rounded-full border border-black/10 bg-white px-5 text-sm outline-none placeholder:text-black/30 focus:border-black/30"
+                />
+              </label>
+              {modalError ? (
+                <p
+                  className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium leading-6 text-red-700"
+                  role="alert"
+                >
+                  {modalError}
+                </p>
+              ) : null}
+              <button
+                type="submit"
+                disabled={isSavingName}
+                className="h-12 w-full rounded-full bg-[#141811] px-5 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isSavingName ? "Saving..." : "Save name"}
+              </button>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
+      {/* ─── Email modal ─── */}
+      {activeModal === "email" ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="account-email-title"
+          onMouseDown={closeModalOnBackdrop}
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/35 px-5 py-4 backdrop-blur-sm sm:items-center"
+        >
+          <div className="preview-pop max-h-[90vh] w-full max-w-md modal-scroll overflow-y-auto rounded-3xl border border-black/10 bg-white p-6 shadow-2xl sm:p-8">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2
+                  id="account-email-title"
+                  className="font-fraunces text-2xl font-semibold tracking-tight"
+                >
+                  Change email
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-black/55">
+                  Current email:{" "}
+                  <span className="font-semibold text-black">{user.email}</span>
+                </p>
+              </div>
+              <ModalCloseButton onClick={closeModal} />
+            </div>
+            <form onSubmit={requestEmailUpdate} className="mt-6 space-y-4">
+              <label className="block">
+                <span className="text-sm font-semibold text-black">New email</span>
+                <input
+                  type="email"
+                  value={newEmail}
+                  onChange={(event) => setNewEmail(event.target.value)}
+                  placeholder="new@email.com"
+                  autoComplete="email"
+                  className="mt-2 h-12 w-full rounded-full border border-black/10 bg-white px-5 text-sm outline-none placeholder:text-black/30 focus:border-black/30"
+                />
+              </label>
+              <label className="block">
+                <span className="text-sm font-semibold text-black">
+                  Current password
+                </span>
+                <input
+                  type="password"
+                  value={emailChangePassword}
+                  onChange={(event) => setEmailChangePassword(event.target.value)}
+                  autoComplete="current-password"
+                  className="mt-2 h-12 w-full rounded-full border border-black/10 bg-white px-5 text-sm outline-none focus:border-black/30"
+                />
+              </label>
+              <p className="text-xs leading-5 text-black/45">
+                We&apos;ll send a confirmation link to the new address. Your email
+                only changes after you open that link.
+              </p>
+              {modalError ? (
+                <p
+                  className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium leading-6 text-red-700"
+                  role="alert"
+                >
+                  {modalError}
+                </p>
+              ) : null}
+              <button
+                type="submit"
+                disabled={
+                  isRequestingEmailChange ||
+                  !newEmail.trim() ||
+                  !emailChangePassword
+                }
+                className="h-12 w-full rounded-full bg-[#141811] px-5 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isRequestingEmailChange
+                  ? "Sending confirmation..."
+                  : "Send confirmation link"}
+              </button>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
+      {/* ─── Password modal ─── */}
+      {activeModal === "password" ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="account-password-title"
+          onMouseDown={closeModalOnBackdrop}
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/35 px-5 py-4 backdrop-blur-sm sm:items-center"
+        >
+          <div className="preview-pop max-h-[90vh] w-full max-w-md modal-scroll overflow-y-auto rounded-3xl border border-black/10 bg-white p-6 shadow-2xl sm:p-8">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2
+                  id="account-password-title"
+                  className="font-fraunces text-2xl font-semibold tracking-tight"
+                >
+                  Change password
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-black/55">
+                  Use at least 8 characters. You&apos;ll stay signed in after
+                  changing it.
+                </p>
+              </div>
+              <ModalCloseButton onClick={closeModal} />
+            </div>
+            <form onSubmit={changePassword} className="mt-6 space-y-4">
+              <label className="block">
+                <span className="text-sm font-semibold text-black">
+                  Current password
+                </span>
+                <input
+                  type="password"
+                  value={currentPassword}
+                  onChange={(event) => setCurrentPassword(event.target.value)}
+                  autoComplete="current-password"
+                  className="mt-2 h-12 w-full rounded-full border border-black/10 bg-white px-5 text-sm outline-none focus:border-black/30"
+                />
+              </label>
+              <label className="block">
+                <span className="text-sm font-semibold text-black">
+                  New password
+                </span>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(event) => setNewPassword(event.target.value)}
+                  autoComplete="new-password"
+                  className="mt-2 h-12 w-full rounded-full border border-black/10 bg-white px-5 text-sm outline-none focus:border-black/30"
+                />
+              </label>
+              {modalError ? (
+                <p
+                  className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium leading-6 text-red-700"
+                  role="alert"
+                >
+                  {modalError}
+                </p>
+              ) : null}
+              <button
+                type="submit"
+                disabled={
+                  isChangingPassword ||
+                  !currentPassword ||
+                  newPassword.length < 8
+                }
+                className="h-12 w-full rounded-full bg-[#141811] px-5 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isChangingPassword ? "Saving..." : "Change password"}
+              </button>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
+      {/* ─── 2FA modal ─── */}
+      {activeModal === "twofactor" ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="account-2fa-title"
+          onMouseDown={closeModalOnBackdrop}
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/35 px-5 py-4 backdrop-blur-sm sm:items-center"
+        >
+          <div className="preview-pop max-h-[90vh] w-full max-w-md modal-scroll overflow-y-auto rounded-3xl border border-black/10 bg-white p-6 shadow-2xl sm:p-8">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2
+                  id="account-2fa-title"
+                  className="font-fraunces text-2xl font-semibold tracking-tight"
+                >
+                  {recoveryCodes.length > 0
+                    ? "Save your recovery codes"
+                    : user.twoFactorEnabled
+                      ? "Manage 2FA"
+                      : "Set up 2FA"}
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-black/55">
+                  {recoveryCodes.length > 0
+                    ? "Each code can be used once if you lose your authenticator app."
+                    : user.twoFactorEnabled
+                      ? "Regenerate recovery codes, or turn 2FA off."
+                      : "Add an authenticator app for extra protection at login."}
+                </p>
+              </div>
+              {recoveryCodes.length === 0 ? (
+                <ModalCloseButton onClick={closeModal} />
+              ) : null}
+            </div>
+
+            {modalError ? (
+              <p
+                className="mt-5 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium leading-6 text-red-700"
+                role="alert"
+              >
+                {modalError}
+              </p>
+            ) : null}
+
+            {recoveryCodes.length > 0 ? (
+              <div className="mt-6">
+                <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-4">
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {recoveryCodes.map((code) => (
+                      <code
+                        key={code}
+                        className="rounded-xl bg-white px-3 py-2 text-sm font-semibold"
+                      >
+                        {code}
+                      </code>
+                    ))}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRecoveryCodes([]);
+                    setActiveModal(null);
+                  }}
+                  className="mt-5 h-12 w-full rounded-full bg-[#141811] px-5 text-sm font-semibold text-white transition hover:bg-black"
+                >
+                  I&apos;ve saved these codes
+                </button>
+              </div>
+            ) : !user.twoFactorEnabled && !twoFactorSetup ? (
+              <button
+                type="button"
+                onClick={() => void startTwoFactorSetup()}
+                className="mt-6 h-12 w-full rounded-full bg-kiwi-green px-5 text-sm font-semibold text-black transition hover:bg-kiwi-green-hover"
+              >
+                Start setup
+              </button>
+            ) : null}
+
+            {twoFactorSetup ? (
+              <form onSubmit={enableTwoFactor} className="mt-6 space-y-4">
+                <div className="rounded-2xl bg-[#faf8f1] p-4">
+                  <p className="text-sm font-semibold text-black">
                     Add this to your authenticator app
                   </p>
                   <p className="mt-2 break-all rounded-2xl bg-white p-3 font-mono text-xs text-black/70">
@@ -720,239 +1170,138 @@ export default function AccountPage() {
                   >
                     Open authenticator setup link
                   </a>
+                </div>
+                <label className="block">
+                  <span className="text-sm font-semibold text-black">
+                    6-digit code
+                  </span>
                   <input
                     value={twoFactorCode}
                     onChange={(event) => setTwoFactorCode(event.target.value)}
-                    placeholder="6-digit code"
+                    placeholder="123456"
                     autoComplete="one-time-code"
-                    className="mt-4 h-11 w-full rounded-full border border-black/10 bg-white px-4 text-sm outline-none focus:border-black/30"
+                    className="mt-2 h-12 w-full rounded-full border border-black/10 bg-white px-5 text-sm outline-none placeholder:text-black/30 focus:border-black/30"
                   />
-                  <button
-                    disabled={!twoFactorCode.trim()}
-                    className="mt-3 h-11 rounded-full bg-[#141811] px-5 text-sm font-semibold text-white disabled:opacity-50"
-                  >
-                    Verify and enable
-                  </button>
-                </form>
-              ) : null}
+                </label>
+                <button
+                  type="submit"
+                  disabled={!twoFactorCode.trim()}
+                  className="h-12 w-full rounded-full bg-[#141811] px-5 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Verify and enable
+                </button>
+              </form>
+            ) : null}
 
-              {user.twoFactorEnabled ? (
-                <div className="mt-5 rounded-3xl bg-[#faf8f1] p-5">
-                  <label
-                    className="block text-sm font-semibold"
-                    htmlFor="two-factor-password"
-                  >
+            {user.twoFactorEnabled && recoveryCodes.length === 0 ? (
+              <div className="mt-6 space-y-4">
+                <label className="block">
+                  <span className="text-sm font-semibold text-black">
                     Confirm your password
-                  </label>
+                  </span>
                   <input
-                    id="two-factor-password"
                     type="password"
                     value={twoFactorPassword}
                     onChange={(event) => setTwoFactorPassword(event.target.value)}
                     placeholder="Password"
-                    className="mt-2 h-11 w-full rounded-full border border-black/10 bg-white px-4 text-sm outline-none focus:border-black/30"
+                    className="mt-2 h-12 w-full rounded-full border border-black/10 bg-white px-5 text-sm outline-none placeholder:text-black/30 focus:border-black/30"
                   />
-                  <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                    <button
-                      type="button"
-                      onClick={() => void regenerateRecoveryCodes()}
-                      disabled={!twoFactorPassword}
-                      className="h-11 rounded-full border border-black/10 bg-white px-5 text-sm font-semibold transition hover:border-black/25 disabled:opacity-50"
-                    >
-                      Regenerate recovery codes
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void disableTwoFactor()}
-                      disabled={!twoFactorPassword}
-                      className="h-11 rounded-full border border-red-200 bg-white px-5 text-sm font-semibold text-red-700 transition hover:border-red-300 disabled:opacity-50"
-                    >
-                      Disable 2FA
-                    </button>
-                  </div>
-                </div>
-              ) : null}
-
-              {recoveryCodes.length > 0 ? (
-                <div className="mt-5 rounded-3xl border border-yellow-200 bg-yellow-50 p-5">
-                  <p className="text-sm font-semibold">
-                    Save these recovery codes now
-                  </p>
-                  <p className="mt-1 text-sm text-black/60">
-                    Each code can be used once if you lose your authenticator app.
-                  </p>
-                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                    {recoveryCodes.map((code) => (
-                      <code
-                        key={code}
-                        className="rounded-xl bg-white px-3 py-2 text-sm font-semibold"
-                      >
-                        {code}
-                      </code>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-            </section>
-          </div>
-
-          <aside className="space-y-6">
-            <section className="rounded-[2rem] border border-black/10 bg-white p-6 shadow-xl shadow-black/5">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-black/35">
-                Billing
-              </p>
-              <h2 className="mt-1 font-fraunces text-2xl font-semibold tracking-tight">
-                Plan &amp; payment
-              </h2>
-              <dl className="mt-5 space-y-3 text-sm">
-                <div className="flex items-center justify-between gap-4 rounded-2xl bg-[#faf8f1] px-4 py-3">
-                  <dt className="text-black/50">Current plan</dt>
-                  <dd className="font-semibold capitalize">{planLabel}</dd>
-                </div>
-                <div className="flex items-center justify-between gap-4 rounded-2xl bg-[#faf8f1] px-4 py-3">
-                  <dt className="text-black/50">Subscription</dt>
-                  <dd className="font-semibold capitalize">{subscriptionLabel}</dd>
-                </div>
-              </dl>
-              <button
-                type="button"
-                onClick={() => void startBillingFlow()}
-                disabled={billingAction !== null}
-                className="mt-5 h-11 w-full rounded-full bg-kiwi-green px-5 text-sm font-bold text-black transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {billingAction
-                  ? "Opening..."
-                  : user.plan === "pro"
-                    ? "Manage billing"
-                    : "Go Pro"}
-              </button>
-              {user.plan === "pro" ? (
+                </label>
                 <button
                   type="button"
-                  onClick={() => void startBillingFlow()}
-                  disabled={billingAction !== null}
-                  className="mt-3 h-11 w-full rounded-full border border-black/10 bg-white px-5 text-sm font-semibold text-black transition hover:border-black/25 disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={() => void regenerateRecoveryCodes()}
+                  disabled={!twoFactorPassword}
+                  className="h-12 w-full rounded-full border border-black/10 bg-white px-5 text-sm font-semibold transition hover:border-black/25 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  View invoices and receipts
-                </button>
-              ) : null}
-              <p className="mt-3 text-xs leading-5 text-black/45">
-                Your plan includes {websiteLimit}{" "}
-                {websiteLimit === 1 ? "website" : "websites"}
-                {websiteCount !== null
-                  ? ` — you're using ${websiteCount}.`
-                  : "."}
-              </p>
-              <p className="mt-2 text-xs leading-5 text-black/45">
-                Payments and invoices are handled securely by Stripe.
-              </p>
-            </section>
-
-            <section className="rounded-[2rem] border border-black/10 bg-white p-6 shadow-xl shadow-black/5">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-black/35">
-                Emails
-              </p>
-              <h2 className="mt-1 font-fraunces text-2xl font-semibold tracking-tight">
-                Email preferences
-              </h2>
-              <p className="mt-2 text-sm leading-6 text-black/55">
-                Transactional emails like password resets and billing notices
-                always send. Follow-up emails are optional.
-              </p>
-              <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-3xl bg-[#faf8f1] p-4 text-sm font-medium">
-                <input
-                  type="checkbox"
-                  checked={user.marketingEmailsEnabled}
-                  onChange={(event) =>
-                    void updateEmailPreferences(event.target.checked)
-                  }
-                  className="mt-1 h-4 w-4"
-                />
-                <span>
-                  Receive follow-up emails about my previews and Kiwi Pro
-                </span>
-              </label>
-            </section>
-
-            <section className="rounded-[2rem] border border-black/10 bg-white p-6 shadow-xl shadow-black/5">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-black/35">
-                Account actions
-              </p>
-              <h2 className="mt-1 font-fraunces text-2xl font-semibold tracking-tight">
-                Sessions
-              </h2>
-              <p className="mt-2 text-sm leading-6 text-black/55">
-                Sign out of this device, or sign out everywhere if you used a
-                shared computer.
-              </p>
-              <div className="mt-5 grid gap-2">
-                <button
-                  type="button"
-                  onClick={() => void logout()}
-                  className="h-11 w-full rounded-full border border-black/10 bg-white px-5 text-sm font-semibold text-black transition hover:border-black/25"
-                >
-                  Log out of this device
+                  Regenerate recovery codes
                 </button>
                 <button
                   type="button"
-                  onClick={() => void signOutEverywhere()}
-                  disabled={isSigningOutEverywhere}
-                  className="h-11 w-full rounded-full border border-black/10 bg-white px-5 text-sm font-semibold text-black/60 transition hover:border-black/25 hover:text-black disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={() => void disableTwoFactor()}
+                  disabled={!twoFactorPassword}
+                  className="h-12 w-full rounded-full border border-red-200 bg-red-50 px-5 text-sm font-semibold text-red-700 transition hover:border-red-300 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {isSigningOutEverywhere
-                    ? "Signing out..."
-                    : "Sign out everywhere"}
+                  Disable 2FA
                 </button>
               </div>
-            </section>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
-            <section className="rounded-[2rem] border border-red-100 bg-white p-6 shadow-xl shadow-black/5">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-red-500/70">
-                Danger zone
-              </p>
-              <h2 className="mt-1 font-fraunces text-2xl font-semibold tracking-tight">
-                Delete account
-              </h2>
-              <p className="mt-2 text-sm leading-6 text-black/55">
-                This archives your saved websites, removes custom-domain links,
-                and deletes your login. Pro users should cancel billing first.
-              </p>
-              <form onSubmit={deleteCurrentAccount} className="mt-5 space-y-3">
+      {/* ─── Delete account modal ─── */}
+      {activeModal === "delete" ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="account-delete-title"
+          onMouseDown={closeModalOnBackdrop}
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/35 px-5 py-4 backdrop-blur-sm sm:items-center"
+        >
+          <div className="preview-pop max-h-[90vh] w-full max-w-md modal-scroll overflow-y-auto rounded-3xl border border-red-100 bg-white p-6 shadow-2xl sm:p-8">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2
+                  id="account-delete-title"
+                  className="font-fraunces text-2xl font-semibold tracking-tight"
+                >
+                  Delete your account?
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-black/55">
+                  This archives your websites, removes custom-domain links, and
+                  deletes your login. This can&apos;t be undone.
+                </p>
+              </div>
+              <ModalCloseButton onClick={closeModal} />
+            </div>
+            <form onSubmit={deleteCurrentAccount} className="mt-6 space-y-4">
+              <div className="rounded-2xl border border-red-100 bg-red-50/50 p-4">
                 <label className="block">
-                  <span className="text-sm font-semibold">Current password</span>
+                  <span className="text-sm font-semibold text-black">
+                    Current password
+                  </span>
                   <input
                     type="password"
                     value={deletePassword}
                     onChange={(event) => setDeletePassword(event.target.value)}
                     autoComplete="current-password"
-                    className="mt-2 h-11 w-full rounded-full border border-black/10 bg-white px-4 text-sm outline-none transition focus:border-black/30"
+                    className="mt-2 h-12 w-full rounded-full border border-black/10 bg-white px-5 text-sm outline-none focus:border-black/30"
                   />
                 </label>
-                <label className="block">
-                  <span className="text-sm font-semibold">
+                <label className="mt-4 block">
+                  <span className="text-sm font-semibold text-black">
                     Type DELETE to confirm
                   </span>
                   <input
                     value={deleteConfirmation}
                     onChange={(event) => setDeleteConfirmation(event.target.value)}
-                    className="mt-2 h-11 w-full rounded-full border border-black/10 bg-white px-4 text-sm outline-none transition focus:border-black/30"
+                    className="mt-2 h-12 w-full rounded-full border border-black/10 bg-white px-5 text-sm outline-none focus:border-black/30"
                   />
                 </label>
-                <button
-                  disabled={
-                    isDeletingAccount ||
-                    !deletePassword ||
-                    deleteConfirmation.trim().toUpperCase() !== "DELETE"
-                  }
-                  className="h-11 w-full rounded-full border border-red-200 bg-red-50 px-5 text-sm font-semibold text-red-700 transition hover:border-red-300 disabled:cursor-not-allowed disabled:opacity-50"
+              </div>
+              {modalError ? (
+                <p
+                  className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium leading-6 text-red-700"
+                  role="alert"
                 >
-                  {isDeletingAccount ? "Deleting..." : "Delete my account"}
-                </button>
-              </form>
-            </section>
-          </aside>
+                  {modalError}
+                </p>
+              ) : null}
+              <button
+                type="submit"
+                disabled={
+                  isDeletingAccount ||
+                  !deletePassword ||
+                  deleteConfirmation.trim().toUpperCase() !== "DELETE"
+                }
+                className="h-12 w-full rounded-full border border-red-700 bg-red-600 px-5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isDeletingAccount ? "Deleting..." : "Delete my account"}
+              </button>
+            </form>
+          </div>
         </div>
-      </div>
+      ) : null}
     </main>
   );
 }
