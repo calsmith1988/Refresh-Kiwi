@@ -3911,9 +3911,9 @@ export default function RefreshPage({
           role="dialog"
           aria-modal="true"
           aria-labelledby="website-limit-error-title"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-5 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/35 px-5 py-4 backdrop-blur-sm sm:items-center"
         >
-          <div className="relative w-full max-w-md rounded-3xl border border-black/10 bg-white p-6 text-center shadow-2xl sm:p-8">
+          <div className="preview-pop relative max-h-[90vh] w-full max-w-md modal-scroll overflow-y-auto rounded-3xl border border-black/10 bg-white p-6 text-center shadow-2xl sm:p-8">
             <ModalCloseButton
               onClick={() => setWebsiteLimitErrorMessage(null)}
               className="absolute right-4 top-4"
@@ -3932,12 +3932,12 @@ export default function RefreshPage({
             >
               That didn&apos;t work this time
             </h2>
-            <p className="mt-3 text-sm leading-6 text-black/55">
+            <p className="mt-2 text-sm leading-6 text-black/55">
               {websiteLimitErrorMessage}
             </p>
             <Link
               href="/dashboard"
-              className="mt-6 inline-flex h-12 w-full items-center justify-center rounded-full bg-kiwi-green px-5 text-sm font-bold transition hover:bg-kiwi-green-hover"
+              className="mt-6 inline-flex h-12 w-full items-center justify-center rounded-full bg-kiwi-green px-5 text-sm font-semibold text-black transition hover:bg-kiwi-green-hover"
             >
               Go to dashboard
             </Link>
@@ -3950,9 +3950,9 @@ export default function RefreshPage({
           role="dialog"
           aria-modal="true"
           aria-labelledby="start-another-warning-title"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-5 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/35 px-5 py-4 backdrop-blur-sm sm:items-center"
         >
-          <div className="w-full max-w-md rounded-3xl border border-black/10 bg-white p-6 text-center shadow-2xl sm:p-8">
+          <div className="preview-pop max-h-[90vh] w-full max-w-md modal-scroll overflow-y-auto rounded-3xl border border-black/10 bg-white p-6 text-center shadow-2xl sm:p-8">
             <Image
               src="/refresh-kiwi-favicon-v2.png"
               alt=""
@@ -3967,7 +3967,7 @@ export default function RefreshPage({
             >
               Keep this website before starting another?
             </h2>
-            <p className="mt-3 text-sm leading-6 text-black/55">
+            <p className="mt-2 text-sm leading-6 text-black/55">
               This preview is not saved to an account. Starting another will
               remove it from this browser.
             </p>
@@ -3977,7 +3977,7 @@ export default function RefreshPage({
                 setShowStartAnotherWarning(false);
                 handleOpenAccount();
               }}
-              className="mt-6 h-12 w-full rounded-full bg-kiwi-green px-5 text-sm font-bold transition hover:bg-kiwi-green-hover"
+              className="mt-6 h-12 w-full rounded-full bg-kiwi-green px-5 text-sm font-semibold text-black transition hover:bg-kiwi-green-hover"
             >
               Keep it free for 7 days
             </button>
@@ -4022,9 +4022,9 @@ export default function RefreshPage({
           role="dialog"
           aria-modal="true"
           aria-labelledby="security-check-title"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-5 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/35 px-5 py-4 backdrop-blur-sm sm:items-center"
         >
-          <div className="w-full max-w-sm rounded-3xl border border-black/10 bg-white p-6 text-center shadow-2xl sm:p-8">
+          <div className="preview-pop max-h-[90vh] w-full max-w-sm modal-scroll overflow-y-auto rounded-3xl border border-black/10 bg-white p-6 text-center shadow-2xl sm:p-8">
             <Image
               src="/refresh-kiwi-favicon-v2.png"
               alt=""
@@ -4067,19 +4067,48 @@ export default function RefreshPage({
 
       {/* ───────────────────────── Pro sheet ───────────────────────── */}
       {showProSheet ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-5 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
+        <div
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setShowProSheet(false);
+            }
+          }}
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/35 px-5 py-4 backdrop-blur-sm sm:items-center"
+        >
+          <div className="preview-pop max-h-[90vh] w-full max-w-md modal-scroll overflow-y-auto rounded-3xl border border-black/10 bg-white p-6 shadow-2xl sm:p-8">
             <div className="flex items-start justify-between gap-4">
               <h2 className="font-fraunces text-2xl font-semibold tracking-tight">
                 Kiwi Pro — {pricing.proPriceMonthly}
               </h2>
               <ModalCloseButton onClick={() => setShowProSheet(false)} />
             </div>
-            <ul className="mt-5 space-y-2.5 text-sm leading-6 text-black/60">
-              <li>✓ Your new website online — we host it</li>
-              <li>✓ Unlimited changes, just ask in plain English</li>
-              <li>✓ Your own web address (like www.yourbusiness.com)</li>
-              <li>✓ Add extra pages whenever you need them</li>
+            <ul className="mt-5 space-y-3 text-sm leading-6 text-black/70">
+              {[
+                "Your new website online — we host it",
+                "Unlimited changes, just ask in plain English",
+                "Your own web address (like www.yourbusiness.com)",
+                "Add extra pages whenever you need them",
+              ].map((benefit) => (
+                <li key={benefit} className="flex items-start gap-3">
+                  <span
+                    aria-hidden
+                    className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-kiwi-green text-black"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="h-3 w-3"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M5 12l5 5L20 7" />
+                    </svg>
+                  </span>
+                  {benefit}
+                </li>
+              ))}
             </ul>
             <p className="mt-4 text-xs leading-5 text-black/45">
               Cancel anytime — no contracts, no hidden fees. Payment is handled
@@ -4102,7 +4131,7 @@ export default function RefreshPage({
                 void startCheckout();
               }}
               disabled={isStartingCheckout || !pricing.checkoutAllowed}
-              className="mt-5 h-12 w-full rounded-full bg-kiwi-green px-5 text-sm font-bold transition hover:bg-kiwi-green-hover disabled:opacity-50"
+              className="mt-5 h-12 w-full rounded-full bg-kiwi-green px-5 text-sm font-semibold text-black transition hover:bg-kiwi-green-hover disabled:opacity-50"
             >
               {isStartingCheckout ? "Opening…" : "Continue to secure payment"}
             </button>
@@ -4119,8 +4148,8 @@ export default function RefreshPage({
 
       {/* ───────────────────────── Auth modal ───────────────────────── */}
       {accountMode !== "closed" ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-5 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/35 px-5 py-4 backdrop-blur-sm sm:items-center">
+          <div className="preview-pop max-h-[90vh] w-full max-w-md modal-scroll overflow-y-auto rounded-3xl border border-black/10 bg-white p-6 shadow-2xl sm:p-8">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 className="font-fraunces text-2xl font-semibold tracking-tight">
@@ -4132,7 +4161,7 @@ export default function RefreshPage({
                         ? "Take your website online"
                         : "Keep your preview"}
                 </h2>
-                <p className="mt-2 text-sm leading-6 text-black/60">
+                <p className="mt-2 text-sm leading-6 text-black/55">
                   {twoFactorChallengeToken
                     ? "Open your authenticator app, or use one of your recovery codes."
                     : accountMode === "login"
@@ -4173,7 +4202,7 @@ export default function RefreshPage({
                 <button
                   type="submit"
                   disabled={isSubmittingAuth || !twoFactorCode.trim()}
-                  className="h-12 w-full rounded-full bg-kiwi-green px-5 text-sm font-bold transition hover:bg-kiwi-green-hover disabled:opacity-50"
+                  className="h-12 w-full rounded-full bg-kiwi-green px-5 text-sm font-semibold text-black transition hover:bg-kiwi-green-hover disabled:opacity-50"
                 >
                   {isSubmittingAuth ? "Checking..." : "Verify and log in"}
                 </button>
@@ -4223,7 +4252,7 @@ export default function RefreshPage({
                 <button
                   type="submit"
                   disabled={isSubmittingAuth}
-                  className="h-12 w-full rounded-full bg-kiwi-green px-5 text-sm font-bold transition hover:bg-kiwi-green-hover disabled:opacity-50"
+                  className="h-12 w-full rounded-full bg-kiwi-green px-5 text-sm font-semibold text-black transition hover:bg-kiwi-green-hover disabled:opacity-50"
                 >
                   {isSubmittingAuth
                     ? "Please wait…"

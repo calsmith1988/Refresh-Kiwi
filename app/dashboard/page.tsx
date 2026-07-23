@@ -3517,10 +3517,9 @@ export default function DashboardPage() {
                       >
                         <div
                           id={`manage-panel-${website.id}`}
-                          className="preview-pop max-h-[90vh] w-full max-w-3xl modal-scroll overflow-y-auto rounded-3xl border border-black/10 bg-white p-6 shadow-2xl sm:p-8"
+                          className="preview-pop max-h-[90vh] w-full max-w-lg modal-scroll overflow-y-auto rounded-3xl border border-black/10 bg-white p-6 shadow-2xl sm:p-8"
                         >
-                        <div className="rounded-2xl bg-[#faf8f1] p-4">
-                          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                          <div className="flex items-start justify-between gap-4">
                             <div>
                               <h2
                                 id={`domain-modal-${website.id}`}
@@ -3528,12 +3527,16 @@ export default function DashboardPage() {
                               >
                                 Connect your domain
                               </h2>
-                              <p className="mt-1 text-xs leading-5 text-black/50">
-                                Use a domain you already own, like www.yourbusiness.com.
-                                We will set up the Refresh Kiwi side automatically.
+                              <p className="mt-2 text-sm leading-6 text-black/55">
+                                Use a domain you already own, like
+                                www.yourbusiness.com.
+                              </p>
+                              <p className="mt-1 text-sm leading-6 text-black/55">
+                                We&apos;ll set up the Refresh Kiwi side
+                                automatically.
                               </p>
                               {website.customDomain ? (
-                                <p className="mt-2 text-xs font-semibold text-black/60">
+                                <p className="mt-3 text-xs font-semibold text-black/60">
                                   Status:{" "}
                                   <span className="capitalize">
                                     {website.customDomainStatus}
@@ -3546,24 +3549,25 @@ export default function DashboardPage() {
                                 </p>
                               ) : null}
                             </div>
-                            {website.customDomainStatus === "connected" &&
-                            website.customDomain ? (
-                              <a
-                                href={`https://${website.customDomain}`}
-                                target="_blank"
-                                className="rounded-full bg-[#141811] px-5 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-black"
-                              >
-                                Open domain
-                              </a>
-                            ) : null}
-                            <ModalCloseButton
-                              onClick={closeWebsiteActionModal}
-                              className="bg-white"
-                            />
+                            <div className="flex shrink-0 items-start gap-2">
+                              {website.customDomainStatus === "connected" &&
+                              website.customDomain ? (
+                                <a
+                                  href={`https://${website.customDomain}`}
+                                  target="_blank"
+                                  className="rounded-full bg-[#141811] px-4 py-2 text-center text-xs font-semibold text-white transition hover:bg-black"
+                                >
+                                  Open domain
+                                </a>
+                              ) : null}
+                              <ModalCloseButton
+                                onClick={closeWebsiteActionModal}
+                              />
+                            </div>
                           </div>
 
                           <form
-                            className="mt-4 flex flex-col gap-3 sm:flex-row"
+                            className="mt-6"
                             onSubmit={(event) => {
                               event.preventDefault();
                               void connectDomain(website);
@@ -3582,12 +3586,32 @@ export default function DashboardPage() {
                                 }))
                               }
                               placeholder="www.yourbusiness.com"
-                              className="h-11 flex-1 rounded-full border border-black/10 bg-white px-4 text-sm outline-none placeholder:text-black/30 focus:border-black/30"
+                              className="h-12 w-full rounded-full border border-black/10 bg-white px-5 text-sm outline-none placeholder:text-black/30 focus:border-black/30"
                             />
+
+                            {!website.customDomain ? (
+                              <div className="mt-4 flex items-start gap-3 rounded-2xl border border-kiwi-green/40 bg-[#f4fbe8] px-4 py-3">
+                                <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-kiwi-green/40 text-[#3f8f22]">
+                                  <svg
+                                    aria-hidden
+                                    viewBox="0 0 24 24"
+                                    className="h-3.5 w-3.5"
+                                    fill="currentColor"
+                                  >
+                                    <path d="M12 2.5 13.4 9l6.6 1.4-6.6 1.4L12 18.5 10.6 11.8 4 10.4l6.6-1.4L12 2.5Zm7 11.2 1 3.3 3.3 1-3.3 1-1 3.3-1-3.3-3.3-1 3.3-1 1-3.3Z" />
+                                  </svg>
+                                </span>
+                                <p className="text-sm leading-6 text-black/60">
+                                  Using your own domain builds trust and helps
+                                  your site look more professional.
+                                </p>
+                              </div>
+                            ) : null}
+
                             <button
                               type="submit"
                               disabled={domainActionWebsiteId === website.id}
-                              className="h-11 rounded-full bg-kiwi-green px-5 text-sm font-semibold text-black transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-50"
+                              className="mt-5 h-12 w-full rounded-full bg-[#141811] px-5 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
                             >
                               {domainActionWebsiteId === website.id
                                 ? "Working..."
@@ -3598,7 +3622,7 @@ export default function DashboardPage() {
                           </form>
 
                           {website.customDomain ? (
-                            <div className="mt-4 rounded-2xl border border-black/10 bg-white p-4">
+                            <div className="mt-5 rounded-2xl border border-black/10 bg-[#faf8f1] p-4 sm:p-5">
                               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                 <div>
                                   <p className="text-sm font-semibold text-black">
@@ -3723,8 +3747,6 @@ export default function DashboardPage() {
                             </div>
                           ) : null}
                         </div>
-
-                        </div>
                       </div>
                     ) : null}
 
@@ -3795,7 +3817,7 @@ export default function DashboardPage() {
                                   }))
                                 }
                                 placeholder="Verification code from Google"
-                                className="mt-2 h-11 w-full rounded-full border border-black/10 bg-white px-4 text-sm outline-none placeholder:text-black/30 focus:border-black/30"
+                                className="mt-2 h-12 w-full rounded-full border border-black/10 bg-white px-5 text-sm outline-none placeholder:text-black/30 focus:border-black/30"
                               />
                             </div>
 
@@ -3830,7 +3852,7 @@ export default function DashboardPage() {
                                   }))
                                 }
                                 placeholder="G-XXXXXXXXXX"
-                                className="mt-2 h-11 w-full rounded-full border border-black/10 bg-white px-4 text-sm outline-none placeholder:text-black/30 focus:border-black/30"
+                                className="mt-2 h-12 w-full rounded-full border border-black/10 bg-white px-5 text-sm outline-none placeholder:text-black/30 focus:border-black/30"
                               />
                             </div>
 
@@ -3838,7 +3860,7 @@ export default function DashboardPage() {
                               <button
                                 type="submit"
                                 disabled={savingSeoWebsiteId === website.id}
-                                className="h-11 rounded-full bg-[#141811] px-5 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
+                                className="h-12 rounded-full bg-[#141811] px-6 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
                               >
                                 {savingSeoWebsiteId === website.id
                                   ? "Saving..."
@@ -3903,7 +3925,7 @@ export default function DashboardPage() {
                         onMouseDown={closeWebsiteActionModalOnBackdrop}
                         className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/35 px-5 py-4 backdrop-blur-sm sm:items-center"
                       >
-                        <div className="preview-pop w-full max-w-lg rounded-3xl border border-black/10 bg-white p-6 shadow-2xl sm:p-8">
+                        <div className="preview-pop max-h-[90vh] w-full max-w-lg modal-scroll overflow-y-auto rounded-3xl border border-black/10 bg-white p-6 shadow-2xl sm:p-8">
                           <div className="flex items-start justify-between gap-4">
                             <div>
                               <h2
@@ -3945,12 +3967,12 @@ export default function DashboardPage() {
                                     [website.id]: event.target.value,
                                   }))
                                 }
-                                className="h-11 flex-1 rounded-full border border-black/10 bg-white px-4 text-sm outline-none placeholder:text-black/30 focus:border-black/30"
+                                className="h-12 flex-1 rounded-full border border-black/10 bg-white px-5 text-sm outline-none placeholder:text-black/30 focus:border-black/30"
                               />
                               <button
                                 type="submit"
                                 disabled={renamingWebsiteId === website.id}
-                                className="h-11 rounded-full bg-[#141811] px-5 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
+                                className="h-12 rounded-full bg-[#141811] px-6 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
                               >
                                 {renamingWebsiteId === website.id
                                   ? "Saving..."
@@ -3971,7 +3993,7 @@ export default function DashboardPage() {
                         onMouseDown={closeWebsiteActionModalOnBackdrop}
                         className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/35 px-5 py-4 backdrop-blur-sm sm:items-center"
                       >
-                        <div className="preview-pop max-h-[calc(100dvh-2rem)] w-full max-w-lg modal-scroll overflow-y-auto rounded-3xl border border-red-100 bg-white p-6 shadow-2xl sm:p-8">
+                        <div className="preview-pop max-h-[90vh] w-full max-w-lg modal-scroll overflow-y-auto rounded-3xl border border-red-100 bg-white p-6 shadow-2xl sm:p-8">
                           <div className="flex items-start justify-between gap-4">
                             <div>
                               <h2
@@ -4358,9 +4380,9 @@ export default function DashboardPage() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="active-pages-title"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-5 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/35 px-5 py-4 backdrop-blur-sm sm:items-center"
         >
-          <div className="preview-pop w-full max-w-md rounded-3xl border border-black/10 bg-white p-6 text-center shadow-2xl sm:max-w-xl sm:p-8 md:max-w-2xl">
+          <div className="preview-pop max-h-[90vh] w-full max-w-md modal-scroll overflow-y-auto rounded-3xl border border-black/10 bg-white p-6 text-center shadow-2xl sm:max-w-lg sm:p-8">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-white">
               <Image
                 src="/refresh-kiwi-favicon-v2.png"
@@ -4450,9 +4472,9 @@ export default function DashboardPage() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="active-edit-title"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-5 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/35 px-5 py-4 backdrop-blur-sm sm:items-center"
         >
-          <div className="preview-pop w-full max-w-md rounded-3xl border border-black/10 bg-white p-6 text-center shadow-2xl sm:max-w-xl sm:p-8 md:max-w-2xl">
+          <div className="preview-pop max-h-[90vh] w-full max-w-md modal-scroll overflow-y-auto rounded-3xl border border-black/10 bg-white p-6 text-center shadow-2xl sm:max-w-lg sm:p-8">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-white">
               <Image
                 src="/refresh-kiwi-favicon-v2.png"
@@ -4569,18 +4591,40 @@ export default function DashboardPage() {
           }}
           className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/35 px-5 py-4 backdrop-blur-sm sm:items-center"
         >
-          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md modal-scroll overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
+          <div className="preview-pop max-h-[90vh] w-full max-w-md modal-scroll overflow-y-auto rounded-3xl border border-black/10 bg-white p-6 shadow-2xl sm:p-8">
             <div className="flex items-start justify-between gap-4">
               <h2 className="font-fraunces text-2xl font-semibold tracking-tight">
                 Kiwi Pro — {pricing.proPriceMonthly}
               </h2>
               <ModalCloseButton onClick={() => setShowProSheet(false)} />
             </div>
-            <ul className="mt-5 space-y-2.5 text-sm leading-6 text-black/60">
-              <li>Your new website online — we host it</li>
-              <li>Unlimited changes, just ask in plain English</li>
-              <li>Your own web address (like www.yourbusiness.com)</li>
-              <li>Add extra pages whenever you need them</li>
+            <ul className="mt-5 space-y-3 text-sm leading-6 text-black/70">
+              {[
+                "Your new website online — we host it",
+                "Unlimited changes, just ask in plain English",
+                "Your own web address (like www.yourbusiness.com)",
+                "Add extra pages whenever you need them",
+              ].map((benefit) => (
+                <li key={benefit} className="flex items-start gap-3">
+                  <span
+                    aria-hidden
+                    className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-kiwi-green text-black"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="h-3 w-3"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M5 12l5 5L20 7" />
+                    </svg>
+                  </span>
+                  {benefit}
+                </li>
+              ))}
             </ul>
             <p className="mt-4 text-xs leading-5 text-black/45">
               Cancel anytime — no contracts, no hidden fees. Payment is handled
@@ -4604,7 +4648,7 @@ export default function DashboardPage() {
                 void startBillingFlow("checkout");
               }}
               disabled={billingAction !== null || !pricing.checkoutAllowed}
-              className="mt-5 h-12 w-full rounded-full border border-black bg-kiwi-green px-5 text-sm font-semibold text-black transition hover:bg-kiwi-green-hover disabled:opacity-50"
+              className="mt-5 h-12 w-full rounded-full bg-kiwi-green px-5 text-sm font-semibold text-black transition hover:bg-kiwi-green-hover disabled:opacity-50"
             >
               Continue to secure payment
             </button>
