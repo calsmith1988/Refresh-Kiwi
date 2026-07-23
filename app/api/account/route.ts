@@ -64,16 +64,7 @@ export async function DELETE(request: Request) {
       message: "Too many account deletion attempts. Please wait and try again.",
     });
 
-    const body = (await request.json()) as {
-      currentPassword?: string;
-      confirmation?: string;
-    };
-
-    await deleteAccount({
-      userId: user.id,
-      currentPassword: body.currentPassword ?? "",
-      confirmation: body.confirmation ?? "",
-    });
+    await deleteAccount({ userId: user.id });
     await clearSessionCookie();
 
     return NextResponse.json({ ok: true });

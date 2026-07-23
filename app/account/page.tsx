@@ -1,10 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import ModalCloseButton from "@/components/ModalCloseButton";
 import SiteLogo from "@/components/SiteLogo";
+import { usePricing } from "@/components/usePricing";
+
+const DELETE_HOLD_MS = 6000;
 
 interface AuthUser {
   id: string;
@@ -85,6 +88,7 @@ function RowButton({
 }
 
 export default function AccountPage() {
+  const { pricing } = usePricing();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [websiteCount, setWebsiteCount] = useState<number | null>(null);
   const [name, setName] = useState("");
@@ -93,9 +97,11 @@ export default function AccountPage() {
   const [newEmail, setNewEmail] = useState("");
   const [emailChangePassword, setEmailChangePassword] = useState("");
   const [isRequestingEmailChange, setIsRequestingEmailChange] = useState(false);
-  const [deletePassword, setDeletePassword] = useState("");
-  const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [deleteHoldActive, setDeleteHoldActive] = useState(false);
+  const [deleteHoldProgress, setDeleteHoldProgress] = useState(0);
+  const deleteHoldFrameRef = useRef<number | null>(null);
+  const deleteHoldStartedAtRef = useRef<number | null>(null);
   const [isSigningOutEverywhere, setIsSigningOutEverywhere] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -155,7 +161,19 @@ export default function AccountPage() {
     setActiveModal(modal);
   };
 
+  const cancelDeleteHold = () => {
+    if (deleteHoldFrameRef.current !== null) {
+      window.cancelAnimationFrame(deleteHoldFrameRef.current);
+      deleteHoldFrameRef.current = null;
+    }
+
+    deleteHoldStartedAtRef.current = null;
+    setDeleteHoldActive(false);
+    setDeleteHoldProgress(0);
+  };
+
   const closeModal = () => {
+    cancelDeleteHold();
     setActiveModal(null);
     setModalError(null);
     setTwoFactorSetup(null);
@@ -165,10 +183,16 @@ export default function AccountPage() {
     setNewPassword("");
     setNewEmail("");
     setEmailChangePassword("");
-    setDeletePassword("");
-    setDeleteConfirmation("");
     setName(user?.name ?? "");
   };
+
+  useEffect(() => {
+    return () => {
+      if (deleteHoldFrameRef.current !== null) {
+        window.cancelAnimationFrame(deleteHoldFrameRef.current);
+      }
+    };
+  }, []);
 
   const updateProfile = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -319,8 +343,7 @@ export default function AccountPage() {
     }
   };
 
-  const deleteCurrentAccount = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const deleteCurrentAccount = async () => {
     setMessage(null);
     setModalError(null);
     setIsDeletingAccount(true);
@@ -328,11 +351,6 @@ export default function AccountPage() {
     try {
       const response = await fetch("/api/account", {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          currentPassword: deletePassword,
-          confirmation: deleteConfirmation,
-        }),
       });
       const payload = await response.json();
 
@@ -348,6 +366,41 @@ export default function AccountPage() {
       );
       setIsDeletingAccount(false);
     }
+  };
+
+  const startDeleteHold = () => {
+    if (isDeletingAccount || deleteHoldActive) {
+      return;
+    }
+
+    cancelDeleteHold();
+    deleteHoldStartedAtRef.current = performance.now();
+    setDeleteHoldActive(true);
+    setDeleteHoldProgress(0);
+
+    const tick = (timestamp: number) => {
+      const startedAt = deleteHoldStartedAtRef.current;
+
+      if (startedAt === null) {
+        return;
+      }
+
+      const progress = Math.min(1, (timestamp - startedAt) / DELETE_HOLD_MS);
+      setDeleteHoldProgress(progress);
+
+      if (progress >= 1) {
+        deleteHoldStartedAtRef.current = null;
+        deleteHoldFrameRef.current = null;
+        setDeleteHoldActive(false);
+        setDeleteHoldProgress(0);
+        void deleteCurrentAccount();
+        return;
+      }
+
+      deleteHoldFrameRef.current = window.requestAnimationFrame(tick);
+    };
+
+    deleteHoldFrameRef.current = window.requestAnimationFrame(tick);
   };
 
   const startBillingFlow = async () => {
@@ -563,7 +616,7 @@ export default function AccountPage() {
 
   return (
     <main className="min-h-screen bg-[#faf8f1] px-5 py-5 text-[#141811] sm:px-8 lg:px-10">
-      <div className="mx-auto w-full max-w-3xl">
+      <div className="mx-auto w-full max-w-6xl">
         <header className="flex flex-col gap-4 border-b border-black/5 pb-5 sm:flex-row sm:items-center sm:justify-between">
           <SiteLogo />
           <div className="flex flex-wrap items-center gap-2">
@@ -792,7 +845,7 @@ export default function AccountPage() {
                     ? "Opening..."
                     : user.plan === "pro"
                       ? "Manage billing"
-                      : "Go Pro"}
+                      : `Put my website online — ${pricing.proPriceShort}`}
                 </button>
                 {user.plan === "pro" ? (
                   <button
@@ -1254,51 +1307,70 @@ export default function AccountPage() {
               </div>
               <ModalCloseButton onClick={closeModal} />
             </div>
-            <form onSubmit={deleteCurrentAccount} className="mt-6 space-y-4">
-              <div className="rounded-2xl border border-red-100 bg-red-50/50 p-4">
-                <label className="block">
-                  <span className="text-sm font-semibold text-black">
-                    Current password
-                  </span>
-                  <input
-                    type="password"
-                    value={deletePassword}
-                    onChange={(event) => setDeletePassword(event.target.value)}
-                    autoComplete="current-password"
-                    className="mt-2 h-12 w-full rounded-full border border-black/10 bg-white px-5 text-sm outline-none focus:border-black/30"
-                  />
-                </label>
-                <label className="mt-4 block">
-                  <span className="text-sm font-semibold text-black">
-                    Type DELETE to confirm
-                  </span>
-                  <input
-                    value={deleteConfirmation}
-                    onChange={(event) => setDeleteConfirmation(event.target.value)}
-                    className="mt-2 h-12 w-full rounded-full border border-black/10 bg-white px-5 text-sm outline-none focus:border-black/30"
-                  />
-                </label>
-              </div>
+            <div className="mt-6 rounded-2xl border border-red-100 bg-red-50/50 p-4">
+              <p className="text-sm leading-6 text-black/60">
+                Keep holding until the button fills. This can&apos;t be undone.
+              </p>
               {modalError ? (
                 <p
-                  className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium leading-6 text-red-700"
+                  className="mt-3 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium leading-6 text-red-700"
                   role="alert"
                 >
                   {modalError}
                 </p>
               ) : null}
               <button
-                type="submit"
-                disabled={
-                  isDeletingAccount ||
-                  !deletePassword ||
-                  deleteConfirmation.trim().toUpperCase() !== "DELETE"
-                }
-                className="h-12 w-full rounded-full border border-red-700 bg-red-600 px-5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                type="button"
+                onPointerDown={(event) => {
+                  event.preventDefault();
+                  event.currentTarget.setPointerCapture(event.pointerId);
+                  startDeleteHold();
+                }}
+                onPointerUp={cancelDeleteHold}
+                onPointerLeave={cancelDeleteHold}
+                onPointerCancel={cancelDeleteHold}
+                onLostPointerCapture={cancelDeleteHold}
+                onContextMenu={(event) => event.preventDefault()}
+                onKeyDown={(event) => {
+                  if (event.key === " " || event.key === "Enter") {
+                    event.preventDefault();
+                    startDeleteHold();
+                  }
+                }}
+                onKeyUp={(event) => {
+                  if (event.key === " " || event.key === "Enter") {
+                    event.preventDefault();
+                    cancelDeleteHold();
+                  }
+                }}
+                disabled={isDeletingAccount}
+                aria-label="Press and hold to delete your account"
+                draggable={false}
+                style={{
+                  WebkitTouchCallout: "none",
+                  WebkitUserSelect: "none",
+                  userSelect: "none",
+                }}
+                className="relative mt-4 h-12 w-full touch-none select-none overflow-hidden rounded-full border border-red-700 bg-red-600 px-5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {isDeletingAccount ? "Deleting..." : "Delete my account"}
+                <span
+                  aria-hidden
+                  className="absolute inset-y-0 left-0 bg-red-900/35"
+                  style={{
+                    width: deleteHoldActive
+                      ? `${Math.round(deleteHoldProgress * 100)}%`
+                      : "0%",
+                  }}
+                />
+                <span className="relative inline-flex items-center justify-center gap-2">
+                  {isDeletingAccount
+                    ? "Deleting..."
+                    : deleteHoldActive
+                      ? "Keep holding..."
+                      : "Hold to delete account"}
+                </span>
               </button>
-            </form>
+            </div>
           </div>
         </div>
       ) : null}

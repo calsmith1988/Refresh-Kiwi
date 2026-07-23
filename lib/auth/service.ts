@@ -427,15 +427,7 @@ export async function changePassword(params: {
   return updated;
 }
 
-export async function deleteAccount(params: {
-  userId: string;
-  currentPassword: string;
-  confirmation: string;
-}) {
-  if (params.confirmation.trim().toUpperCase() !== "DELETE") {
-    throw new Error("Type DELETE to confirm account deletion");
-  }
-
+export async function deleteAccount(params: { userId: string }) {
   const db = getDb();
   const [user] = await db
     .select()
@@ -443,8 +435,8 @@ export async function deleteAccount(params: {
     .where(eq(users.id, params.userId))
     .limit(1);
 
-  if (!user || !(await verifyPassword(params.currentPassword, user.passwordHash))) {
-    throw new Error("Current password is incorrect");
+  if (!user) {
+    throw new Error("User not found");
   }
 
   if (
