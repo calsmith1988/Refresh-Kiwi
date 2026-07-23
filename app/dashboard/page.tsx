@@ -294,6 +294,43 @@ const LEGAL_BOOLEAN_FIELDS: LegalBooleanField[] = [
   },
 ];
 
+const LEGAL_PAGE_HINT = /(privacy|cookie|cookies|terms|legal|gdpr)/i;
+
+const OLD_SITE_PAGE_EXAMPLES = [
+  "About",
+  "Services",
+  "Gallery",
+  "Contact",
+  "FAQs",
+  "Team",
+  "Pricing",
+  "Testimonials",
+] as const;
+
+const PAGE_FLOW_OPTIONS = [
+  {
+    type: "business" as const,
+    title: "Pages from your old site",
+    description:
+      "We'll scan your existing website for useful pages like About, Services, Gallery, and Contact.",
+    icon: "pages" as const,
+  },
+  {
+    type: "legal" as const,
+    title: "Legal pages",
+    description:
+      "Create starter Privacy, Cookies, and Terms pages. These are templates — not legal advice.",
+    icon: "seo" as const,
+  },
+  {
+    type: "custom" as const,
+    title: "A brand-new page",
+    description:
+      "Describe one new page and we'll build it to match the look of your site.",
+    icon: "edit" as const,
+  },
+] as const;
+
 // Starter ideas for the edit box. Chips ending in "…" prefill a sentence the
 // user finishes with their own details (the AI can't know their hours or
 // number); the others are complete instructions the AI has context for.
@@ -557,6 +594,7 @@ export default function DashboardPage() {
   );
   const [pageGenerationType, setPageGenerationType] =
     useState<PageGenerationType>("business");
+  const [pagesFlow, setPagesFlow] = useState<PageGenerationType | null>(null);
   const [legalAnswers, setLegalAnswers] =
     useState<LegalAnswersState>(DEFAULT_LEGAL_ANSWERS);
   const [customPageRequest, setCustomPageRequest] =
@@ -596,9 +634,6 @@ export default function DashboardPage() {
   const deleteHoldStartedAtRef = useRef<number | null>(null);
   const [progressTick, setProgressTick] = useState(() => Date.now());
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
-  const [confirmRegenerateId, setConfirmRegenerateId] = useState<string | null>(
-    null,
-  );
   const [renamingWebsiteId, setRenamingWebsiteId] = useState<string | null>(null);
   const [deletingWebsiteId, setDeletingWebsiteId] = useState<string | null>(null);
   const [domainActionWebsiteId, setDomainActionWebsiteId] = useState<string | null>(null);
@@ -1137,7 +1172,6 @@ export default function DashboardPage() {
   const closeWebsiteActionModal = () => {
     cancelDeleteHold();
     setWebsiteActionModal(null);
-    setConfirmRegenerateId(null);
   };
 
   const closeWebsiteActionModalOnBackdrop = (
@@ -1161,10 +1195,10 @@ export default function DashboardPage() {
     type: WebsiteActionModalType,
   ) => {
     setWebsiteActionModal({ websiteId: website.id, type });
-    setConfirmRegenerateId(null);
     setErrorMessage(null);
 
     if (type === "pages") {
+      setPagesFlow(null);
       preparePageGeneration(website);
     }
 
@@ -2506,7 +2540,41 @@ export default function DashboardPage() {
                         onMouseDown={closeWebsiteActionModalOnBackdrop}
                         className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/35 px-5 py-4 backdrop-blur-sm sm:items-center"
                       >
-                        <div className="preview-pop max-h-[90vh] w-full max-w-2xl modal-scroll overflow-y-auto rounded-3xl border border-black/10 bg-white p-6 shadow-2xl sm:p-8">
+                        {(() => {
+                          const hasOldSiteSource =
+                            website.generationMode === "refresh" &&
+                            Boolean(website.sourceUrl);
+                          const hasOldSitePagesAlready = generatedPages.some(
+                            (page) =>
+                              !LEGAL_PAGE_HINT.test(page.path) &&
+                              !LEGAL_PAGE_HINT.test(page.title),
+                          );
+                          const oldSiteUnavailableReason = !hasOldSiteSource
+                            ? "Only available when your site was refreshed from an existing website."
+                            : hasOldSitePagesAlready
+                              ? "Already added from your old site."
+                              : null;
+                          const activeFlow = pagesFlow;
+
+                          const selectPageFlow = (type: PageGenerationType) => {
+                            if (
+                              type === "business" &&
+                              oldSiteUnavailableReason
+                            ) {
+                              return;
+                            }
+
+                            if (!isPro) {
+                              openProSheet();
+                              return;
+                            }
+
+                            preparePageGeneration(website, type);
+                            setPagesFlow(type);
+                          };
+
+                          return (
+                        <div className="preview-pop max-h-[90vh] w-full max-w-3xl modal-scroll overflow-y-auto rounded-3xl border border-black/10 bg-white p-6 shadow-2xl sm:p-8">
                           <div className="flex items-start justify-between gap-4">
                             <div>
                               <h2
@@ -2523,22 +2591,39 @@ export default function DashboardPage() {
                             <ModalCloseButton onClick={closeWebsiteActionModal} />
                           </div>
 
-                          {generatedPages.length > 0 ? (
-                          <div className="mt-6 rounded-2xl bg-[#faf8f1] p-4">
-                            <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-                              <div>
+                          {activeFlow ? (
+                            <button
+                              type="button"
+                              onClick={() => setPagesFlow(null)}
+                              className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-black/55 transition hover:text-black"
+                            >
+                              <svg
+                                aria-hidden
+                                viewBox="0 0 24 24"
+                                className="h-4 w-4"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <path d="M15 18l-6-6 6-6" />
+                              </svg>
+                              Back
+                            </button>
+                          ) : null}
+
+                          {generatedPages.length > 0 && !activeFlow ? (
+                            <div className="mt-6 rounded-2xl bg-[#eef7d8] p-4 sm:p-5">
+                              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                                 <p className="text-sm font-semibold text-black">
                                   Current pages
                                 </p>
-                                <p className="mt-1 text-xs text-black/45">
-                                  View any page, then use Edit for changes.
-                                </p>
+                                <span className="rounded-full bg-white/80 px-2.5 py-1 text-xs font-semibold text-black/60">
+                                  {generatedPages.length}{" "}
+                                  {pluralise(generatedPages.length, "page")}
+                                </span>
                               </div>
-                              <span className="text-xs font-medium text-black/40">
-                                {generatedPages.length}{" "}
-                                {pluralise(generatedPages.length, "page")}
-                              </span>
-                            </div>
                               <div className="mt-3 flex flex-wrap gap-2">
                                 {generatedPages.map((page) => (
                                   <Link
@@ -2551,78 +2636,165 @@ export default function DashboardPage() {
                                   </Link>
                                 ))}
                               </div>
-                          </div>
+                            </div>
                           ) : null}
 
                           {state.canView ? (
-                            <div className="mt-6 rounded-2xl border border-black/10 bg-[#faf8f1] p-4">
-                              <p className="text-sm font-semibold text-black">
-                                Add pages
-                              </p>
-                              <p className="mt-1 text-xs leading-5 text-black/45">
-                                Choose the kind of page you want to add to this
-                                website.
-                              </p>
-                              <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                                {[
-                                  {
-                                    type: "business" as const,
-                                    title: "Pages from your old site",
-                                    description:
-                                      "About, services, gallery, contact, FAQs and other useful pages.",
-                                  },
-                                  {
-                                    type: "legal" as const,
-                                    title: "Legal pages",
-                                    description:
-                                      "Starter privacy, cookie and terms pages. Not legal advice.",
-                                  },
-                                  {
-                                    type: "custom" as const,
-                                    title: "A brand-new page",
-                                    description:
-                                      "Describe one new page and we will build it to match your site.",
-                                  },
-                                ].map((option) => (
-                                  <button
-                                    key={option.type}
-                                    type="button"
-                                    onClick={() => {
-                                      if (!isPro) {
-                                        openProSheet();
-                                        return;
-                                      }
+                            <>
+                              <div
+                                className={`grid gap-3 ${
+                                  activeFlow
+                                    ? "mt-4 sm:grid-cols-3"
+                                    : "mt-6 sm:grid-cols-3"
+                                }`}
+                              >
+                                {PAGE_FLOW_OPTIONS.map((option) => {
+                                  const isOldSiteDone =
+                                    option.type === "business" &&
+                                    Boolean(oldSiteUnavailableReason);
+                                  const isSelected =
+                                    activeFlow === option.type;
+                                  const isCompact = Boolean(activeFlow);
 
-                                      preparePageGeneration(website, option.type);
-                                    }}
-                                    disabled={
-                                      isGeneratingPages ||
-                                      generatingPagesWebsiteId === website.id
-                                    }
-                                    className={`rounded-3xl border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-50 ${
-                                      pageGenerationType === option.type
-                                        ? "border-kiwi-green bg-[#f8fde9]"
-                                        : "border-black/10 bg-white hover:border-black/25"
-                                    }`}
-                                  >
-                                    <span className="text-sm font-semibold text-black">
-                                      {option.title}
-                                    </span>
-                                    <span className="mt-1 block text-xs leading-5 text-black/50">
-                                      {option.description}
-                                    </span>
-                                  </button>
-                                ))}
+                                  return (
+                                    <button
+                                      key={option.type}
+                                      type="button"
+                                      onClick={() =>
+                                        selectPageFlow(option.type)
+                                      }
+                                      disabled={
+                                        isGeneratingPages ||
+                                        generatingPagesWebsiteId ===
+                                          website.id ||
+                                        isOldSiteDone
+                                      }
+                                      title={
+                                        isOldSiteDone
+                                          ? oldSiteUnavailableReason ?? undefined
+                                          : undefined
+                                      }
+                                      className={`text-left transition disabled:cursor-not-allowed ${
+                                        isCompact
+                                          ? `rounded-2xl border px-3 py-3 ${
+                                              isSelected
+                                                ? "border-kiwi-green bg-[#f4fbe8]"
+                                                : isOldSiteDone
+                                                  ? "border-black/10 bg-[#f5f5f5] opacity-55"
+                                                  : "border-black/10 bg-white hover:border-black/25"
+                                            }`
+                                          : `rounded-3xl border p-5 ${
+                                              isOldSiteDone
+                                                ? "border-black/10 bg-[#f5f5f5] opacity-55"
+                                                : "border-black/10 bg-[#faf8f1] hover:border-black/25 hover:bg-white"
+                                            }`
+                                      }`}
+                                    >
+                                      <span
+                                        className={`grid place-items-center rounded-2xl bg-kiwi-green/30 text-[#3f8f22] ${
+                                          isCompact
+                                            ? "mb-2 h-8 w-8"
+                                            : "mb-3 h-10 w-10"
+                                        } ${isOldSiteDone ? "grayscale" : ""}`}
+                                      >
+                                        <DashboardIcon
+                                          name={option.icon}
+                                          className={
+                                            isCompact ? "h-4 w-4" : "h-5 w-5"
+                                          }
+                                        />
+                                      </span>
+                                      <span
+                                        className={`block font-semibold text-black ${
+                                          isCompact ? "text-xs" : "text-sm"
+                                        }`}
+                                      >
+                                        {option.title}
+                                      </span>
+                                      {!isCompact ? (
+                                        <span className="mt-2 block text-xs leading-5 text-black/50">
+                                          {isOldSiteDone
+                                            ? oldSiteUnavailableReason
+                                            : option.description}
+                                        </span>
+                                      ) : isOldSiteDone ? (
+                                        <span className="mt-1 block text-[11px] leading-4 text-black/40">
+                                          Already added
+                                        </span>
+                                      ) : null}
+                                    </button>
+                                  );
+                                })}
                               </div>
 
-                              {isPro && pageGenerationType === "legal" ? (
-                                <div className="mt-5 rounded-3xl bg-white p-4">
+                              {activeFlow === "business" && isPro ? (
+                                <div className="mt-5 rounded-2xl bg-[#faf8f1] p-4 sm:p-5">
+                                  <p className="text-sm font-semibold text-black">
+                                    Extra pages from your old site
+                                  </p>
+                                  <p className="mt-1 text-sm leading-6 text-black/55">
+                                    We&apos;ll look for useful pages on your
+                                    existing website and rebuild the ones we can
+                                    find.
+                                  </p>
+                                  <div className="mt-4 flex flex-wrap gap-2">
+                                    {OLD_SITE_PAGE_EXAMPLES.map((label) => (
+                                      <span
+                                        key={label}
+                                        className="rounded-full border border-black/10 bg-white px-3 py-1.5 text-xs font-semibold text-black/60"
+                                      >
+                                        {label}
+                                      </span>
+                                    ))}
+                                  </div>
+                                  <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                                    <p className="flex items-start gap-2 text-xs leading-5 text-black/45">
+                                      <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-kiwi-green/25 text-[#3f8f22]">
+                                        <svg
+                                          aria-hidden
+                                          viewBox="0 0 24 24"
+                                          className="h-3 w-3"
+                                          fill="currentColor"
+                                        >
+                                          <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm1 14h-2v-2h2v2Zm0-4h-2V6h2v6Z" />
+                                        </svg>
+                                      </span>
+                                      Some pages may not exist on every site.
+                                      We&apos;ll only generate the ones we can
+                                      find.
+                                    </p>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        void generateAdditionalPages(
+                                          website.id,
+                                          "business",
+                                        )
+                                      }
+                                      disabled={
+                                        generatingPagesWebsiteId ===
+                                          website.id ||
+                                        isGeneratingPages
+                                      }
+                                      className="h-11 shrink-0 rounded-full bg-[#141811] px-5 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                      {generatingPagesWebsiteId === website.id
+                                        ? "Starting…"
+                                        : "Generate pages from old site"}
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : null}
+
+                              {activeFlow === "legal" && isPro ? (
+                                <div className="mt-5 rounded-2xl bg-[#faf8f1] p-4 sm:p-5">
                                   <p className="text-sm font-semibold text-black">
                                     Starter legal page details
                                   </p>
-                                  <p className="mt-1 text-xs leading-5 text-black/45">
+                                  <p className="mt-1 text-sm leading-6 text-black/55">
                                     These answers help draft a better starter
-                                    template. Review it before putting them online.
+                                    template. Review it before putting them
+                                    online.
                                   </p>
                                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
                                     <label className="text-xs font-semibold text-black/55">
@@ -2635,11 +2807,11 @@ export default function DashboardPage() {
                                             event.target.value,
                                           )
                                         }
-                                        className="mt-1 h-11 w-full rounded-2xl border border-black/10 bg-[#faf8f1] px-4 text-sm font-medium text-black outline-none focus:border-black/30"
+                                        className="mt-1 h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm font-medium text-black outline-none focus:border-black/30"
                                       />
                                     </label>
                                     <label className="text-xs font-semibold text-black/55">
-                                      Trading name
+                                      Trading name (optional)
                                       <input
                                         value={legalAnswers.tradingName}
                                         onChange={(event) =>
@@ -2648,11 +2820,11 @@ export default function DashboardPage() {
                                             event.target.value,
                                           )
                                         }
-                                        className="mt-1 h-11 w-full rounded-2xl border border-black/10 bg-[#faf8f1] px-4 text-sm font-medium text-black outline-none focus:border-black/30"
+                                        className="mt-1 h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm font-medium text-black outline-none focus:border-black/30"
                                       />
                                     </label>
                                     <label className="text-xs font-semibold text-black/55">
-                                      Country/region
+                                      Country / region
                                       <input
                                         value={legalAnswers.country}
                                         onChange={(event) =>
@@ -2661,7 +2833,7 @@ export default function DashboardPage() {
                                             event.target.value,
                                           )
                                         }
-                                        className="mt-1 h-11 w-full rounded-2xl border border-black/10 bg-[#faf8f1] px-4 text-sm font-medium text-black outline-none focus:border-black/30"
+                                        className="mt-1 h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm font-medium text-black outline-none focus:border-black/30"
                                       />
                                     </label>
                                     <label className="text-xs font-semibold text-black/55">
@@ -2675,55 +2847,91 @@ export default function DashboardPage() {
                                           )
                                         }
                                         inputMode="email"
-                                        className="mt-1 h-11 w-full rounded-2xl border border-black/10 bg-[#faf8f1] px-4 text-sm font-medium text-black outline-none focus:border-black/30"
+                                        className="mt-1 h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm font-medium text-black outline-none focus:border-black/30"
                                       />
                                     </label>
                                   </div>
-                                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                                    {LEGAL_BOOLEAN_FIELDS.map((field) => (
-                                      <label
-                                        key={field.key}
-                                        className="flex items-center gap-2 rounded-2xl bg-[#faf8f1] px-3 py-2 text-sm font-medium text-black/60"
-                                      >
-                                        <input
-                                          type="checkbox"
-                                          checked={legalAnswers[field.key]}
-                                          onChange={(event) =>
-                                            updateLegalAnswer(
-                                              field.key,
-                                              event.target.checked,
-                                            )
-                                          }
-                                          className="h-4 w-4 accent-[#C5E66A]"
-                                        />
-                                        <span>{field.label}</span>
-                                      </label>
-                                    ))}
+                                  <div className="mt-5">
+                                    <p className="text-xs font-semibold text-black/55">
+                                      Include in legal pages
+                                    </p>
+                                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                                      {LEGAL_BOOLEAN_FIELDS.map((field) => (
+                                        <label
+                                          key={field.key}
+                                          className="flex items-center gap-2 rounded-2xl bg-white px-3 py-2 text-sm font-medium text-black/60"
+                                        >
+                                          <input
+                                            type="checkbox"
+                                            checked={legalAnswers[field.key]}
+                                            onChange={(event) =>
+                                              updateLegalAnswer(
+                                                field.key,
+                                                event.target.checked,
+                                              )
+                                            }
+                                            className="h-4 w-4 accent-[#C5E66A]"
+                                          />
+                                          <span>{field.label}</span>
+                                        </label>
+                                      ))}
+                                    </div>
                                   </div>
                                   <label className="mt-4 block text-xs font-semibold text-black/55">
-                                    Extra notes
+                                    Extra notes (optional)
                                     <textarea
                                       value={legalAnswers.notes}
                                       onChange={(event) =>
-                                        updateLegalAnswer("notes", event.target.value)
+                                        updateLegalAnswer(
+                                          "notes",
+                                          event.target.value,
+                                        )
                                       }
                                       placeholder="Any tools, policies, services, or details we should mention?"
-                                      className="mt-1 min-h-24 w-full rounded-2xl border border-black/10 bg-[#faf8f1] px-4 py-3 text-sm font-medium text-black outline-none focus:border-black/30"
+                                      className="mt-1 min-h-24 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm font-medium text-black outline-none focus:border-black/30"
                                     />
                                   </label>
+                                  <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                                    <p className="flex items-start gap-2 text-xs leading-5 text-black/45">
+                                      <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-kiwi-green/25 text-[#3f8f22]">
+                                        <svg
+                                          aria-hidden
+                                          viewBox="0 0 24 24"
+                                          className="h-3 w-3"
+                                          fill="currentColor"
+                                        >
+                                          <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm1 14h-2v-2h2v2Zm0-4h-2V6h2v6Z" />
+                                        </svg>
+                                      </span>
+                                      This is not legal advice. These pages are
+                                      starter templates to help you get set up.
+                                    </p>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        void generateAdditionalPages(
+                                          website.id,
+                                          "legal",
+                                        )
+                                      }
+                                      disabled={
+                                        generatingPagesWebsiteId ===
+                                          website.id ||
+                                        !canSubmitPageGeneration
+                                      }
+                                      className="h-11 shrink-0 rounded-full bg-[#141811] px-5 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                      {generatingPagesWebsiteId === website.id
+                                        ? "Starting…"
+                                        : "Generate legal pages"}
+                                    </button>
+                                  </div>
                                 </div>
                               ) : null}
 
-                              {isPro && pageGenerationType === "custom" ? (
-                                <div className="mt-5 rounded-3xl bg-white p-4">
-                                  <p className="text-sm font-semibold text-black">
-                                    New page details
-                                  </p>
-                                  <p className="mt-1 text-xs leading-5 text-black/45">
-                                    Tell us what page to add and what it should
-                                    cover.
-                                  </p>
-                                  <label className="mt-4 block text-xs font-semibold text-black/55">
+                              {activeFlow === "custom" && isPro ? (
+                                <div className="mt-5 rounded-2xl bg-[#faf8f1] p-4 sm:p-5">
+                                  <label className="block text-xs font-semibold text-black/55">
                                     Page name
                                     <input
                                       value={customPageRequest.title}
@@ -2735,7 +2943,7 @@ export default function DashboardPage() {
                                       }
                                       maxLength={80}
                                       placeholder="Careers"
-                                      className="mt-1 h-11 w-full rounded-2xl border border-black/10 bg-[#faf8f1] px-4 text-sm font-medium text-black outline-none focus:border-black/30"
+                                      className="mt-1 h-11 w-full rounded-2xl border border-black/10 bg-white px-4 text-sm font-medium text-black outline-none focus:border-black/30"
                                     />
                                   </label>
                                   <label className="mt-4 block text-xs font-semibold text-black/55">
@@ -2750,87 +2958,52 @@ export default function DashboardPage() {
                                       }
                                       maxLength={2000}
                                       placeholder="Describe the page sections, key details, tone, and any facts we should include."
-                                      className="mt-1 min-h-28 w-full rounded-2xl border border-black/10 bg-[#faf8f1] px-4 py-3 text-sm font-medium text-black outline-none focus:border-black/30"
+                                      className="mt-1 min-h-28 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm font-medium text-black outline-none focus:border-black/30"
                                     />
                                   </label>
+                                  <div className="mt-5 flex justify-end">
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        void generateAdditionalPages(
+                                          website.id,
+                                          "custom",
+                                        )
+                                      }
+                                      disabled={
+                                        generatingPagesWebsiteId ===
+                                          website.id ||
+                                        !canSubmitPageGeneration
+                                      }
+                                      className="h-11 rounded-full bg-[#141811] px-5 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                      {generatingPagesWebsiteId === website.id
+                                        ? "Starting…"
+                                        : "Create my new page"}
+                                    </button>
+                                  </div>
                                 </div>
                               ) : null}
-
-                              {isPro ? (
-                                <div className="mt-5 flex justify-end">
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      void generateAdditionalPages(
-                                        website.id,
-                                        pageGenerationType,
-                                      )
-                                    }
-                                    disabled={
-                                      generatingPagesWebsiteId === website.id ||
-                                      !canSubmitPageGeneration
-                                    }
-                                    className="h-11 rounded-full bg-[#141811] px-5 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
-                                  >
-                                    {generatingPagesWebsiteId === website.id
-                                      ? "Starting..."
-                                      : pageGenerationType === "legal"
-                                        ? "Generate legal pages"
-                                        : pageGenerationType === "custom"
-                                          ? "Create my new page"
-                                          : "Generate my other pages"}
-                                  </button>
-                                </div>
-                              ) : null}
-                            </div>
+                            </>
                           ) : null}
 
-                          {generatedPages.length > 0 && isPro && state.canView ? (
-                            confirmRegenerateId === website.id ? (
-                              <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-3">
-                                <p className="text-xs font-semibold leading-5 text-amber-800">
-                                  This rebuilds every additional page from scratch —
-                                  any changes you&apos;ve made to them will be lost.
-                                  Your homepage stays as it is.
-                                </p>
-                                <div className="mt-2.5 flex flex-wrap gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setConfirmRegenerateId(null);
-                                      void generateAdditionalPages(website.id, "business");
-                                    }}
-                                    className="rounded-full bg-[#141811] px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-black"
-                                  >
-                                    Yes, start the pages again
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => setConfirmRegenerateId(null)}
-                                    className="rounded-full border border-black/10 bg-white px-4 py-1.5 text-xs font-semibold text-black transition hover:border-black/25"
-                                  >
-                                    Keep my pages
-                                  </button>
-                                </div>
-                              </div>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => setConfirmRegenerateId(website.id)}
-                                disabled={
-                                  isGeneratingPages ||
-                                  generatingPagesWebsiteId === website.id
-                                }
-                                className="mt-4 text-xs font-semibold text-black/45 underline-offset-2 hover:text-black hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+                          {!activeFlow ? (
+                            <p className="mt-6 flex items-center justify-center gap-2 text-xs text-black/40">
+                              <svg
+                                aria-hidden
+                                viewBox="0 0 24 24"
+                                className="h-3.5 w-3.5"
+                                fill="currentColor"
                               >
-                                {isGeneratingPages ||
-                                generatingPagesWebsiteId === website.id
-                                  ? "Rebuilding pages…"
-                                  : "Start these pages again"}
-                              </button>
-                            )
+                                <path d="M12 2a5 5 0 0 1 5 5v2h1a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h1V7a5 5 0 0 1 5-5Zm0 2a3 3 0 0 0-3 3v2h6V7a3 3 0 0 0-3-3Z" />
+                              </svg>
+                              Your site and data are always secure with Refresh
+                              Kiwi.
+                            </p>
                           ) : null}
                         </div>
+                          );
+                        })()}
                       </div>
                     ) : null}
 
