@@ -2506,7 +2506,7 @@ export default function DashboardPage() {
                         onMouseDown={closeWebsiteActionModalOnBackdrop}
                         className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/35 px-5 py-4 backdrop-blur-sm sm:items-center"
                       >
-                        <div className="preview-pop max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-black/10 bg-white p-6 shadow-2xl sm:p-8">
+                        <div className="preview-pop max-h-[90vh] w-full max-w-2xl modal-scroll overflow-y-auto rounded-3xl border border-black/10 bg-white p-6 shadow-2xl sm:p-8">
                           <div className="flex items-start justify-between gap-4">
                             <div>
                               <h2
@@ -2845,7 +2845,7 @@ export default function DashboardPage() {
                       >
                         <div
                           id={`images-panel-${website.id}`}
-                          className="preview-pop max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-black/10 bg-white p-6 shadow-2xl sm:p-8"
+                          className="preview-pop max-h-[90vh] w-full max-w-2xl modal-scroll overflow-y-auto rounded-3xl border border-black/10 bg-white p-6 shadow-2xl sm:p-8"
                         >
                           <div className="flex items-start justify-between gap-4">
                             <div className="min-w-0 flex-1">
@@ -2854,7 +2854,7 @@ export default function DashboardPage() {
                                   id={`images-modal-${website.id}`}
                                   className="font-fraunces text-3xl font-semibold tracking-tight"
                                 >
-                                  Your images
+                                  Manage images
                                 </h2>
                                 {imagesState?.status === "ready" ? (
                                   <span className="rounded-full bg-kiwi-green/40 px-2.5 py-1 text-xs font-semibold text-black/70">
@@ -2874,15 +2874,15 @@ export default function DashboardPage() {
                             <ModalCloseButton onClick={closeWebsiteActionModal} />
                           </div>
 
-                          <section className="mt-6">
+                          <section className="mt-5 rounded-2xl bg-[#faf8f1] p-4 sm:p-5">
                             <h3 className="text-sm font-semibold text-black">
                               Upload images
                             </h3>
                             <div
                               className={`mt-2.5 rounded-2xl border border-dashed px-4 py-5 transition ${
                                 imageActionBusy || !state.canEdit
-                                  ? "cursor-not-allowed border-black/10 bg-[#faf8f1]/60 opacity-60"
-                                  : "border-black/15 bg-[#faf8f1]/40 hover:border-black/25"
+                                  ? "cursor-not-allowed border-black/10 bg-white/60 opacity-60"
+                                  : "border-black/15 bg-white hover:border-black/30"
                               }`}
                               onDragOver={(event) => {
                                 event.preventDefault();
@@ -2967,7 +2967,7 @@ export default function DashboardPage() {
                             </div>
                           </section>
 
-                          <section className="mt-6">
+                          <section className="mt-4 rounded-2xl bg-[#faf8f1] p-4 sm:p-5">
                             <h3 className="text-sm font-semibold text-black">
                               Generate an image
                             </h3>
@@ -3022,9 +3022,9 @@ export default function DashboardPage() {
                             </form>
                           </section>
 
-                          <section className="mt-6">
+                          <section className="mt-4 rounded-2xl bg-[#faf8f1] p-4 sm:p-5">
                             <h3 className="text-sm font-semibold text-black">
-                              Your assets
+                              Your images
                             </h3>
                             {(() => {
                               if (
@@ -3305,8 +3305,8 @@ export default function DashboardPage() {
                                       className="mt-4 inline-flex w-full items-center justify-center gap-1.5 text-sm font-semibold text-black/55 transition hover:text-black"
                                     >
                                       {imagesAssetsExpanded
-                                        ? "Show fewer assets"
-                                        : "View all assets"}
+                                        ? "Show fewer images"
+                                        : "View all images"}
                                       <svg
                                         aria-hidden
                                         viewBox="0 0 24 24"
@@ -3344,7 +3344,7 @@ export default function DashboardPage() {
                       >
                         <div
                           id={`manage-panel-${website.id}`}
-                          className="preview-pop max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-black/10 bg-white p-6 shadow-2xl sm:p-8"
+                          className="preview-pop max-h-[90vh] w-full max-w-3xl modal-scroll overflow-y-auto rounded-3xl border border-black/10 bg-white p-6 shadow-2xl sm:p-8"
                         >
                         <div className="rounded-2xl bg-[#faf8f1] p-4">
                           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -3564,7 +3564,7 @@ export default function DashboardPage() {
                         onMouseDown={closeWebsiteActionModalOnBackdrop}
                         className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/35 px-5 py-4 backdrop-blur-sm sm:items-center"
                       >
-                        <div className="preview-pop max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-black/10 bg-white p-6 shadow-2xl sm:p-8">
+                        <div className="preview-pop max-h-[90vh] w-full max-w-lg modal-scroll overflow-y-auto rounded-3xl border border-black/10 bg-white p-6 shadow-2xl sm:p-8">
                           <div className="flex items-start justify-between gap-4">
                             <div>
                               <h2
@@ -3798,7 +3798,7 @@ export default function DashboardPage() {
                         onMouseDown={closeWebsiteActionModalOnBackdrop}
                         className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/35 px-5 py-4 backdrop-blur-sm sm:items-center"
                       >
-                        <div className="preview-pop max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-3xl border border-red-100 bg-white p-6 shadow-2xl sm:p-8">
+                        <div className="preview-pop max-h-[calc(100dvh-2rem)] w-full max-w-lg modal-scroll overflow-y-auto rounded-3xl border border-red-100 bg-white p-6 shadow-2xl sm:p-8">
                           <div className="flex items-start justify-between gap-4">
                             <div>
                               <h2
@@ -3898,7 +3898,7 @@ export default function DashboardPage() {
                       >
                         <form
                           id={`edit-panel-${website.id}`}
-                          className="preview-pop max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-black/10 bg-white p-6 shadow-2xl sm:p-8"
+                          className="preview-pop max-h-[90vh] w-full max-w-lg modal-scroll overflow-y-auto rounded-3xl border border-black/10 bg-white p-6 shadow-2xl sm:p-8"
                           onSubmit={(event) => {
                             event.preventDefault();
                             void submitEditRequest(website.id);
@@ -4396,7 +4396,7 @@ export default function DashboardPage() {
           }}
           className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/35 px-5 py-4 backdrop-blur-sm sm:items-center"
         >
-          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md modal-scroll overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
             <div className="flex items-start justify-between gap-4">
               <h2 className="font-fraunces text-2xl font-semibold tracking-tight">
                 Kiwi Pro — {pricing.proPriceMonthly}

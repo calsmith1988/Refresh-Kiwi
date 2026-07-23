@@ -296,6 +296,26 @@ button:disabled,
   animation: edit-button-shimmer 1.6s ease-in-out infinite;
 }
 
+/* Thin rounded scrollbar for popup panels so it doesn't clash with their
+   rounded-3xl corners. Track margins keep the thumb clear of the radius. */
+.modal-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.modal-scroll::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 24px 0;
+}
+
+.modal-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(20, 24, 17, 0.18);
+}
+
+.modal-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(20, 24, 17, 0.32);
+}
+
 .prompt-starter-scroll {
   scrollbar-width: none;
   -ms-overflow-style: none;
