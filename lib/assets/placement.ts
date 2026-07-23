@@ -37,3 +37,22 @@ export function buildImagePlacementPrompt(params: {
     .filter(Boolean)
     .join("\n");
 }
+
+const IMAGE_PLACEMENT_PROMPT_MARKER =
+  "Add these provided website assets to the existing site design.";
+
+/**
+ * Friendly copy for the dashboard "Requested change" panel.
+ * The stored prompt (for the AI) stays technical — this only affects display.
+ */
+export function friendlyEditRequestSummary(prompt: string): string | null {
+  if (!prompt.includes(IMAGE_PLACEMENT_PROMPT_MARKER)) {
+    return null;
+  }
+
+  if (/header logo|brand mark/i.test(prompt)) {
+    return "Updating your logo across the site.";
+  }
+
+  return "Adding your image to the site.";
+}

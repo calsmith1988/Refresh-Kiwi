@@ -76,6 +76,10 @@ function button(url: string, label: string): string {
   return `<a href="${escapeHtml(url)}" style="display:inline-block;background:#c5e66a;color:#111;padding:12px 18px;border-radius:999px;text-decoration:none;font-weight:700">${escapeHtml(label)}</a>`;
 }
 
+function outlineButton(url: string, label: string): string {
+  return `<a href="${escapeHtml(url)}" style="display:inline-block;background:#fff;color:#111;padding:12px 18px;border-radius:999px;border:1px solid #111;text-decoration:none;font-weight:700">${escapeHtml(label)}</a>`;
+}
+
 function heading(text: string): string {
   return `<h1 style="font-family:Georgia,'Times New Roman',serif;font-size:24px;line-height:1.3;letter-spacing:-0.02em;margin:0 0 16px">${escapeHtml(text)}</h1>`;
 }
@@ -156,7 +160,7 @@ export async function sendWelcomeEmail(params: {
         ${feature("Add pages", "About, Services, Contact, whatever you need")}
         ${feature("Go live", "Kiwi Pro puts your site online with hosting and your own web address")}
       `)}
-      <p><a href="${escapeHtml(dashboardUrl)}" style="color:#111;font-weight:700">Open your dashboard</a></p>
+      <p>${outlineButton(dashboardUrl, "Open your dashboard")}</p>
       <p style="color:#666">Haven't built a preview yet? <a href="${escapeHtml(homeUrl)}" style="color:#111">Paste your current website — or just describe your business</a> — and we'll have one ready in about two minutes.</p>
     `),
   });

@@ -9,6 +9,7 @@ import ModalCloseButton from "@/components/ModalCloseButton";
 import SiteLogo from "@/components/SiteLogo";
 import { usePricing } from "@/components/usePricing";
 import kiwiGroupBackground from "../../kiwi-group-background.png";
+import { friendlyEditRequestSummary } from "@/lib/assets/placement";
 import {
   isNewPageEditRequest,
   NEW_PAGE_EDIT_MESSAGE,
@@ -2376,7 +2377,7 @@ export default function DashboardPage() {
                                 <DashboardIcon name="rocket" />
                                 {state.label === "Preview ended"
                                   ? `Restore my website — ${pricing.proPriceShort}`
-                                  : `Take it online — ${pricing.proPriceShort}`}
+                                  : `Put it online — ${pricing.proPriceShort}`}
                               </button>
                             ) : null}
                             {state.canEdit ? (
@@ -4542,7 +4543,8 @@ export default function DashboardPage() {
                 Requested change
               </p>
               <p className="mt-1 line-clamp-3 text-sm leading-6 text-black/60">
-                {activeEditRequest.prompt}
+                {friendlyEditRequestSummary(activeEditRequest.prompt) ??
+                  activeEditRequest.prompt}
               </p>
             </div>
 
