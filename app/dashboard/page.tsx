@@ -309,15 +309,15 @@ const LEGAL_BOOLEAN_FIELDS: LegalBooleanField[] = [
 // number); the others are complete instructions the AI has context for.
 const EDIT_SUGGESTIONS: Array<{ label: string; prompt: string }> = [
   {
-    label: "Change the phone number to…",
+    label: "Change the phone number",
     prompt: "Change the phone number to ",
   },
   {
-    label: "Change the opening hours to…",
+    label: "Change opening hours",
     prompt: "Change the opening hours to ",
   },
   {
-    label: "Add a customer review…",
+    label: "Add a customer review",
     prompt: "Add this customer review: ",
   },
   {
@@ -329,6 +329,15 @@ const EDIT_SUGGESTIONS: Array<{ label: string; prompt: string }> = [
     prompt: "Try a different colour scheme that still suits the business",
   },
 ];
+
+const EDIT_PROMPT_SOFT_LIMIT = 500;
+
+function isEditSuggestionSelected(prompt: string, suggestionPrompt: string) {
+  return (
+    prompt === suggestionPrompt ||
+    (suggestionPrompt.endsWith(" ") && prompt.startsWith(suggestionPrompt))
+  );
+}
 
 // Shown while an edit is running, advancing with elapsed time so the page
 // always feels alive. The last message holds until the edit completes.
@@ -2525,12 +2534,9 @@ export default function DashboardPage() {
                         <div className="preview-pop max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-black/10 bg-white p-6 shadow-2xl sm:p-8">
                           <div className="flex items-start justify-between gap-4">
                             <div>
-                              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-black/40">
-                                Pages
-                              </p>
                               <h2
                                 id={`pages-modal-${website.id}`}
-                                className="mt-2 font-fraunces text-3xl font-semibold tracking-tight"
+                                className="font-fraunces text-3xl font-semibold tracking-tight"
                               >
                                 Manage pages
                               </h2>
@@ -2874,12 +2880,9 @@ export default function DashboardPage() {
                         >
                         <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
                           <div>
-                            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-black/40">
-                              Images
-                            </p>
                             <h2
                               id={`images-modal-${website.id}`}
-                              className="mt-2 font-fraunces text-3xl font-semibold tracking-tight"
+                              className="font-fraunces text-3xl font-semibold tracking-tight"
                             >
                               Your images
                             </h2>
@@ -3383,12 +3386,9 @@ export default function DashboardPage() {
                         <div className="rounded-2xl bg-[#faf8f1] p-4">
                           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                             <div>
-                              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-black/40">
-                                Manage domain
-                              </p>
                               <h2
                                 id={`domain-modal-${website.id}`}
-                                className="mt-2 font-fraunces text-3xl font-semibold tracking-tight"
+                                className="font-fraunces text-3xl font-semibold tracking-tight"
                               >
                                 Connect your domain
                               </h2>
@@ -3607,12 +3607,9 @@ export default function DashboardPage() {
                         <div className="preview-pop max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-black/10 bg-white p-6 shadow-2xl sm:p-8">
                           <div className="flex items-start justify-between gap-4">
                             <div>
-                              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-black/40">
-                                Advanced
-                              </p>
                               <h2
                                 id={`seo-modal-${website.id}`}
-                                className="mt-2 font-fraunces text-3xl font-semibold tracking-tight"
+                                className="font-fraunces text-3xl font-semibold tracking-tight"
                               >
                                 Search &amp; analytics
                               </h2>
@@ -3782,12 +3779,9 @@ export default function DashboardPage() {
                         <div className="preview-pop w-full max-w-lg rounded-3xl border border-black/10 bg-white p-6 shadow-2xl sm:p-8">
                           <div className="flex items-start justify-between gap-4">
                             <div>
-                              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-black/40">
-                                Rename
-                              </p>
                               <h2
                                 id={`rename-modal-${website.id}`}
-                                className="mt-2 font-fraunces text-3xl font-semibold tracking-tight"
+                                className="font-fraunces text-3xl font-semibold tracking-tight"
                               >
                                 Rename website
                               </h2>
@@ -3859,18 +3853,15 @@ export default function DashboardPage() {
                         <div className="preview-pop max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-3xl border border-red-100 bg-white p-6 shadow-2xl sm:p-8">
                           <div className="flex items-start justify-between gap-4">
                             <div>
-                              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-red-500/70">
-                                Delete website
-                              </p>
                               <h2
                                 id={`delete-modal-${website.id}`}
-                                className="mt-2 font-fraunces text-3xl font-semibold tracking-tight"
+                                className="font-fraunces text-3xl font-semibold tracking-tight"
                               >
                                 Delete {website.brandName || website.slug}?
                               </h2>
                               <p className="mt-2 text-sm leading-6 text-black/55">
-                                This removes the website from your dashboard.
-                                Press and hold the button below to confirm.
+                                This will remove the website from your dashboard.
+                                This action can&apos;t be undone.
                               </p>
                             </div>
                             <button
@@ -3937,7 +3928,11 @@ export default function DashboardPage() {
                                       : "0%",
                                 }}
                               />
-                              <span className="relative">
+                              <span className="relative inline-flex items-center justify-center gap-2">
+                                <DashboardIcon
+                                  name="trash"
+                                  className="h-4 w-4 text-white"
+                                />
                                 {deletingWebsiteId === website.id
                                   ? "Deleting..."
                                   : deleteHoldWebsiteId === website.id
@@ -3961,20 +3956,28 @@ export default function DashboardPage() {
                       >
                         <form
                           id={`edit-panel-${website.id}`}
-                          className="preview-pop max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-black/10 bg-[#faf8f1] p-6 shadow-2xl sm:p-8"
+                          className="preview-pop max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-black/10 bg-white p-6 shadow-2xl sm:p-8"
                           onSubmit={(event) => {
                             event.preventDefault();
                             void submitEditRequest(website.id);
                           }}
                         >
+                        {(() => {
+                          const editPrompt = editPrompts[website.id] ?? "";
+                          const editPromptLength = editPrompt.length;
+                          const focusEditPrompt = () => {
+                            document
+                              .getElementById(`edit-${website.id}`)
+                              ?.focus();
+                          };
+
+                          return (
+                            <>
                         <div className="mb-6 flex items-start justify-between gap-4">
                           <div>
-                            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-black/40">
-                              Edit
-                            </p>
                             <h2
                               id={`edit-modal-${website.id}`}
-                              className="mt-2 font-fraunces text-3xl font-semibold tracking-tight"
+                              className="font-fraunces text-3xl font-semibold tracking-tight"
                             >
                               Request a change
                             </h2>
@@ -3986,42 +3989,103 @@ export default function DashboardPage() {
                           <button
                             type="button"
                             onClick={closeWebsiteActionModal}
-                            className="rounded-full border border-black/10 bg-white px-3 py-1 text-sm text-black/60 transition hover:border-black/25 hover:text-black"
+                            aria-label="Close"
+                            className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-black/10 text-black/50 transition hover:border-black/25 hover:text-black"
                           >
-                            Close
+                            <svg
+                              aria-hidden
+                              viewBox="0 0 24 24"
+                              className="h-4 w-4"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                            >
+                              <path d="M6 6l12 12M18 6L6 18" />
+                            </svg>
                           </button>
                         </div>
-                        <label
-                          htmlFor={`edit-${website.id}`}
-                          className="text-sm font-semibold text-black"
-                        >
-                          What would you like changed?
-                        </label>
-                        <div className="mt-2.5 flex flex-wrap gap-1.5">
-                          {EDIT_SUGGESTIONS.map((suggestion) => (
+
+                        <div>
+                          <p className="text-sm font-semibold text-black">
+                            What would you like changed?
+                          </p>
+                          <div className="mt-2.5 flex flex-wrap gap-2">
+                            {EDIT_SUGGESTIONS.map((suggestion) => {
+                              const selected = isEditSuggestionSelected(
+                                editPrompt,
+                                suggestion.prompt,
+                              );
+
+                              return (
+                                <button
+                                  key={suggestion.label}
+                                  type="button"
+                                  onClick={() => {
+                                    setEditPrompts((current) => ({
+                                      ...current,
+                                      [website.id]: suggestion.prompt,
+                                    }));
+                                    // Put the cursor in the box so they can
+                                    // finish the sentence straight away.
+                                    focusEditPrompt();
+                                  }}
+                                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                                    selected
+                                      ? "border-kiwi-green bg-kiwi-green/35 text-black"
+                                      : "border-black/10 bg-white text-black/60 hover:border-black/25 hover:text-black"
+                                  }`}
+                                >
+                                  {selected ? (
+                                    <span className="grid h-4 w-4 place-items-center rounded-full bg-[#3f8f22] text-white">
+                                      <DashboardIcon
+                                        name="check"
+                                        className="h-2.5 w-2.5"
+                                      />
+                                    </span>
+                                  ) : null}
+                                  {suggestion.label}
+                                </button>
+                              );
+                            })}
                             <button
-                              key={suggestion.label}
                               type="button"
-                              onClick={() => {
-                                setEditPrompts((current) => ({
-                                  ...current,
-                                  [website.id]: suggestion.prompt,
-                                }));
-                                // Put the cursor in the box so they can
-                                // finish the sentence straight away.
-                                document
-                                  .getElementById(`edit-${website.id}`)
-                                  ?.focus();
-                              }}
-                              className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-black/60 transition hover:border-black/25 hover:text-black"
+                              onClick={focusEditPrompt}
+                              className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white px-3 py-1.5 text-xs font-medium text-black/60 transition hover:border-black/25 hover:text-black"
                             >
-                              {suggestion.label}
+                              Other
+                              <svg
+                                aria-hidden
+                                viewBox="0 0 24 24"
+                                className="h-3.5 w-3.5"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <path d="M6 9l6 6 6-6" />
+                              </svg>
                             </button>
-                          ))}
+                          </div>
                         </div>
-                        <div className="mt-3 flex flex-col gap-3 sm:flex-row">
-                          {website.pages.length > 0 ? (
+
+                        <div className="mt-5">
+                          <label
+                            htmlFor={`edit-target-${website.id}`}
+                            className="text-sm font-semibold text-black"
+                          >
+                            Where on your site is this?
+                          </label>
+                          <div className="relative mt-2.5">
+                            <span className="pointer-events-none absolute inset-y-0 left-4 grid place-items-center text-black/40">
+                              <DashboardIcon
+                                name="globe"
+                                className="h-4 w-4"
+                              />
+                            </span>
                             <select
+                              id={`edit-target-${website.id}`}
                               value={editTargets[website.id] ?? "__site__"}
                               onChange={(event) =>
                                 setEditTargets((current) => ({
@@ -4029,50 +4093,111 @@ export default function DashboardPage() {
                                   [website.id]: event.target.value,
                                 }))
                               }
-                              className="h-11 rounded-full border border-black/10 bg-white px-4 text-sm font-semibold text-black outline-none focus:border-black/30 sm:w-48"
-                              aria-label="Edit target"
+                              className="h-12 w-full appearance-none rounded-2xl border border-black/10 bg-white py-2 pl-11 pr-10 text-sm font-medium text-black outline-none focus:border-black/30"
                             >
-                              <option value="__site__">Entire site</option>
+                              <option value="__site__">
+                                Entire site (global)
+                              </option>
                               {website.pages.map((page) => (
                                 <option key={page.id} value={page.path}>
                                   {page.path === "/" ? "Homepage" : page.title}
                                 </option>
                               ))}
                             </select>
-                          ) : null}
-                          <input
-                            id={`edit-${website.id}`}
-                            value={editPrompts[website.id] ?? ""}
-                            onChange={(event) =>
-                              setEditPrompts((current) => ({
-                                ...current,
-                                [website.id]: event.target.value,
-                              }))
-                            }
-                            placeholder="Make the phone number bigger, swap the main photo, try different colours..."
-                            className="h-11 flex-1 rounded-full border border-black/10 bg-white px-4 text-sm outline-none placeholder:text-black/30 focus:border-black/30"
-                          />
-                          <button
-                            type="submit"
-                            disabled={
-                              submittingEditId === website.id ||
-                              hasActiveEditForWebsite ||
-                              !(editPrompts[website.id] ?? "").trim()
-                            }
-                            className="h-11 rounded-full bg-[#141811] px-5 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            {submittingEditId === website.id
-                              ? "Sending…"
-                              : hasActiveEditForWebsite
-                                ? "Working on your last change…"
-                                : "Make the change"}
-                          </button>
+                            <span className="pointer-events-none absolute inset-y-0 right-4 grid place-items-center text-black/40">
+                              <svg
+                                aria-hidden
+                                viewBox="0 0 24 24"
+                                className="h-4 w-4"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <path d="M6 9l6 6 6-6" />
+                              </svg>
+                            </span>
+                          </div>
                         </div>
-                        <p className="mt-2 text-xs leading-5 text-black/45">
-                          {hasActiveEditForWebsite
-                            ? "One change at a time — you can type your next one now and send it as soon as the current change is finished."
-                            : "We'll make your change — it usually takes a few minutes. Check back here to see when it's done. Need a new page? Use Add pages instead."}
-                        </p>
+
+                        <div className="mt-5">
+                          <label
+                            htmlFor={`edit-${website.id}`}
+                            className="text-sm font-semibold text-black"
+                          >
+                            Tell us more about the change
+                          </label>
+                          <div className="relative mt-2.5">
+                            <textarea
+                              id={`edit-${website.id}`}
+                              value={editPrompt}
+                              onChange={(event) =>
+                                setEditPrompts((current) => ({
+                                  ...current,
+                                  [website.id]: event.target.value,
+                                }))
+                              }
+                              rows={5}
+                              placeholder="What do you want to change, and how should it look or feel?"
+                              className="w-full resize-y rounded-2xl border border-black/10 bg-white px-4 py-3 pb-8 text-sm outline-none placeholder:text-black/30 focus:border-black/30"
+                            />
+                            <span
+                              className={`pointer-events-none absolute bottom-3 right-4 text-xs ${
+                                editPromptLength > EDIT_PROMPT_SOFT_LIMIT
+                                  ? "font-semibold text-amber-700"
+                                  : "text-black/35"
+                              }`}
+                            >
+                              {editPromptLength} / {EDIT_PROMPT_SOFT_LIMIT}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="mt-5 flex items-start gap-3">
+                          <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-kiwi-green/25 text-[#3f8f22]">
+                            <svg
+                              aria-hidden
+                              viewBox="0 0 24 24"
+                              className="h-4 w-4"
+                              fill="currentColor"
+                            >
+                              <path d="M12 2a1 1 0 0 1 1 1v1.1A8 8 0 0 1 20 12a1 1 0 1 1-2 0 6 6 0 1 0-6 6 1 1 0 1 1 0 2 8 8 0 0 1-7.9-9H3a1 1 0 1 1 0-2h1.1A8 8 0 0 1 11 3.1V3a1 1 0 0 1 1-1Zm0 6a1 1 0 0 1 1 1v3.6l2.2 1.3a1 1 0 1 1-1 1.7l-2.7-1.6A1 1 0 0 1 11 13V9a1 1 0 0 1 1-1Z" />
+                            </svg>
+                          </span>
+                          <p className="text-sm leading-6 text-black/55">
+                            {hasActiveEditForWebsite
+                              ? "One change at a time — you can type your next one now and send it as soon as the current change is finished."
+                              : "We'll make your change — it usually takes a few minutes."}
+                          </p>
+                        </div>
+
+                        <button
+                          type="submit"
+                          disabled={
+                            submittingEditId === website.id ||
+                            hasActiveEditForWebsite ||
+                            !editPrompt.trim()
+                          }
+                          className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-kiwi-green px-5 text-sm font-semibold text-black transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <svg
+                            aria-hidden
+                            viewBox="0 0 24 24"
+                            className="h-4 w-4"
+                            fill="currentColor"
+                          >
+                            <path d="M12 2.5 13.4 9l6.6 1.4-6.6 1.4L12 18.5 10.6 11.8 4 10.4l6.6-1.4L12 2.5Zm7 11.2 1 3.3 3.3 1-3.3 1-1 3.3-1-3.3-3.3-1 3.3-1 1-3.3Z" />
+                          </svg>
+                          {submittingEditId === website.id
+                            ? "Sending…"
+                            : hasActiveEditForWebsite
+                              ? "Working on your last change…"
+                              : "Make the change"}
+                        </button>
+                            </>
+                          );
+                        })()}
                       </form>
                       </div>
                     ) : null}
@@ -4148,12 +4273,9 @@ export default function DashboardPage() {
                 className="kiwi-bob rounded-full"
               />
             </div>
-            <p className="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-black/40">
-              Building pages
-            </p>
             <h2
               id="active-pages-title"
-              className="mx-auto mt-2 max-w-sm font-fraunces text-3xl font-semibold leading-tight tracking-tight"
+              className="mx-auto mt-5 max-w-sm font-fraunces text-3xl font-semibold leading-tight tracking-tight"
             >
               Updating {activePagesWebsite.brandName || activePagesWebsite.slug}
             </h2>
@@ -4244,12 +4366,9 @@ export default function DashboardPage() {
               />
             </div>
 
-            <p className="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-black/40">
-              Making your edit
-            </p>
             <h2
               id="active-edit-title"
-              className="mx-auto mt-2 max-w-sm font-fraunces text-3xl font-semibold leading-tight tracking-tight"
+              className="mx-auto mt-5 max-w-sm font-fraunces text-3xl font-semibold leading-tight tracking-tight"
             >
               Updating {activeEditWebsite.brandName || activeEditWebsite.slug}
             </h2>
