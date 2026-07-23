@@ -5,6 +5,7 @@ import { getDb, schema } from "@/lib/db";
 import { createDomainHelpToken } from "@/lib/domains/help-token";
 import { detectDomainProvider, genericDomainProvider } from "@/lib/domains/providers";
 import { buildDomainDnsRecords } from "@/lib/domains/records";
+import { toUserFacingEditError } from "@/lib/edits/errors";
 import { buildAppUrl } from "@/lib/email/config";
 import { STATUS_MESSAGES, type JobStatus } from "@/lib/jobs/types";
 import { homepageScreenshotPath } from "@/lib/screenshots/paths";
@@ -138,7 +139,7 @@ export async function GET() {
               id: latestEditRequest.id,
               prompt: latestEditRequest.prompt,
               status: latestEditRequest.status,
-              errorMessage: latestEditRequest.errorMessage,
+              errorMessage: toUserFacingEditError(latestEditRequest.errorMessage),
               createdAt: latestEditRequest.createdAt.toISOString(),
               updatedAt: latestEditRequest.updatedAt.toISOString(),
             }

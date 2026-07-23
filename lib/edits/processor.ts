@@ -1,12 +1,57 @@
-import { eq } from "drizzle-orm";
+import { and, desc, eq, isNotNull } from "drizzle-orm";
 
 import { localizeWebsiteImages } from "@/lib/assets/localize";
 import { isCursorStartupError, runEditPhase } from "@/lib/cursor/agent";
+import { RunTimeoutError } from "@/lib/cursor/run";
+import {
+  EDIT_CANCELLED_USER_MESSAGE,
+  EDIT_FAILED_USER_MESSAGE,
+  EDIT_TIMEOUT_USER_MESSAGE,
+} from "@/lib/edits/errors";
 import { getDb, schema } from "@/lib/db";
 import { syncPreviewFromAgent } from "@/lib/preview/sync";
 import { tryCaptureHomepageScreenshot } from "@/lib/screenshots/homepage";
 
-const { editRequests, websites } = schema;
+const { editRequests, jobs, websites } = schema;
+
+/**
+ * The agent that most recently committed to this site has the freshest cloud
+ * workspace, so resuming it skips VM provisioning + repo clone. Preference:
+ * latest edit agent, then the pages agent, then the homepage build agent.
+ */
+async function findResumeAgentId(website: {
+  id: string;
+  jobId: string;
+}): Promise<string | null> {
+  const db = getDb();
+
+  const [previousEdit] = await db
+    .select({ agentId: editRequests.agentId })
+    .from(editRequests)
+    .where(
+      and(
+        eq(editRequests.websiteId, website.id),
+        isNotNull(editRequests.agentId),
+      ),
+    )
+    .orderBy(desc(editRequests.createdAt))
+    .limit(1);
+
+  if (previousEdit?.agentId) {
+    return previousEdit.agentId;
+  }
+
+  const [job] = await db
+    .select({
+      pagesAgentId: jobs.pagesAgentId,
+      homepageAgentId: jobs.homepageAgentId,
+    })
+    .from(jobs)
+    .where(eq(jobs.id, website.jobId))
+    .limit(1);
+
+  return job?.pagesAgentId ?? job?.homepageAgentId ?? null;
+}
 
 async function updateEditRequest(
   editRequestId: string,
@@ -49,6 +94,8 @@ export async function processEditRequest(editRequestId: string): Promise<void> {
   try {
     await updateEditRequest(editRequest.id, { status: "running" });
 
+    const resumeAgentId = await findResumeAgentId(editRequest.website);
+
     const editRun = await runEditPhase(
       {
         sourceUrl: editRequest.website.sourceUrl,
@@ -56,6 +103,7 @@ export async function processEditRequest(editRequestId: string): Promise<void> {
         editPrompt: editRequest.prompt,
         generationMode: editRequest.website.generationMode,
         creationPrompt: editRequest.website.creationPrompt,
+        resumeAgentId,
       },
       async (started) => {
         await updateEditRequest(editRequest.id, {
@@ -96,14 +144,14 @@ export async function processEditRequest(editRequestId: string): Promise<void> {
 
     await updateEditRequest(editRequest.id, { status: "complete" });
   } catch (error) {
-    const message = isCursorStartupError(error)
+    const technicalMessage = isCursorStartupError(error)
       ? `Cursor edit agent failed to start: ${error.message}`
       : error instanceof Error
         ? error.message
         : "Unknown edit error";
 
     console.error(
-      `[refresh-kiwi] edit request ${editRequest.id} failed: ${message}`,
+      `[refresh-kiwi] edit request ${editRequest.id} failed: ${technicalMessage}`,
     );
 
     const [currentEdit] = await db
@@ -114,14 +162,19 @@ export async function processEditRequest(editRequestId: string): Promise<void> {
 
     if (
       currentEdit?.status === "failed" &&
-      currentEdit.errorMessage === "Edit cancelled."
+      currentEdit.errorMessage === EDIT_CANCELLED_USER_MESSAGE
     ) {
       return;
     }
 
+    // Users only ever see friendly copy; the technical detail above stays in
+    // the server logs.
     await updateEditRequest(editRequest.id, {
       status: "failed",
-      errorMessage: message,
+      errorMessage:
+        error instanceof RunTimeoutError
+          ? EDIT_TIMEOUT_USER_MESSAGE
+          : EDIT_FAILED_USER_MESSAGE,
     });
   }
 }

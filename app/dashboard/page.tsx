@@ -2493,10 +2493,8 @@ export default function DashboardPage() {
                             </p>
                           ) : (
                             <p className="mt-3 text-xs font-medium text-amber-700">
-                              That change didn&apos;t work — please try again.
-                              {website.latestEditRequest.errorMessage
-                                ? ` (${website.latestEditRequest.errorMessage})`
-                                : null}
+                              {website.latestEditRequest.errorMessage ??
+                                "That change didn't work — please try again."}
                             </p>
                           )
                         ) : null}

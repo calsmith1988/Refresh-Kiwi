@@ -234,19 +234,22 @@ export async function processAdditionalPages(
 
     await updateJob(job.id, { status: "complete" });
   } catch (error) {
-    const message = isCursorStartupError(error)
+    const technicalMessage = isCursorStartupError(error)
       ? `Cursor agent failed to start: ${error.message}`
       : error instanceof Error
         ? error.message
         : "Unknown error";
 
     console.error(
-      `[refresh-kiwi] additional pages failed websiteId=${websiteId}: ${message}`,
+      `[refresh-kiwi] additional pages failed websiteId=${websiteId}: ${technicalMessage}`,
     );
 
+    // Users only ever see friendly copy; the technical detail above stays in
+    // the server logs.
     await updateJob(job.id, {
       status: "homepage_ready",
-      errorMessage: message,
+      errorMessage:
+        "We couldn't finish building your pages this time. Please try again.",
     });
   }
 }

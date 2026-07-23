@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth/session";
 import { getDb, schema } from "@/lib/db";
+import { toUserFacingEditError } from "@/lib/edits/errors";
 import { userHasProPlan } from "@/lib/websites/service";
 
 export const runtime = "nodejs";
@@ -49,6 +50,7 @@ export async function GET(_request: Request, context: RouteContext) {
   return NextResponse.json({
     editRequest: {
       ...editRequest,
+      errorMessage: toUserFacingEditError(editRequest.errorMessage),
       createdAt: editRequest.createdAt.toISOString(),
       updatedAt: editRequest.updatedAt.toISOString(),
     },

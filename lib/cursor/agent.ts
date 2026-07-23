@@ -322,11 +322,38 @@ export async function runEditPhase(
     editPrompt: string;
     generationMode?: "refresh" | "fresh";
     creationPrompt?: string | null;
+    resumeAgentId?: string | null;
   },
   onStarted?: (info: PhaseRunResult) => Promise<void>,
 ): Promise<PhaseRunResult> {
   const apiKey = getCursorApiKey();
-  const agent = await Agent.create({
+
+  // Resuming the agent that last worked on this site reuses its cloud
+  // workspace (repo already cloned, site files already in context) instead of
+  // paying full VM provisioning + clone cost for every small edit. Fall back
+  // to a fresh agent when the old one is gone (archived/expired).
+  let agent: Awaited<ReturnType<typeof Agent.create>> | null = null;
+
+  if (params.resumeAgentId) {
+    try {
+      agent = await Agent.resume(params.resumeAgentId, {
+        apiKey,
+        model: MODEL,
+        cloud: cloudOptions(),
+      });
+      console.info(
+        `[refresh-kiwi] edit agent resumed agentId=${params.resumeAgentId} slug=${params.slug}`,
+      );
+    } catch (error) {
+      console.warn(
+        `[refresh-kiwi] edit agent resume failed agentId=${params.resumeAgentId} slug=${params.slug}; creating a fresh agent: ${
+          error instanceof Error ? error.message : error
+        }`,
+      );
+    }
+  }
+
+  agent ??= await Agent.create({
     apiKey,
     model: MODEL,
     name: `Refresh Kiwi — ${params.slug} (edit)`,
