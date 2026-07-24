@@ -428,7 +428,26 @@ const EDIT_POLL_INTERVAL_MS = 5000;
 const ACTIVE_EDIT_STATUSES = new Set(["queued", "running"]);
 const PRO_SUBSCRIPTION_STATUSES = new Set(["active", "trialing"]);
 const DAY_MS = 24 * 60 * 60 * 1000;
+/** How long failed/cancelled edit banners stay on the website card. */
+const EDIT_OUTCOME_VISIBLE_MS = DAY_MS;
 const DASHBOARD_TOUR_STORAGE_KEY = "refresh-kiwi:dashboard-tour-dismissed";
+
+function shouldShowEditOutcomeBanner(
+  editRequest: Website["latestEditRequest"],
+): editRequest is NonNullable<Website["latestEditRequest"]> & {
+  status: "failed";
+} {
+  if (!editRequest || editRequest.status !== "failed") {
+    return false;
+  }
+
+  const updatedAtMs = new Date(editRequest.updatedAt).getTime();
+  if (Number.isNaN(updatedAtMs)) {
+    return false;
+  }
+
+  return Date.now() - updatedAtMs < EDIT_OUTCOME_VISIBLE_MS;
+}
 
 function formatDate(value: string): string {
   return new Intl.DateTimeFormat("en-GB", {
@@ -2112,13 +2131,13 @@ export default function DashboardPage() {
                 No websites saved yet
               </h2>
               <p className="mt-2 text-sm text-black/55">
-                Generate a homepage preview, then save it to your account.
+                Generate a website preview, then save it to your account.
               </p>
               <Link
                 href="/?new=1"
                 className="mt-5 inline-flex rounded-full bg-kiwi-green px-6 py-3 text-sm font-semibold text-black"
               >
-                Refresh my first website
+                Create my first website
               </Link>
             </div>
           ) : (
@@ -2482,10 +2501,9 @@ export default function DashboardPage() {
                           </div>
                         </div>
 
-                        {website.latestEditRequest &&
-                        website.latestEditRequest.status !== "queued" &&
-                        website.latestEditRequest.status !== "running" &&
-                        website.latestEditRequest.status !== "complete" ? (
+                        {shouldShowEditOutcomeBanner(
+                          website.latestEditRequest,
+                        ) ? (
                           website.latestEditRequest.errorMessage ===
                           "Edit cancelled." ? (
                             <p className="mt-3 text-xs font-medium text-black/45">

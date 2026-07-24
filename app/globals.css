@@ -28,6 +28,19 @@ body {
   font-family: var(--font-sans);
 }
 
+/* iOS Safari auto-zooms the whole page when a focused form control's font
+   size is under 16px, and never zooms back out — so a 14px login input
+   leaves every later page zoomed in. Forcing 16px on touch-sized screens
+   prevents the zoom entirely. !important is needed to beat Tailwind
+   utilities like text-sm on the elements themselves. */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
 /* Native <button> defaults to the arrow cursor; match links so every
    interactive control reads as clickable. */
 button:not(:disabled),
