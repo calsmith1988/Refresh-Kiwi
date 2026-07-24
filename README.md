@@ -284,6 +284,30 @@ WORKER_RECOVERY_INTERVAL_MS=60000
 
 Do not reintroduce Next.js `after()` for long-running work. Enqueue a `background_tasks` row instead.
 
+## Cron jobs
+
+Two Render cron jobs POST to the app with the `CRON_SECRET` bearer token:
+
+- `/api/cron/check-domains` - verifies pending custom domains.
+- `/api/cron/lifecycle-emails` - sends the 24-hour free-plan follow-up.
+
+They live in the Render dashboard, not in this repo, so keep these commands in
+sync there:
+
+```bash
+curl -fsS -X POST "$NEXT_PUBLIC_APP_URL/api/cron/check-domains" \
+  -H "Authorization: Bearer $CRON_SECRET" \
+  --connect-timeout 15 --max-time 180 \
+  --retry 5 --retry-delay 30 --retry-connrefused
+```
+
+The retry flags matter: without them a brief window where the app is
+unreachable makes `curl` hang for ~2 minutes and then exit 28, which sends a
+false-alarm failure email. Both endpoints take an advisory lock and dedupe
+their side effects (`sendOnce`, and no DB write for still-pending domains), so
+a skipped or retried run is harmless — the next run picks up the same
+candidates.
+
 ## External services
 
 This app depends on several external systems:
