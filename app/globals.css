@@ -105,26 +105,32 @@ button:disabled,
 }
 
 /* Width + overflow (not clip-path): Chrome can fail to paint Next/Image
-   layers inside an animated clip-path, so the before shot never appears. */
+   layers inside an animated clip-path, so the before shot never appears.
+   Pause holds on full "after" (clip width 0%), then sweeps across "before"
+   and back — not the other way around. */
 @keyframes before-after-reveal {
   0%,
-  100% {
+  13% {
     width: 0%;
   }
-  45%,
-  58% {
+  56.5% {
     width: 100%;
+  }
+  100% {
+    width: 0%;
   }
 }
 
 @keyframes before-after-handle {
   0%,
-  100% {
+  13% {
     left: 0%;
   }
-  45%,
-  58% {
+  56.5% {
     left: 100%;
+  }
+  100% {
+    left: 0%;
   }
 }
 
@@ -159,18 +165,18 @@ button:disabled,
   animation: before-after-handle 8s ease-in-out infinite;
 }
 
-/* Chips fade with the sweep: "After" while the after image dominates,
-   "Before" while the before image is revealed (45–58% of the cycle). */
+/* Chips fade with the sweep: "After" during the pause on the after image,
+   "Before" around the mid-cycle peak when the before image is revealed. */
 @keyframes before-chip-fade {
   0%,
-  22% {
+  25% {
     opacity: 0;
   }
-  42%,
-  62% {
+  45%,
+  68% {
     opacity: 1;
   }
-  82%,
+  88%,
   100% {
     opacity: 0;
   }
@@ -178,14 +184,14 @@ button:disabled,
 
 @keyframes after-chip-fade {
   0%,
-  22% {
+  25% {
     opacity: 1;
   }
-  42%,
-  62% {
+  45%,
+  68% {
     opacity: 0;
   }
-  82%,
+  88%,
   100% {
     opacity: 1;
   }
