@@ -2,9 +2,8 @@
 
 import { useEffect, useRef } from "react";
 
-import { prepareSprite, type KiwiSprite } from "@/lib/kiwi-pit/prepareSprite";
-
-const KIWI_SPRITE_PATH = "/assets/kiwi-slice-v2.png";
+// Same green brand mark as the hero background kiwis — not the grey pit slice.
+const KIWI_SPRITE_PATH = "/refresh-kiwi-favicon-v2.png";
 
 // Brand palette: kiwi greens, ink, white, and the warm accent.
 const CONFETTI_COLORS = ["#c5e66a", "#8bbf4d", "#141811", "#ffffff", "#f6c453"];
@@ -125,11 +124,11 @@ export default function KiwiCelebration({ onDone }: { onDone: () => void }) {
     setCanvasSize();
     window.addEventListener("resize", setCanvasSize);
 
-    let sprite: KiwiSprite | null = null;
+    let sprite: HTMLImageElement | null = null;
     const image = new Image();
     image.src = KIWI_SPRITE_PATH;
     image.onload = () => {
-      sprite = prepareSprite(image);
+      sprite = image;
     };
 
     const kiwis = spawnKiwis(width, height);

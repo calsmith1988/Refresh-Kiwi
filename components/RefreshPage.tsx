@@ -1135,6 +1135,8 @@ export default function RefreshPage({
   const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
   const [showStartAnotherWarning, setShowStartAnotherWarning] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
+  // Frozen at reveal so the "Built in" chip never keeps ticking.
+  const [builtInMs, setBuiltInMs] = useState<number | null>(null);
   // One celebration per generation — not on reloads of a restored preview.
   const celebrationPlayedRef = useRef(false);
   const pollTimerRef = useRef<number | null>(null);
@@ -1313,6 +1315,8 @@ export default function RefreshPage({
 
     if (startTimeRef.current !== null) {
       setElapsedMs(Date.now() - startTimeRef.current);
+      // Null so a stray interval tick (or HMR leftover) can't keep advancing.
+      startTimeRef.current = null;
     }
   }, []);
 
@@ -1381,11 +1385,12 @@ export default function RefreshPage({
   );
 
   const startProgressTimers = useCallback(() => {
+    stopTimer();
     startTimeRef.current = Date.now();
     setElapsedMs(0);
+    setBuiltInMs(null);
     celebrationPlayedRef.current = false;
     setShowCelebration(false);
-    stopTimer();
     elapsedTimerRef.current = window.setInterval(() => {
       if (startTimeRef.current !== null) {
         setElapsedMs(Date.now() - startTimeRef.current);
@@ -2252,18 +2257,17 @@ export default function RefreshPage({
         : 0;
   const previewHref = normalizePreviewUrl(job?.previewUrl ?? null);
   const showReveal = !isRefreshing && Boolean(previewHref);
-  // Prefer the live timer from this session; fall back to job timestamps when
-  // the reveal is restored after a reload (elapsedMs resets to 0).
+  // Prefer the frozen reveal snapshot; fall back to job timestamps when the
+  // preview is restored after a reload (no live timer for that session).
   const readyDurationMs =
-    elapsedMs > 0
-      ? elapsedMs
-      : job?.createdAt && job.updatedAt
-        ? Math.max(
-            0,
-            new Date(job.updatedAt).getTime() -
-              new Date(job.createdAt).getTime(),
-          )
-        : 0;
+    builtInMs ??
+    (job?.createdAt && job.updatedAt
+      ? Math.max(
+          0,
+          new Date(job.updatedAt).getTime() -
+            new Date(job.createdAt).getTime(),
+        )
+      : 0);
   const activeMode = job?.generationMode ?? flowMode;
   const activeGenerationSource: GenerationSource =
     generationSource === "gbp" ? "gbp" : activeMode;
@@ -2369,10 +2373,19 @@ export default function RefreshPage({
     }
   }, [showReveal]);
 
-  // Celebrate the reveal, but only for a build the user just sat through
-  // (elapsedMs > 0), never for previews restored on a later page load.
+  // Freeze the "Built in" time and celebrate once when the reveal appears
+  // after a live build. Restored previews (elapsedMs === 0) skip celebration.
   useEffect(() => {
-    if (showReveal && elapsedMs > 0 && !celebrationPlayedRef.current) {
+    if (!showReveal) {
+      return;
+    }
+
+    if (builtInMs === null && elapsedMs > 0) {
+      stopTimer();
+      setBuiltInMs(elapsedMs);
+    }
+
+    if (elapsedMs > 0 && !celebrationPlayedRef.current) {
       celebrationPlayedRef.current = true;
       setShowCelebration(true);
 
@@ -2390,7 +2403,7 @@ export default function RefreshPage({
         // Ignore.
       }
     }
-  }, [showReveal, elapsedMs]);
+  }, [showReveal, elapsedMs, builtInMs, stopTimer]);
 
   return (
     <main
