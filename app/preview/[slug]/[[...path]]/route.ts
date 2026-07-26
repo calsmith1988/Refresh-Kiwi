@@ -42,11 +42,11 @@ function blockedPreviewResponse(kind: "expired" | "removed") {
           ctaLabel: "Refresh a new website",
         }
       : {
-          title: "Preview expired | Refresh Kiwi",
-          heading: "This preview has had its 7 days.",
-          body: "Good news: your refreshed website is saved. Go Pro and we can put it back online in one click — fresher than ever.",
+          title: "Website paused | Refresh Kiwi",
+          heading: "Your website is paused.",
+          body: "It's saved exactly as you left it. Put it online from your dashboard and it comes back in one click.",
           ctaHref: "/dashboard",
-          ctaLabel: "Take my website online",
+          ctaLabel: "Put my website online",
         };
 
   return new NextResponse(

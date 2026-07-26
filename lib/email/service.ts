@@ -96,22 +96,26 @@ function preserveLineBreaks(value: string): string {
   return escapeHtml(value).replaceAll("\n", "<br />");
 }
 
-function previewReadyCopy(brandName?: string | null) {
+function previewReadyCopy(
+  brandName?: string | null,
+  generationMode?: "refresh" | "fresh" | null,
+) {
   const name = brandName?.trim();
+  // Fresh builds (from-scratch or Google listing) were never "refreshed".
+  const adjective = generationMode === "fresh" ? "new" : "refreshed";
 
   if (!name) {
     return {
-      subject: "Your refreshed homepage is ready",
-      headline: "Your refreshed homepage is ready.",
-      text:
-        "Your refreshed homepage is ready. You can view it, save it, ask for changes, or go Pro when you are ready.",
+      subject: `Your ${adjective} homepage is ready`,
+      headline: `Your ${adjective} homepage is ready.`,
+      text: `Your ${adjective} homepage is ready. You can view it, save it, ask for changes, or go Pro when you are ready.`,
     };
   }
 
   return {
-    subject: `Your refreshed ${name} homepage is ready`,
-    headline: `Your refreshed ${name} homepage is ready.`,
-    text: `Your refreshed ${name} homepage is ready. You can view it, save it, ask for changes, or go Pro when you are ready.`,
+    subject: `Your ${adjective} ${name} homepage is ready`,
+    headline: `Your ${adjective} ${name} homepage is ready.`,
+    text: `Your ${adjective} ${name} homepage is ready. You can view it, save it, ask for changes, or go Pro when you are ready.`,
   };
 }
 
@@ -298,12 +302,13 @@ export async function sendPreviewReadyEmail(params: {
   brandName?: string | null;
   previewUrl: string;
   screenshotUrl?: string | null;
+  generationMode?: "refresh" | "fresh" | null;
 }) {
   const url = buildAppUrl(params.previewUrl);
   const screenshotUrl = params.screenshotUrl
     ? buildAppUrl(params.screenshotUrl)
     : null;
-  const copy = previewReadyCopy(params.brandName);
+  const copy = previewReadyCopy(params.brandName, params.generationMode);
 
   await sendEmail({
     to: params.to,
@@ -418,17 +423,49 @@ export async function sendFreeFollowUpEmail(params: {
 
   await sendEmail({
     to: params.to,
-    subject: "Want to put your refreshed website online?",
-    text: `Your refreshed website is waiting in Refresh Kiwi. If you're ready, Kiwi Pro puts it online with hosting, extra pages, custom domain support, and unlimited changes.\n\nOpen dashboard: ${dashboardUrl}\n\nUnsubscribe from follow-up emails: ${unsubscribeUrl}`,
+    subject: "Want to put your new website online?",
+    text: `Your new website is waiting in Refresh Kiwi. If you're ready, Kiwi Pro puts it online with hosting, extra pages, custom domain support, and unlimited changes.\n\nOpen dashboard: ${dashboardUrl}\n\nUnsubscribe from follow-up emails: ${unsubscribeUrl}`,
     html: shell(
       `
-      ${heading("Want to put your refreshed website online?")}
-      <p>Your refreshed website is waiting in Refresh Kiwi.</p>
+      ${heading("Want to put your new website online?")}
+      <p>Your new website is waiting in Refresh Kiwi.</p>
       <p>If you're ready, Kiwi Pro puts it online with hosting, extra pages, custom domain support, and unlimited changes.</p>
       <p>${button(dashboardUrl, "Open dashboard")}</p>
       <p style="font-size:12px;color:#666"><a href="${unsubscribeUrl}">Unsubscribe from follow-up emails</a></p>
     `,
       `You received this because you created a Refresh Kiwi account. <a href="${unsubscribeUrl}">Unsubscribe</a>.`,
     ),
+  });
+}
+
+/**
+ * "Your website pauses soon" nudge, sent once per website as the free 7-day
+ * window closes. Transactional (a service-state change), so it is not gated
+ * on marketing consent.
+ */
+export async function sendExpiryReminderEmail(params: {
+  to: string;
+  brandName?: string | null;
+  expiresAt: Date;
+}) {
+  const dashboardUrl = buildAppUrl("/dashboard");
+  const name = params.brandName?.trim();
+  const siteLabel = name ? `your ${name} website` : "your website";
+  const dateLabel = new Intl.DateTimeFormat("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(params.expiresAt);
+
+  await sendEmail({
+    to: params.to,
+    subject: `Your free preview ends on ${dateLabel}`,
+    text: `The free preview of ${siteLabel} ends on ${dateLabel}. After that it's paused — saved exactly as you left it, but offline.\n\nPut it online to keep it live, with hosting, extra pages, custom domain support, and unlimited changes.\n\nOpen dashboard: ${dashboardUrl}`,
+    html: shell(`
+      ${heading(`Your free preview ends on ${dateLabel}.`)}
+      <p>The free preview of ${escapeHtml(siteLabel)} ends on ${escapeHtml(dateLabel)}. After that it's paused — saved exactly as you left it, but offline.</p>
+      <p>Put it online to keep it live, with hosting, extra pages, custom domain support, and unlimited changes.</p>
+      <p>${button(dashboardUrl, "Put my website online")}</p>
+    `),
   });
 }

@@ -68,7 +68,11 @@ If the design includes a thin announcement or promo bar above the main header:
   After wiring it, trace the open-then-close path in the code: clicking the toggle (or panel X) with the menu open must remove the open class, restore the burger icon, and reset `aria-expanded`.
 - If the icon swap uses two separate elements (burger SVG and X SVG), verify the CSS shows exactly one of them in each state — a missing rule here is what makes the X "disappear".
 - The menu must work without any hover-only interaction (touch devices) and must not be hidden behind the header or announcement bar when open.
-- Check the header at a ~375px viewport: logo, burger, and any CTA must fit on one line without wrapping or overflow. Then check the open-menu state at the same width: the close control must be visible without scrolling.
+- **Never nest a `position: fixed` menu panel inside an element that has `backdrop-filter`, `filter`, `transform`, `perspective`, or `will-change: transform`.** Any of those on an ancestor (typically a blurred sticky header) makes it the containing block for fixed descendants, so the panel positions against the ~70px header instead of the viewport and collapses to a zero-height sliver. Use one of exactly two patterns:
+  1. The menu panel is a direct child of `<body>`, outside the header entirely; or
+  2. The panel stays inside the header, but no ancestor of it (including the header) uses any of the properties above — if the header needs a glass/blur effect, drop it or use a semi-opaque solid background instead.
+  After writing the CSS, grep your own stylesheet: if `backdrop-filter`, `filter`, or `transform` appears on the header or any ancestor of the menu panel while the panel is `position: fixed`, you have this bug.
+- Check the header at a ~375px viewport: logo, burger, and any CTA must fit on one line without wrapping or overflow. Then check the open-menu state at the same width: the close control must be visible without scrolling, and the open panel must reach the bottom of the viewport (a panel that shows only a thin strip below the header is the containing-block bug above).
 
 ## Final self-check before finishing
 

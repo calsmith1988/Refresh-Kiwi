@@ -190,6 +190,7 @@ export async function processRefreshJob(jobId: string): Promise<void> {
               brandName: website.brandName,
               previewUrl: `/preview/${website.slug}/index.html`,
               screenshotUrl: homepageScreenshotPath(website.slug, Date.now()),
+              generationMode: "refresh",
             }),
         );
       }
@@ -386,6 +387,7 @@ export async function processFreshJob(
               brandName: website.brandName,
               previewUrl: `/preview/${website.slug}/index.html`,
               screenshotUrl: homepageScreenshotPath(website.slug, Date.now()),
+              generationMode: "fresh",
             }),
         );
       }

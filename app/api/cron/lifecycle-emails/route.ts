@@ -1,9 +1,12 @@
-import { and, eq, lt, sql } from "drizzle-orm";
+import { and, eq, gt, lt, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 import { getDb, schema } from "@/lib/db";
 import { sendOnce, userAllowsMarketing } from "@/lib/email/events";
-import { sendFreeFollowUpEmail } from "@/lib/email/service";
+import {
+  sendExpiryReminderEmail,
+  sendFreeFollowUpEmail,
+} from "@/lib/email/service";
 import { createUnsubscribeToken } from "@/lib/email/unsubscribe";
 
 export const runtime = "nodejs";
@@ -87,6 +90,60 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({ checked: candidates.length, sent });
+    // Expiry reminders: free previews entering their last 2 days. sendOnce
+    // guarantees one reminder per website. Transactional (the website is
+    // about to pause), so no marketing-consent gate.
+    const now = new Date();
+    const reminderWindowEnd = new Date(
+      now.getTime() + 2 * 24 * 60 * 60 * 1000,
+    );
+    const expiringCandidates = await tx
+      .select({
+        websiteId: websites.id,
+        userId: users.id,
+        email: users.email,
+        brandName: websites.brandName,
+        expiresAt: websites.expiresAt,
+      })
+      .from(websites)
+      .innerJoin(users, eq(websites.userId, users.id))
+      .where(
+        and(
+          eq(users.plan, "free"),
+          eq(websites.status, "preview"),
+          gt(websites.expiresAt, now),
+          lt(websites.expiresAt, reminderWindowEnd),
+        ),
+      )
+      .limit(50);
+
+    let remindersSent = 0;
+
+    for (const candidate of expiringCandidates) {
+      const didSend = await sendOnce(
+        {
+          type: "expiry_reminder",
+          userId: candidate.userId,
+          websiteId: candidate.websiteId,
+        },
+        () =>
+          sendExpiryReminderEmail({
+            to: candidate.email,
+            brandName: candidate.brandName,
+            expiresAt: candidate.expiresAt,
+          }),
+      );
+
+      if (didSend) {
+        remindersSent += 1;
+      }
+    }
+
+    return NextResponse.json({
+      checked: candidates.length,
+      sent,
+      expiringChecked: expiringCandidates.length,
+      remindersSent,
+    });
   });
 }

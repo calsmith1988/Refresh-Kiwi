@@ -539,9 +539,10 @@ function websiteState(website: Website, isPro: boolean) {
 
   if (isExpired) {
     return {
-      label: "Preview ended",
-      badgeClass: "bg-red-50 text-red-700",
-      description: `Your free preview ended on ${formatDate(website.expiresAt)}, but your website is saved. Go Pro to bring it back exactly as it was.`,
+      label: "Paused",
+      badgeClass: "bg-amber-50 text-amber-700",
+      description:
+        "Your website is paused. Put it online to restore it exactly as you left it.",
       canView: false,
       canEdit: false,
       showUpgrade: true,
@@ -571,11 +572,15 @@ function websiteState(website: Website, isPro: boolean) {
   }
 
   return {
-    label: isExpiringSoon ? "Expires soon" : "Free preview",
+    label: isExpiringSoon
+      ? `${daysLeft} ${pluralise(daysLeft, "day")} left`
+      : "Free preview",
     badgeClass: isExpiringSoon
       ? "bg-amber-50 text-amber-700"
       : "bg-[#f0f4e7] text-black/60",
-    description: `${daysLeft} ${pluralise(daysLeft, "day")} left in your free preview.`,
+    description: isExpiringSoon
+      ? `${daysLeft} ${pluralise(daysLeft, "day")} left — put it online to keep it.`
+      : `${daysLeft} ${pluralise(daysLeft, "day")} left in your free preview.`,
     canView: true,
     canEdit: true,
     showUpgrade: true,
@@ -2394,7 +2399,7 @@ export default function DashboardPage() {
                                 className="inline-flex items-center gap-2 rounded-2xl bg-kiwi-green px-4 py-2 text-xs font-semibold text-black transition hover:bg-kiwi-green-hover"
                               >
                                 <DashboardIcon name="rocket" />
-                                {state.label === "Preview ended"
+                                {state.label === "Paused"
                                   ? `Restore my website — ${pricing.proPriceShort}`
                                   : `Put it online — ${pricing.proPriceShort}`}
                               </button>
