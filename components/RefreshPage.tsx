@@ -44,6 +44,10 @@ const KiwiPitCanvas = dynamic(() => import("@/components/KiwiPitCanvas"), {
   ssr: false,
 });
 
+const KiwiCelebration = dynamic(() => import("@/components/KiwiCelebration"), {
+  ssr: false,
+});
+
 const TERMINAL_STATUSES = new Set<JobResponse["status"]>(["complete", "failed"]);
 const HOMEPAGE_READY_STATUSES = new Set<JobResponse["status"]>([
   "homepage_ready",
@@ -326,6 +330,23 @@ function isWebsiteLimitError(message: string): boolean {
 function formatElapsed(ms: number): string {
   const total = Math.max(0, Math.floor(ms / 1000));
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+}
+
+/** Celebratory ready-state chip; falls back when we don't have a reliable time. */
+function formatReadyChip(ms: number): string {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+
+  // Ignore tiny/zero values and absurd durations from restored jobs whose
+  // updatedAt moved for later work (pages, etc.).
+  if (totalSeconds < 5 || totalSeconds > 15 * 60) {
+    return "Your homepage is ready ✨";
+  }
+
+  if (totalSeconds < 60) {
+    return `Built in ${totalSeconds}s ✨`;
+  }
+
+  return `Built in ${formatElapsed(ms)} ✨`;
 }
 
 type BusinessIconName =
@@ -1113,6 +1134,9 @@ export default function RefreshPage({
   const [statusMessageIndex, setStatusMessageIndex] = useState(0);
   const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
   const [showStartAnotherWarning, setShowStartAnotherWarning] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
+  // One celebration per generation — not on reloads of a restored preview.
+  const celebrationPlayedRef = useRef(false);
   const pollTimerRef = useRef<number | null>(null);
   const pollFailuresRef = useRef(0);
   // Access token issued when the job was created; proves this browser started
@@ -1359,6 +1383,8 @@ export default function RefreshPage({
   const startProgressTimers = useCallback(() => {
     startTimeRef.current = Date.now();
     setElapsedMs(0);
+    celebrationPlayedRef.current = false;
+    setShowCelebration(false);
     stopTimer();
     elapsedTimerRef.current = window.setInterval(() => {
       if (startTimeRef.current !== null) {
@@ -2226,6 +2252,18 @@ export default function RefreshPage({
         : 0;
   const previewHref = normalizePreviewUrl(job?.previewUrl ?? null);
   const showReveal = !isRefreshing && Boolean(previewHref);
+  // Prefer the live timer from this session; fall back to job timestamps when
+  // the reveal is restored after a reload (elapsedMs resets to 0).
+  const readyDurationMs =
+    elapsedMs > 0
+      ? elapsedMs
+      : job?.createdAt && job.updatedAt
+        ? Math.max(
+            0,
+            new Date(job.updatedAt).getTime() -
+              new Date(job.createdAt).getTime(),
+          )
+        : 0;
   const activeMode = job?.generationMode ?? flowMode;
   const activeGenerationSource: GenerationSource =
     generationSource === "gbp" ? "gbp" : activeMode;
@@ -2331,12 +2369,38 @@ export default function RefreshPage({
     }
   }, [showReveal]);
 
+  // Celebrate the reveal, but only for a build the user just sat through
+  // (elapsedMs > 0), never for previews restored on a later page load.
+  useEffect(() => {
+    if (showReveal && elapsedMs > 0 && !celebrationPlayedRef.current) {
+      celebrationPlayedRef.current = true;
+      setShowCelebration(true);
+
+      // Play alongside the kiwi burst. Browsers may block autoplay if the
+      // user somehow never interacted — swallow that quietly.
+      try {
+        const audio = new Audio(
+          "/assets/Refresh-Kiwi-Success-Alert-Sound.mp3",
+        );
+        audio.volume = 0.7;
+        void audio.play().catch(() => {
+          // Autoplay blocked or decode failed — visual celebration still runs.
+        });
+      } catch {
+        // Ignore.
+      }
+    }
+  }, [showReveal, elapsedMs]);
+
   return (
     <main
       className="relative isolate min-h-screen overflow-x-clip bg-[#faf8f1] text-[#141811]"
       onPointerMove={handleHeroPointerMove}
     >
       <KiwiPitCanvas active={isRefreshing} />
+      {showCelebration ? (
+        <KiwiCelebration onDone={() => setShowCelebration(false)} />
+      ) : null}
 
       {/* ───────────────────────── Header ───────────────────────── */}
       <header className="sticky top-0 z-40 border-b border-black/5 bg-[#faf8f1]/85 backdrop-blur-md">
@@ -2746,15 +2810,15 @@ export default function RefreshPage({
           ) : showReveal && previewHref ? (
             <div className="preview-pop">
               <div className="text-center">
-                <span className="inline-flex items-center gap-2 rounded-full bg-kiwi-green px-4 py-1.5 text-sm font-bold">
-                  Your homepage is ready ✨
+                <span className="inline-flex items-center gap-2 rounded-full bg-kiwi-green px-4 py-1.5 text-sm font-bold tabular-nums">
+                  {formatReadyChip(readyDurationMs)}
                 </span>
-                <h1 className="mx-auto mt-5 max-w-full font-fraunces text-[clamp(1.75rem,7vw,2.25rem)] font-semibold leading-[1.12] tracking-tight break-words sm:text-5xl">
+                <h1 className="mx-auto mt-3 max-w-full font-fraunces text-[clamp(1.35rem,5.5vw,1.75rem)] font-semibold leading-[1.15] tracking-tight break-words sm:mt-4 sm:text-3xl">
                   {"Here's "}
                   {breakableLabel(activeLabel)}
                   {activeMode === "fresh" ? "." : ", refreshed."}
                 </h1>
-                <p className="mx-auto mt-3 max-w-lg text-base leading-7 text-black/55">
+                <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-black/55 sm:mt-3 sm:text-base sm:leading-7">
                   {job?.isClaimed
                     ? expiryLabel
                       ? `Saved to your account — yours free until ${expiryLabel}. Add your other pages when you take it online.`
@@ -2765,7 +2829,7 @@ export default function RefreshPage({
                 </p>
               </div>
 
-              <div className="mx-auto mt-9 max-w-4xl rounded-3xl border border-black/10 bg-white p-3 shadow-2xl shadow-[#8bbf4d]/20 lg:max-w-6xl">
+              <div className="mx-auto mt-5 max-w-4xl rounded-3xl border border-black/10 bg-white p-2 shadow-2xl shadow-[#8bbf4d]/20 sm:mt-7 sm:p-3 lg:max-w-6xl">
                 <div className="overflow-hidden rounded-2xl border border-black/10">
                   <div className="flex items-center gap-1.5 border-b border-black/10 bg-[#faf8f1] px-4 py-3">
                     <span className="h-2.5 w-2.5 rounded-full bg-red-300" />
