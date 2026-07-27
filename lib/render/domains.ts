@@ -131,7 +131,9 @@ export async function listRenderCustomDomains(): Promise<RenderCustomDomain[]> {
   let cursor: string | null = null;
 
   for (let page = 0; page < 10; page += 1) {
-    const query = cursor ? `&cursor=${encodeURIComponent(cursor)}` : "";
+    // Explicit annotation: without it TS reports a circular inference
+    // (query -> cursor narrowing -> response -> query).
+    const query: string = cursor ? `&cursor=${encodeURIComponent(cursor)}` : "";
     const response = await renderRequest<
       Array<{ customDomain?: RenderCustomDomain; cursor?: string } | RenderCustomDomain>
     >(`/services/${getRenderServiceId()}/custom-domains?limit=100${query}`);
