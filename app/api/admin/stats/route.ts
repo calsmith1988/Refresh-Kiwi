@@ -18,5 +18,13 @@ export async function GET(request: Request) {
     365,
   );
 
-  return NextResponse.json(await getAdminStats(days));
+  try {
+    return NextResponse.json(await getAdminStats(days));
+  } catch (error) {
+    console.error("[refresh-kiwi] admin stats failed", error);
+    const message =
+      error instanceof Error ? error.message : "Failed to load admin stats";
+
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }

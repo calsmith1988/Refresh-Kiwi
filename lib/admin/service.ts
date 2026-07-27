@@ -1,4 +1,18 @@
-import { and, count, desc, eq, gte, ilike, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  gte,
+  ilike,
+  inArray,
+  isNotNull,
+  isNull,
+  ne,
+  or,
+  sql,
+  type SQL,
+} from "drizzle-orm";
+import type { PgTable } from "drizzle-orm/pg-core";
 
 import { getDb, schema } from "@/lib/db";
 
@@ -12,24 +26,53 @@ function sinceDate(days: number): Date {
 
 type SeriesPoint = { day: string; value: number };
 
-function executedRows<T>(result: unknown): T[] {
-  return (
-    Array.isArray(result) ? result : ((result as { rows?: unknown[] }).rows ?? [])
-  ) as T[];
+/** postgres-js/drizzle often return count() as string/bigint — JSON.stringify throws on bigint. */
+function asNumber(value: unknown): number {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : 0;
+  }
+
+  if (typeof value === "bigint") {
+    return Number(value);
+  }
+
+  if (typeof value === "string" && value.trim() !== "") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  return 0;
 }
 
-async function dailySeries(table: string, since: Date): Promise<SeriesPoint[]> {
-  // `table` is a hardcoded identifier from the callers below, never user input.
+async function countRows(table: PgTable, where?: SQL): Promise<number> {
+  const db = getDb();
+  const query = db.select({ value: sql<number>`count(*)::int`.mapWith(Number) }).from(table);
+  const [row] = where ? await query.where(where) : await query;
+  return asNumber(row?.value);
+}
+
+async function dailySeriesFor(
+  tableName: "jobs" | "users" | "edit_requests",
+  since: Date,
+): Promise<SeriesPoint[]> {
+  // Table name is a hardcoded identifier from the callers below, never user input.
   const result = await getDb().execute(sql`
     SELECT to_char(date_trunc('day', created_at), 'YYYY-MM-DD') AS day,
            count(*)::int AS value
-    FROM ${sql.raw(table)}
+    FROM ${sql.raw(tableName)}
     WHERE created_at >= ${since}
     GROUP BY 1
     ORDER BY 1
   `);
 
-  return executedRows<SeriesPoint>(result);
+  const rows = (
+    Array.isArray(result) ? result : ((result as { rows?: unknown[] }).rows ?? [])
+  ) as Array<{ day: string; value: unknown }>;
+
+  return rows.map((row) => ({
+    day: String(row.day),
+    value: asNumber(row.value),
+  }));
 }
 
 export async function getAdminStats(days = 30) {
@@ -37,18 +80,18 @@ export async function getAdminStats(days = 30) {
   const since = sinceDate(days);
 
   const [
-    [userTotals],
-    [userNew],
-    [proUsers],
+    userTotals,
+    userNew,
+    proUsers,
     jobsByStatus,
-    [jobsNew],
-    [jobsAnonymous],
-    [jobsAnonymousNew],
+    jobsNew,
+    jobsAnonymous,
+    jobsAnonymousNew,
     websitesByStatus,
-    [websitesClaimed],
-    [editTotals],
-    [editsNew],
-    [editsFailed],
+    websitesClaimed,
+    editTotals,
+    editsNew,
+    editsFailed,
     queueByStatus,
     attributionRows,
     jobSeries,
@@ -56,58 +99,53 @@ export async function getAdminStats(days = 30) {
     editSeries,
     recentFailedJobs,
   ] = await Promise.all([
-    db.select({ value: count() }).from(users),
-    db.select({ value: count() }).from(users).where(gte(users.createdAt, since)),
-    db
-      .select({ value: count() })
-      .from(users)
-      .where(
-        and(
-          eq(users.plan, "pro"),
-          inArray(users.subscriptionStatus, [...PRO_STATUSES]),
-        ),
+    countRows(users),
+    countRows(users, gte(users.createdAt, since)),
+    countRows(
+      users,
+      and(
+        eq(users.plan, "pro"),
+        inArray(users.subscriptionStatus, [...PRO_STATUSES]),
       ),
+    ),
     db
-      .select({ status: jobs.status, value: count() })
+      .select({ status: jobs.status, value: sql<number>`count(*)::int`.mapWith(Number) })
       .from(jobs)
       .groupBy(jobs.status),
-    db.select({ value: count() }).from(jobs).where(gte(jobs.createdAt, since)),
-    db.select({ value: count() }).from(jobs).where(isNull(jobs.userId)),
+    countRows(jobs, gte(jobs.createdAt, since)),
+    countRows(jobs, isNull(jobs.userId)),
+    countRows(jobs, and(isNull(jobs.userId), gte(jobs.createdAt, since))),
     db
-      .select({ value: count() })
-      .from(jobs)
-      .where(and(isNull(jobs.userId), gte(jobs.createdAt, since))),
-    db
-      .select({ status: websites.status, value: count() })
+      .select({
+        status: websites.status,
+        value: sql<number>`count(*)::int`.mapWith(Number),
+      })
       .from(websites)
       .groupBy(websites.status),
+    countRows(websites, isNotNull(websites.userId)),
+    countRows(editRequests),
+    countRows(editRequests, gte(editRequests.createdAt, since)),
+    countRows(editRequests, eq(editRequests.status, "failed")),
     db
-      .select({ value: count() })
-      .from(websites)
-      .where(isNotNull(websites.userId)),
-    db.select({ value: count() }).from(editRequests),
-    db
-      .select({ value: count() })
-      .from(editRequests)
-      .where(gte(editRequests.createdAt, since)),
-    db
-      .select({ value: count() })
-      .from(editRequests)
-      .where(eq(editRequests.status, "failed")),
-    db
-      .select({ status: backgroundTasks.status, value: count() })
+      .select({
+        status: backgroundTasks.status,
+        value: sql<number>`count(*)::int`.mapWith(Number),
+      })
       .from(backgroundTasks)
       .groupBy(backgroundTasks.status),
     db
-      .select({ source: jobs.utmSource, value: count() })
+      .select({
+        source: jobs.utmSource,
+        value: sql<number>`count(*)::int`.mapWith(Number),
+      })
       .from(jobs)
       .where(and(gte(jobs.createdAt, since), isNotNull(jobs.utmSource)))
       .groupBy(jobs.utmSource)
-      .orderBy(desc(count()))
+      .orderBy(desc(sql`count(*)`))
       .limit(10),
-    dailySeries("jobs", since),
-    dailySeries("users", since),
-    dailySeries("edit_requests", since),
+    dailySeriesFor("jobs", since),
+    dailySeriesFor("users", since),
+    dailySeriesFor("edit_requests", since),
     db
       .select({
         id: jobs.id,
@@ -123,34 +161,34 @@ export async function getAdminStats(days = 30) {
   ]);
 
   const statusMap = (rows: Array<{ status: string; value: number }>) =>
-    Object.fromEntries(rows.map((row) => [row.status, row.value]));
+    Object.fromEntries(rows.map((row) => [row.status, asNumber(row.value)]));
 
   return {
     periodDays: days,
     users: {
-      total: userTotals?.value ?? 0,
-      newInPeriod: userNew?.value ?? 0,
-      pro: proUsers?.value ?? 0,
+      total: userTotals,
+      newInPeriod: userNew,
+      pro: proUsers,
     },
     jobs: {
       byStatus: statusMap(jobsByStatus),
-      newInPeriod: jobsNew?.value ?? 0,
-      anonymousTotal: jobsAnonymous?.value ?? 0,
-      anonymousInPeriod: jobsAnonymousNew?.value ?? 0,
+      newInPeriod: jobsNew,
+      anonymousTotal: jobsAnonymous,
+      anonymousInPeriod: jobsAnonymousNew,
     },
     websites: {
       byStatus: statusMap(websitesByStatus),
-      claimed: websitesClaimed?.value ?? 0,
+      claimed: websitesClaimed,
     },
     edits: {
-      total: editTotals?.value ?? 0,
-      newInPeriod: editsNew?.value ?? 0,
-      failed: editsFailed?.value ?? 0,
+      total: editTotals,
+      newInPeriod: editsNew,
+      failed: editsFailed,
     },
     queue: statusMap(queueByStatus),
     attribution: attributionRows.map((row) => ({
       source: row.source ?? "(none)",
-      value: row.value,
+      value: asNumber(row.value),
     })),
     series: {
       jobs: jobSeries,
@@ -186,13 +224,6 @@ export async function listAdminUsers(params: {
       twoFactorEnabled: users.twoFactorEnabled,
       stripeCustomerId: users.stripeCustomerId,
       createdAt: users.createdAt,
-      websiteCount: sql<number>`(
-        SELECT count(*)::int FROM websites w
-        WHERE w.user_id = ${users.id} AND w.status != 'archived'
-      )`,
-      editCount: sql<number>`(
-        SELECT count(*)::int FROM edit_requests e WHERE e.user_id = ${users.id}
-      )`,
     })
     .from(users)
     .where(where)
@@ -200,8 +231,49 @@ export async function listAdminUsers(params: {
     .limit(limit)
     .offset(params.offset ?? 0);
 
+  const userIds = rows.map((row) => row.id);
+
+  if (userIds.length === 0) {
+    return [];
+  }
+
+  // Separate grouped counts avoid broken correlated subqueries (which were
+  // returning 0 for every user even when websites existed).
+  const [websiteCountRows, editCountRows] = await Promise.all([
+    db
+      .select({
+        userId: websites.userId,
+        value: sql<number>`count(*)::int`.mapWith(Number),
+      })
+      .from(websites)
+      .where(
+        and(
+          inArray(websites.userId, userIds),
+          ne(websites.status, "archived"),
+        ),
+      )
+      .groupBy(websites.userId),
+    db
+      .select({
+        userId: editRequests.userId,
+        value: sql<number>`count(*)::int`.mapWith(Number),
+      })
+      .from(editRequests)
+      .where(inArray(editRequests.userId, userIds))
+      .groupBy(editRequests.userId),
+  ]);
+
+  const websiteCounts = new Map(
+    websiteCountRows.map((row) => [row.userId, asNumber(row.value)]),
+  );
+  const editCounts = new Map(
+    editCountRows.map((row) => [row.userId, asNumber(row.value)]),
+  );
+
   return rows.map((row) => ({
     ...row,
+    websiteCount: websiteCounts.get(row.id) ?? 0,
+    editCount: editCounts.get(row.id) ?? 0,
     emailVerifiedAt: row.emailVerifiedAt?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
   }));

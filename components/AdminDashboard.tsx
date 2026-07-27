@@ -143,10 +143,28 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
       ? { "Content-Type": "application/json", ...init?.headers }
       : init?.headers,
   });
-  const payload = (await response.json()) as T & { error?: string };
+
+  const text = await response.text();
+  let payload: (T & { error?: string }) | null = null;
+
+  if (text) {
+    try {
+      payload = JSON.parse(text) as T & { error?: string };
+    } catch {
+      throw new Error(
+        `Invalid JSON from ${path} (${response.status}): ${text.slice(0, 200)}`,
+      );
+    }
+  }
 
   if (!response.ok) {
-    throw new Error(payload.error ?? `Request failed (${response.status})`);
+    throw new Error(
+      payload?.error ?? `Request failed (${response.status})`,
+    );
+  }
+
+  if (!payload) {
+    throw new Error(`Empty response from ${path}`);
   }
 
   return payload;
