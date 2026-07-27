@@ -73,6 +73,14 @@ If the design includes a thin announcement or promo bar above the main header:
   2. The panel stays inside the header, but no ancestor of it (including the header) uses any of the properties above — if the header needs a glass/blur effect, drop it or use a semi-opaque solid background instead.
   After writing the CSS, grep your own stylesheet: if `backdrop-filter`, `filter`, or `transform` appears on the header or any ancestor of the menu panel while the panel is `position: fixed`, you have this bug.
 - Check the header at a ~375px viewport: logo, burger, and any CTA must fit on one line without wrapping or overflow. Then check the open-menu state at the same width: the close control must be visible without scrolling, and the open panel must reach the bottom of the viewport (a panel that shows only a thin strip below the header is the containing-block bug above).
+- Generic link rules on the menu panel (e.g. `.mobile-nav a { display: block; padding: ...; border-bottom: ... }`) must not restyle CTA buttons inside the panel. Scope them to the nav list (`.mobile-nav ul a` or `.mobile-nav nav a`) or exclude buttons (`a:not(.btn)`) so `.btn` elements keep their padding, alignment, and borders.
+
+## Custom grid column classes
+
+If you write utility column classes (`.col-6`, `.col-md-7`, etc.) on a `display: grid` container:
+
+- **Every column class used in the markup must have an explicit full-width base rule outside any media query** (e.g. `grid-column: span 12` or `1 / -1`), with breakpoint overrides layered on top. A class defined only inside a `min-width` media query leaves the element auto-placed into a single 1/12-width track on phones — its text collapses to one word per line and visually overlaps the neighbouring column.
+- After writing the CSS, check each column class that appears in your HTML against the stylesheet: if it has no rule outside a media query, it has this bug.
 
 ## Final self-check before finishing
 
@@ -82,5 +90,6 @@ Before you finish, re-open every HTML file you wrote or changed and verify:
 2. Every element hook referenced by JavaScript (IDs, classes, `data-` attributes) exists in the shipped markup, and every script referenced by HTML exists in the site folder.
 3. Stylesheet and script references resolve from the page's own path (root-relative preview paths on nested pages, never bare relative paths like `href="styles.css"` on subpages).
 4. No `localhost`, `127.0.0.1`, or port-based origins anywhere.
+5. Every grid column class used in the markup has a full-width base rule outside media queries (see the grid column rules above) — this is what stops sections collapsing to one-word-per-line overlapping columns on phones.
 
 This check should take under a minute. Do not skip it, and do not add build tooling to perform it — read the files directly.
