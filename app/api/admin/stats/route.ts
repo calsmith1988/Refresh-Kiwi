@@ -22,8 +22,15 @@ export async function GET(request: Request) {
     return NextResponse.json(await getAdminStats(days));
   } catch (error) {
     console.error("[refresh-kiwi] admin stats failed", error);
-    const message =
-      error instanceof Error ? error.message : "Failed to load admin stats";
+
+    // Drizzle wraps driver errors, so the useful detail is on `cause`.
+    const cause = error instanceof Error ? error.cause : null;
+    const message = [
+      error instanceof Error ? error.message : "Failed to load admin stats",
+      cause instanceof Error ? cause.message : null,
+    ]
+      .filter(Boolean)
+      .join(" — ");
 
     return NextResponse.json({ error: message }, { status: 500 });
   }

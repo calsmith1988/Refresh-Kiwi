@@ -12,7 +12,7 @@ import {
   sql,
   type SQL,
 } from "drizzle-orm";
-import type { PgTable } from "drizzle-orm/pg-core";
+import type { AnyPgColumn, PgTable } from "drizzle-orm/pg-core";
 
 import { getDb, schema } from "@/lib/db";
 
@@ -51,23 +51,24 @@ async function countRows(table: PgTable, where?: SQL): Promise<number> {
   return asNumber(row?.value);
 }
 
-async function dailySeriesFor(
-  tableName: "jobs" | "users" | "edit_requests",
+/**
+ * Per-day counts for a table. Built with the query builder rather than a raw
+ * `execute()` — the raw path sends the cutoff Date through postgres-js's
+ * unsafe/untyped parameter route, which Postgres rejects.
+ */
+async function dailySeries(
+  table: PgTable,
+  createdAt: AnyPgColumn,
   since: Date,
 ): Promise<SeriesPoint[]> {
-  // Table name is a hardcoded identifier from the callers below, never user input.
-  const result = await getDb().execute(sql`
-    SELECT to_char(date_trunc('day', created_at), 'YYYY-MM-DD') AS day,
-           count(*)::int AS value
-    FROM ${sql.raw(tableName)}
-    WHERE created_at >= ${since}
-    GROUP BY 1
-    ORDER BY 1
-  `);
+  const day = sql<string>`to_char(date_trunc('day', ${createdAt}), 'YYYY-MM-DD')`;
 
-  const rows = (
-    Array.isArray(result) ? result : ((result as { rows?: unknown[] }).rows ?? [])
-  ) as Array<{ day: string; value: unknown }>;
+  const rows = await getDb()
+    .select({ day, value: sql<number>`count(*)::int` })
+    .from(table)
+    .where(gte(createdAt, since))
+    .groupBy(day)
+    .orderBy(day);
 
   return rows.map((row) => ({
     day: String(row.day),
@@ -143,9 +144,9 @@ export async function getAdminStats(days = 30) {
       .groupBy(jobs.utmSource)
       .orderBy(desc(sql`count(*)`))
       .limit(10),
-    dailySeriesFor("jobs", since),
-    dailySeriesFor("users", since),
-    dailySeriesFor("edit_requests", since),
+    dailySeries(jobs, jobs.createdAt, since),
+    dailySeries(users, users.createdAt, since),
+    dailySeries(editRequests, editRequests.createdAt, since),
     db
       .select({
         id: jobs.id,
