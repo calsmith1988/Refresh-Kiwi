@@ -227,6 +227,20 @@ Manual Google Cloud setup:
 4. Set `GOOGLE_PLACES_API_KEY` on the web service.
 5. Add quota caps and a budget alert. The worker does not need this key.
 
+### Admin dashboard
+
+Core files:
+
+- `app/admin/page.tsx` + `components/AdminDashboard.tsx` - internal admin UI.
+- `app/api/admin/**` - admin-only API routes.
+- `lib/admin/guard.ts` - access control (ADMIN_EMAILS allowlist + verified email; 2FA required in production).
+- `lib/admin/service.ts` - stats/funnel/list queries.
+- `lib/admin/audit.ts` - `admin_audit_log` writes; every mutating admin action is recorded.
+
+Capabilities: performance stats (builds/signups/edits, attribution by `utm_source`), user and website lookup, rename/extend-expiry/reset-edits, applying edits on a customer's behalf (attributed to the admin user, consumes no customer quota), cancel-at-period-end for subscriptions, and Render custom-domain reconciliation (flags and removes orphaned domains). Non-admins get a 404.
+
+Marketing attribution (`utm_source`/`utm_medium`/`utm_campaign`/external referrer) is captured client-side on the landing page and stored on `jobs` at creation time.
+
 ### Billing
 
 Core files:

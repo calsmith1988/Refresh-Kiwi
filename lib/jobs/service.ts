@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 
 import { getDb, schema } from "@/lib/db";
+import type { JobAttribution } from "@/lib/jobs/attribution";
 import { previewPublicPath } from "@/lib/preview/paths";
 import { normalizeSlug, resolveUniqueSlug, slugFromUrl } from "@/lib/jobs/slug";
 import { STATUS_MESSAGES, type JobResponse, type JobStatus } from "@/lib/jobs/types";
@@ -83,10 +84,20 @@ export function slugFromPrompt(prompt: string): string {
   return normalizeSlug(compact) || "fresh-site";
 }
 
+function attributionValues(attribution?: JobAttribution | null) {
+  return {
+    utmSource: attribution?.utmSource ?? null,
+    utmMedium: attribution?.utmMedium ?? null,
+    utmCampaign: attribution?.utmCampaign ?? null,
+    referrer: attribution?.referrer ?? null,
+  };
+}
+
 export async function createRefreshJob(
   sourceUrl: string,
   userId?: string | null,
   clientIp?: string | null,
+  attribution?: JobAttribution | null,
 ): Promise<JobResponse> {
   const db = getDb();
   const baseSlug = slugFromUrl(sourceUrl);
@@ -101,6 +112,7 @@ export async function createRefreshJob(
       userId: userId ?? null,
       clientIp: clientIp ?? null,
       status: "queued",
+      ...attributionValues(attribution),
     })
     .returning();
 
@@ -111,6 +123,7 @@ export async function createFreshJob(
   creationPrompt: string,
   userId?: string | null,
   clientIp?: string | null,
+  attribution?: JobAttribution | null,
 ): Promise<JobResponse> {
   const db = getDb();
   const slug = await uniqueJobSlug(slugFromPrompt(creationPrompt));
@@ -125,6 +138,7 @@ export async function createFreshJob(
       userId: userId ?? null,
       clientIp: clientIp ?? null,
       status: "queued",
+      ...attributionValues(attribution),
     })
     .returning();
 
@@ -138,6 +152,7 @@ export async function createGbpJob(
   },
   userId?: string | null,
   clientIp?: string | null,
+  attribution?: JobAttribution | null,
 ): Promise<JobResponse> {
   const db = getDb();
   const slug = await uniqueJobSlug(
@@ -155,6 +170,7 @@ export async function createGbpJob(
       userId: userId ?? null,
       clientIp: clientIp ?? null,
       status: "queued",
+      ...attributionValues(attribution),
     })
     .returning();
 

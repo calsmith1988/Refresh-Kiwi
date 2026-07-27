@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { assertRateLimit, rateLimitKey } from "@/lib/auth/rateLimit";
 import { rateLimitResponse } from "@/lib/auth/rateLimitResponse";
 import { getCurrentUser } from "@/lib/auth/session";
+import { sanitizeAttribution } from "@/lib/jobs/attribution";
 import {
   checkRefreshLimit,
   clientIpFromRequest,
@@ -20,6 +21,7 @@ type RefreshRequestBody = {
   url?: string;
   metaEventId?: string;
   turnstileToken?: string;
+  attribution?: unknown;
 };
 
 function normalizeUrl(raw: string): string | null {
@@ -110,7 +112,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: limit.message }, { status: 429 });
     }
 
-    const job = await createRefreshJob(sourceUrl, currentUser?.id ?? null, clientIp);
+    const job = await createRefreshJob(
+      sourceUrl,
+      currentUser?.id ?? null,
+      clientIp,
+      sanitizeAttribution(body.attribution),
+    );
     await sendMetaEvent({
       eventName: "Lead",
       eventId: body.metaEventId || `lead.${job.id}`,

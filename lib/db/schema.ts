@@ -218,6 +218,12 @@ export const jobs = pgTable("jobs", {
   clientIp: text("client_ip"),
   brandName: text("brand_name"),
   status: jobStatusEnum("status").notNull().default("queued"),
+  // Marketing attribution captured client-side at generation time. Can't be
+  // reconstructed later, so it's stored on the job even for anonymous runs.
+  utmSource: text("utm_source"),
+  utmMedium: text("utm_medium"),
+  utmCampaign: text("utm_campaign"),
+  referrer: text("referrer"),
   // Per-site GitHub repo for this job's generated site. NULL for sites built
   // before per-site repos existed — those fall back to CURSOR_SITES_REPO_URL.
   sitesRepoUrl: text("sites_repo_url"),
@@ -359,6 +365,30 @@ export const stripeEvents = pgTable("stripe_events", {
     .notNull()
     .defaultNow(),
 });
+
+// Every admin-dashboard action that reads sensitive data or mutates state is
+// recorded here. adminEmail is denormalized so the trail survives account
+// deletion (the FK is SET NULL).
+export const adminAuditLog = pgTable(
+  "admin_audit_log",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    adminUserId: uuid("admin_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    adminEmail: text("admin_email").notNull(),
+    action: text("action").notNull(),
+    targetType: text("target_type").notNull(),
+    targetId: text("target_id"),
+    details: jsonb("details").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    createdAtIdx: index("admin_audit_log_created_at_idx").on(table.createdAt),
+  }),
+);
 
 export const backgroundTasks = pgTable(
   "background_tasks",

@@ -9,6 +9,7 @@ import { rateLimitResponse } from "@/lib/auth/rateLimitResponse";
 import { getCurrentUser } from "@/lib/auth/session";
 import { buildGoogleBusinessBrief } from "@/lib/google/brief";
 import { downloadPhoto, getPlaceDetails, isPlacesEnabled } from "@/lib/google/places";
+import { sanitizeAttribution } from "@/lib/jobs/attribution";
 import {
   checkRefreshLimit,
   clientIpFromRequest,
@@ -29,6 +30,7 @@ type GbpImportBody = {
   selectedPhotoNames?: unknown;
   metaEventId?: string;
   turnstileToken?: string;
+  attribution?: unknown;
 };
 
 /**
@@ -179,6 +181,7 @@ export async function POST(request: Request) {
       { creationPrompt: prompt, businessName: place.name },
       currentUser?.id ?? null,
       clientIp,
+      sanitizeAttribution(body.attribution),
     );
 
     if (seedAssets.length > 0) {

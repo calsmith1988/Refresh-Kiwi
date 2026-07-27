@@ -14,6 +14,7 @@ import {
   checkRefreshLimit,
   clientIpFromRequest,
 } from "@/lib/jobs/rate-limit";
+import { sanitizeAttribution } from "@/lib/jobs/attribution";
 import { createFreshJob } from "@/lib/jobs/service";
 import { createJobAccessToken } from "@/lib/jobs/token";
 import { metaUserDataFromRequest, sendMetaEvent } from "@/lib/meta/events";
@@ -162,7 +163,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: limit.message }, { status: 429 });
     }
 
-    const job = await createFreshJob(prompt, currentUser?.id ?? null, clientIp);
+    const attribution = sanitizeAttribution({
+      utmSource: form.get("utmSource"),
+      utmMedium: form.get("utmMedium"),
+      utmCampaign: form.get("utmCampaign"),
+      referrer: form.get("referrer"),
+    });
+    const job = await createFreshJob(
+      prompt,
+      currentUser?.id ?? null,
+      clientIp,
+      attribution,
+    );
     if (seedAssets.length > 0) {
       await seedWebsiteAssets(job.slug, seedAssets);
     }

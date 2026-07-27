@@ -121,6 +121,44 @@ export async function getRenderCustomDomain(domain: string) {
   );
 }
 
+/**
+ * Lists every custom domain attached to the Render service. Render's list
+ * endpoints wrap each entity as { customDomain, cursor }; handle a plain
+ * array too in case that changes.
+ */
+export async function listRenderCustomDomains(): Promise<RenderCustomDomain[]> {
+  const domains: RenderCustomDomain[] = [];
+  let cursor: string | null = null;
+
+  for (let page = 0; page < 10; page += 1) {
+    const query = cursor ? `&cursor=${encodeURIComponent(cursor)}` : "";
+    const response = await renderRequest<
+      Array<{ customDomain?: RenderCustomDomain; cursor?: string } | RenderCustomDomain>
+    >(`/services/${getRenderServiceId()}/custom-domains?limit=100${query}`);
+
+    if (!Array.isArray(response) || response.length === 0) {
+      break;
+    }
+
+    for (const entry of response) {
+      if ("customDomain" in entry && entry.customDomain) {
+        domains.push(entry.customDomain);
+      } else {
+        domains.push(entry as RenderCustomDomain);
+      }
+    }
+
+    const last = response[response.length - 1];
+    cursor = last && "cursor" in last ? (last.cursor ?? null) : null;
+
+    if (!cursor || response.length < 100) {
+      break;
+    }
+  }
+
+  return domains;
+}
+
 export async function deleteRenderCustomDomain(domain: string) {
   return renderRequest<void>(
     `/services/${getRenderServiceId()}/custom-domains/${encodeURIComponent(

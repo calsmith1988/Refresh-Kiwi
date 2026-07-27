@@ -1,6 +1,7 @@
 import { and, count, desc, eq, inArray, isNull, ne } from "drizzle-orm";
 
 import { getDb, schema } from "@/lib/db";
+import { deleteRenderCustomDomain } from "@/lib/render/domains";
 import { deleteSiteDirectoryFromR2 } from "@/lib/storage/r2";
 
 const { editRequests, jobs, users, websites } = schema;
@@ -522,6 +523,12 @@ export async function archiveOwnedWebsite(params: {
     .update(websites)
     .set({
       status: "archived",
+      customDomain: null,
+      customDomainStatus: "none",
+      customDomainRenderId: null,
+      customDomainError: null,
+      customDomainVerifiedAt: null,
+      customDomainLastCheckedAt: null,
       updatedAt: new Date(),
     })
     .where(eq(websites.id, website.id))
@@ -534,6 +541,22 @@ export async function archiveOwnedWebsite(params: {
       `[refresh-kiwi] archived website ${website.id} but failed to delete R2 files for slug=${website.slug}`,
       error,
     );
+  }
+
+  // Deleting a site must also detach its custom domain from the Render
+  // service; leaving it behind is what litters the Render dropdown with
+  // orphaned domains. A Render failure is non-fatal for the same reason as
+  // R2 above — the DB is already authoritative and the admin domains page
+  // surfaces any leftovers.
+  if (website.customDomain) {
+    try {
+      await deleteRenderCustomDomain(website.customDomain);
+    } catch (error) {
+      console.error(
+        `[refresh-kiwi] archived website ${website.id} but failed to remove Render domain ${website.customDomain}`,
+        error,
+      );
+    }
   }
 
   return updated;

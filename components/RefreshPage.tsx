@@ -34,6 +34,10 @@ import ModalCloseButton from "@/components/ModalCloseButton";
 import SiteLogo from "@/components/SiteLogo";
 import TurnstileWidget from "@/components/TurnstileWidget";
 import { usePricing } from "@/components/usePricing";
+import {
+  captureAttribution,
+  getStoredAttribution,
+} from "@/lib/attribution/client";
 import type { JobResponse } from "@/lib/jobs/types";
 import {
   createMetaEventId,
@@ -691,6 +695,12 @@ function PromptStarterCarousel({
         window.clearTimeout(resumeTimerRef.current);
       }
     };
+  }, []);
+
+  // UTM params / external referrer only exist on the first page view, so
+  // capture them immediately for attribution on later generation requests.
+  useEffect(() => {
+    captureAttribution();
   }, []);
 
   useEffect(() => {
@@ -1984,6 +1994,7 @@ export default function RefreshPage({
           selectedPhotoNames: selectedGbpPhotoNames,
           metaEventId,
           turnstileToken: verificationToken ?? undefined,
+          attribution: getStoredAttribution() ?? undefined,
         }),
       });
       consumeTurnstileToken();
@@ -2040,6 +2051,7 @@ export default function RefreshPage({
           url,
           metaEventId,
           turnstileToken: verificationToken ?? undefined,
+          attribution: getStoredAttribution() ?? undefined,
         }),
       });
       consumeTurnstileToken();
@@ -2135,6 +2147,16 @@ export default function RefreshPage({
 
       if (verificationToken) {
         body.append("turnstileToken", verificationToken);
+      }
+
+      const attribution = getStoredAttribution();
+
+      if (attribution) {
+        for (const [key, value] of Object.entries(attribution)) {
+          if (value) {
+            body.append(key, value);
+          }
+        }
       }
 
       const response = await fetch("/api/fresh", {

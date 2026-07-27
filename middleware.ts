@@ -21,10 +21,11 @@ export function middleware(request: NextRequest) {
   const host = normalizeHost(request);
   const { pathname } = request.nextUrl;
 
-  // Server-side guard: visiting the dashboard signed out bounces straight
-  // home instead of flashing an empty dashboard first.
+  // Server-side guard: visiting the dashboard or admin signed out bounces
+  // straight home instead of flashing an empty page first. (Admin access is
+  // additionally enforced server-side by the ADMIN_EMAILS allowlist.)
   if (
-    pathname.startsWith("/dashboard") &&
+    (pathname.startsWith("/dashboard") || pathname.startsWith("/admin")) &&
     !request.cookies.has("refresh_kiwi_session")
   ) {
     const url = request.nextUrl.clone();
