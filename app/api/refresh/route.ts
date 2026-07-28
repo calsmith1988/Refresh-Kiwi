@@ -8,6 +8,7 @@ import {
   checkRefreshLimit,
   clientIpFromRequest,
 } from "@/lib/jobs/rate-limit";
+import { checkSourceUrlReachable } from "@/lib/jobs/reachability";
 import { createRefreshJob } from "@/lib/jobs/service";
 import { createJobAccessToken } from "@/lib/jobs/token";
 import { metaUserDataFromRequest, sendMetaEvent } from "@/lib/meta/events";
@@ -110,6 +111,16 @@ export async function POST(request: Request) {
 
     if (!limit.ok) {
       return NextResponse.json({ error: limit.message }, { status: 429 });
+    }
+
+    // Last gate before spending money: typo'd domains and suspended sites
+    // must fail here with a fixable message, not after a two-minute agent
+    // run. Deliberately after Turnstile/rate limits so the probe can't be
+    // farmed by anonymous traffic.
+    const reachability = await checkSourceUrlReachable(sourceUrl);
+
+    if (!reachability.ok) {
+      return NextResponse.json({ error: reachability.message }, { status: 400 });
     }
 
     const job = await createRefreshJob(

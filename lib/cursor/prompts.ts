@@ -125,6 +125,12 @@ OUTPUT: sites/${slug}/
 
 ${GIT_RULES}
 
+## If the source website cannot be read — fail, do not improvise
+
+- Try the source URL once; if the fetch fails, retry once with curl. If it still fails — DNS error, timeout, connection refused, a hosting "suspended" or error page, a parked/for-sale page, or an empty page with no real business content — stop.
+- When the source cannot be read, do NOT look for alternative or similar domains, do NOT use archive services like the Wayback Machine, do NOT search the web for the business, and do NOT build a placeholder or generic site.
+- Instead, finish immediately WITHOUT committing anything, and say in your final message that the source website was unreachable. Finishing without a commit is how the platform knows this build failed — committing a guessed or invented site would show a customer a website that is not theirs.
+
 ## Images — hotlink the source site's real images, do not download
 
 - Reuse the source website's actual images by referencing their absolute URLs directly in <img> tags (or CSS backgrounds where it suits the design). Do not download or save image files — hotlinking is fast and the platform localises images later.
