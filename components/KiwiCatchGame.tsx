@@ -28,9 +28,18 @@ const GOLDEN_SIZE = 42;
 const GOLDEN_CHANCE = 0.14;
 const GOLDEN_POINTS = 2;
 /**
- * Spawn tightens across the round so it ends on a rush. Roughly 60+ kiwis fall
- * in 45s against a target of 25, so catching well under half still wins —
- * generous on purpose (this is a marketing giveaway, not a lottery).
+ * Rotten kiwis are the whole difficulty curve: they cost a point if caught, so
+ * the punnet can't just camp under the busiest column. Dodging costs time,
+ * which is the real price — the point loss is mostly there to make the dodge
+ * feel like it matters.
+ */
+const ROTTEN_CHANCE = 0.16;
+const ROTTEN_POINTS = -1;
+/**
+ * Spawn tightens across the round so it ends on a rush. Roughly 60 kiwis fall
+ * in 45s and about 52 of them are worth catching (~60 points if you took every
+ * good one), against a target of 25 — still generous on purpose, this is a
+ * marketing giveaway rather than a lottery.
  */
 const SPAWN_START_MS = 900;
 const SPAWN_END_MS = 520;
@@ -43,12 +52,16 @@ const SCORE_POP_MS = 620;
 const BRAND_GREEN = "#C5E66A";
 const DEEP_GREEN = "#6F9B24";
 const GOLD = "#F2C14E";
+const ROT_BROWN = "#6B4423";
+const PENALTY_RED = "#B4451F";
 const INK = "#141811";
 
 export interface RoundResult {
   score: number;
   won: boolean;
 }
+
+type KiwiKind = "normal" | "golden" | "rotten";
 
 interface FallingKiwi {
   x: number;
@@ -59,7 +72,7 @@ interface FallingKiwi {
   size: number;
   rotation: number;
   spin: number;
-  golden: boolean;
+  kind: KiwiKind;
 }
 
 interface ScorePop {
@@ -78,6 +91,37 @@ function prefersReducedMotion(): boolean {
     typeof window !== "undefined" &&
     window.matchMedia("(prefers-reduced-motion: reduce)").matches
   );
+}
+
+/**
+ * The hazard is the same fruit gone bad: tinted from the loaded sprite so it
+ * keeps the kiwi silhouette while reading as "don't catch this" instantly.
+ */
+function makeRottenSprite(sprite: KiwiSprite): KiwiSprite {
+  const width = "naturalWidth" in sprite ? sprite.naturalWidth : sprite.width;
+  const height = "naturalHeight" in sprite ? sprite.naturalHeight : sprite.height;
+
+  if (!width || !height) {
+    return sprite;
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+
+  const ctx = canvas.getContext("2d");
+
+  if (!ctx) {
+    return sprite;
+  }
+
+  ctx.drawImage(sprite, 0, 0, width, height);
+  // source-atop keeps the tint inside the fruit's own pixels.
+  ctx.globalCompositeOperation = "source-atop";
+  ctx.fillStyle = "rgba(74, 48, 22, 0.72)";
+  ctx.fillRect(0, 0, width, height);
+
+  return canvas;
 }
 
 function roundedRectPath(
@@ -113,6 +157,7 @@ export default function KiwiCatchGame({ onRoundEnd }: KiwiCatchGameProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const spriteRef = useRef<KiwiSprite | null>(null);
+  const rottenSpriteRef = useRef<KiwiSprite | null>(null);
   const onRoundEndRef = useRef(onRoundEnd);
   const [hud, setHud] = useState({
     score: 0,
@@ -126,7 +171,9 @@ export default function KiwiCatchGame({ onRoundEnd }: KiwiCatchGameProps) {
     const image = new Image();
     image.src = KIWI_SPRITE_PATH;
     image.onload = () => {
-      spriteRef.current = prepareSprite(image);
+      const sprite = prepareSprite(image);
+      spriteRef.current = sprite;
+      rottenSpriteRef.current = makeRottenSprite(sprite);
     };
   }, []);
 
@@ -183,11 +230,19 @@ export default function KiwiCatchGame({ onRoundEnd }: KiwiCatchGameProps) {
     const catchLineY = height - BASKET_BOTTOM_GAP - BASKET_HEIGHT;
 
     const spawn = () => {
-      const golden = Math.random() < GOLDEN_CHANCE;
-      const size = golden ? GOLDEN_SIZE : KIWI_SIZE;
+      const roll = Math.random();
+      const kind: KiwiKind =
+        roll < GOLDEN_CHANCE
+          ? "golden"
+          : roll < GOLDEN_CHANCE + ROTTEN_CHANCE
+            ? "rotten"
+            : "normal";
+      const size = kind === "golden" ? GOLDEN_SIZE : KIWI_SIZE;
+      // Rotten ones fall at the normal rate: a hazard you can't read in time
+      // is unfair rather than difficult.
       const fallMs = reducedMotion
         ? REDUCED_MOTION_FALL_MS
-        : golden
+        : kind === "golden"
           ? GOLDEN_FALL_MS
           : FALL_MS;
       const half = size / 2;
@@ -200,7 +255,7 @@ export default function KiwiCatchGame({ onRoundEnd }: KiwiCatchGameProps) {
         size,
         rotation: Math.random() * Math.PI * 2,
         spin: (Math.random() - 0.5) * (reducedMotion ? 0.0008 : 0.0035),
-        golden,
+        kind,
       });
     };
 
@@ -218,18 +273,29 @@ export default function KiwiCatchGame({ onRoundEnd }: KiwiCatchGameProps) {
     };
 
     const drawKiwiAt = (kiwi: FallingKiwi) => {
-      const sprite = spriteRef.current;
+      const rotten = kiwi.kind === "rotten";
+      const sprite = rotten ? rottenSpriteRef.current : spriteRef.current;
 
       ctx.save();
       ctx.translate(kiwi.x, kiwi.y);
 
-      if (kiwi.golden) {
+      // Opposite halos so the two specials are told apart by shape and
+      // brightness, not only by colour.
+      if (kiwi.kind === "golden") {
         const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, kiwi.size * 0.85);
         glow.addColorStop(0, "rgba(242, 193, 78, 0.55)");
         glow.addColorStop(1, "rgba(242, 193, 78, 0)");
         ctx.fillStyle = glow;
         ctx.beginPath();
         ctx.arc(0, 0, kiwi.size * 0.85, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (rotten) {
+        const haze = ctx.createRadialGradient(0, 0, 0, 0, 0, kiwi.size * 0.8);
+        haze.addColorStop(0, "rgba(58, 38, 18, 0.45)");
+        haze.addColorStop(1, "rgba(58, 38, 18, 0)");
+        ctx.fillStyle = haze;
+        ctx.beginPath();
+        ctx.arc(0, 0, kiwi.size * 0.8, 0, Math.PI * 2);
         ctx.fill();
       }
 
@@ -240,7 +306,11 @@ export default function KiwiCatchGame({ onRoundEnd }: KiwiCatchGameProps) {
         ctx.drawImage(sprite, -half, -half, kiwi.size, kiwi.size);
       } else {
         // Sprite still loading — a plain disc keeps the round playable.
-        ctx.fillStyle = kiwi.golden ? GOLD : BRAND_GREEN;
+        ctx.fillStyle = rotten
+          ? ROT_BROWN
+          : kiwi.kind === "golden"
+            ? GOLD
+            : BRAND_GREEN;
         ctx.beginPath();
         ctx.arc(0, 0, kiwi.size / 2, 0, Math.PI * 2);
         ctx.fill();
@@ -279,13 +349,18 @@ export default function KiwiCatchGame({ onRoundEnd }: KiwiCatchGameProps) {
     const drawScorePops = (now: number) => {
       for (const pop of scorePops) {
         const t = Math.min(1, (now - pop.startedAt) / SCORE_POP_MS);
+        const gained = pop.value > 0;
 
         ctx.save();
         ctx.globalAlpha = 1 - t;
-        ctx.fillStyle = DEEP_GREEN;
+        ctx.fillStyle = gained ? DEEP_GREEN : PENALTY_RED;
         ctx.font = "700 15px system-ui, sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText(`+${pop.value}`, pop.x, pop.y - 26 * t);
+        ctx.fillText(
+          `${gained ? "+" : ""}${pop.value}`,
+          pop.x,
+          pop.y - 26 * t,
+        );
         ctx.restore();
       }
 
@@ -315,7 +390,11 @@ export default function KiwiCatchGame({ onRoundEnd }: KiwiCatchGameProps) {
         ctx.fillStyle = INK;
         ctx.textAlign = "center";
         ctx.font = "700 15px system-ui, sans-serif";
-        ctx.fillText("Catch the kiwis in the punnet", width / 2, height / 2 - 34);
+        ctx.fillText(
+          "Catch the kiwis — dodge the rotten ones",
+          width / 2,
+          height / 2 - 34,
+        );
         ctx.font = "700 52px system-ui, sans-serif";
         ctx.fillText(
           String(Math.max(1, Math.ceil((COUNTDOWN_MS - (now - startedAt)) / 1000))),
@@ -366,11 +445,20 @@ export default function KiwiCatchGame({ onRoundEnd }: KiwiCatchGameProps) {
             Math.abs(kiwi.x - basketX) <= BASKET_WIDTH / 2 + kiwi.size * 0.3;
 
           if (crossedCatchLine && withinBasket) {
-            currentScore += kiwi.golden ? GOLDEN_POINTS : 1;
+            const value =
+              kiwi.kind === "golden"
+                ? GOLDEN_POINTS
+                : kiwi.kind === "rotten"
+                  ? ROTTEN_POINTS
+                  : 1;
+
+            // Floored at zero: a negative score reads as punishment, and the
+            // round has to feel winnable right up to the buzzer.
+            currentScore = Math.max(0, currentScore + value);
             scorePops.push({
               x: kiwi.x,
               y: catchLineY,
-              value: kiwi.golden ? GOLDEN_POINTS : 1,
+              value,
               startedAt: now,
             });
             kiwis.splice(i, 1);
@@ -499,7 +587,7 @@ export default function KiwiCatchGame({ onRoundEnd }: KiwiCatchGameProps) {
         ref={canvasRef}
         tabIndex={0}
         role="application"
-        aria-label="Kiwi Catch — move the punnet to catch falling kiwis"
+        aria-label="Kiwi Catch — move the punnet to catch falling kiwis and avoid the rotten brown ones"
         className="mt-3 w-full cursor-none rounded-2xl border border-black/10 outline-none focus-visible:ring-2 focus-visible:ring-kiwi-green"
         style={{ touchAction: "none" }}
       />
@@ -507,7 +595,7 @@ export default function KiwiCatchGame({ onRoundEnd }: KiwiCatchGameProps) {
       <p className="mt-2 text-xs text-black/45">
         {reachedTarget
           ? "Target reached — keep catching until the clock runs out."
-          : "Drag or move your mouse to slide the punnet. Golden kiwis are worth two."}
+          : "Drag or move your mouse to slide the punnet. Golden kiwis are worth two, rotten brown ones cost you one."}
       </p>
     </div>
   );

@@ -43,7 +43,11 @@ import {
   createMetaEventId,
   trackMetaBrowserEvent,
 } from "@/lib/meta/browser";
-import { clearStoredReward, readStoredReward } from "@/lib/rewards/client";
+import {
+  clearStoredReward,
+  readStoredReward,
+  trackRewardEvent,
+} from "@/lib/rewards/client";
 
 const KiwiPitCanvas = dynamic(() => import("@/components/KiwiPitCanvas"), {
   ssr: false,
@@ -1631,6 +1635,7 @@ export default function RefreshPage({
     // Only drop the token once it's safely bound to the account.
     if (claimed.rewardAttached) {
       clearStoredReward();
+      trackRewardEvent("reward_attached");
     }
 
     const refreshed = await fetch(`/api/refresh/${job.id}`, {
@@ -2502,7 +2507,7 @@ export default function RefreshPage({
       className="relative isolate min-h-screen overflow-x-clip bg-[#faf8f1] text-[#141811]"
       onPointerMove={handleHeroPointerMove}
     >
-      <KiwiPitCanvas active={isRefreshing} />
+      <KiwiPitCanvas active={isRefreshing} paused={showRewardGame} />
       {showCelebration ? (
         <KiwiCelebration onDone={() => setShowCelebration(false)} />
       ) : null}

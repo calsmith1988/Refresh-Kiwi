@@ -17,7 +17,7 @@ import {
 } from "@/lib/pricing/regions";
 import {
   FREE_MONTH_TRIAL_DAYS,
-  getRedeemableRewardForUser,
+  findRedeemableRewardForUser,
   markRewardRedeemed,
 } from "@/lib/rewards/service";
 import {
@@ -44,24 +44,6 @@ const PRO_SUBSCRIPTION_STATUSES = new Set<SubscriptionStatus>([
 
 function isProStatus(status: SubscriptionStatus): boolean {
   return PRO_SUBSCRIPTION_STATUSES.has(status);
-}
-
-/**
- * A won free month is a bonus, never a prerequisite for paying us. If the
- * lookup fails for any reason, checkout continues at full price instead of
- * breaking the one path that earns revenue.
- */
-async function findFreeMonthReward(userId: string) {
-  try {
-    return await getRedeemableRewardForUser(userId);
-  } catch (error) {
-    console.error(
-      "[refresh-kiwi] free-month lookup failed; continuing at full price",
-      error,
-    );
-
-    return null;
-  }
 }
 
 function normalizeSubscriptionStatus(
@@ -294,7 +276,7 @@ export async function createProCheckoutSession(params?: {
   // A won free month is applied as a 30-day trial: the card is still collected
   // and "trialing" already counts as Pro everywhere, so no other billing logic
   // changes. Customer-facing copy always calls it a free month, never a trial.
-  const reward = await findFreeMonthReward(user.id);
+  const reward = await findRedeemableRewardForUser(user.id);
   const checkoutParams: Stripe.Checkout.SessionCreateParams & {
     adaptive_pricing?: { enabled: boolean };
     currency?: string;

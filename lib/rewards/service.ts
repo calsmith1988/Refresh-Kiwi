@@ -271,6 +271,23 @@ export async function getRedeemableRewardForUser(
   };
 }
 
+/**
+ * Fail-safe variant for critical paths. A won free month is always a bonus,
+ * never a prerequisite — if the lookup fails, checkout should still take the
+ * customer's money and the dashboard should still load.
+ */
+export async function findRedeemableRewardForUser(
+  userId: string,
+): Promise<RedeemableReward | null> {
+  try {
+    return await getRedeemableRewardForUser(userId);
+  } catch (error) {
+    console.error("[refresh-kiwi] reward lookup failed", error);
+
+    return null;
+  }
+}
+
 /** Called from the Stripe webhook once the trial subscription exists. */
 export async function markRewardRedeemed(rewardId: string): Promise<void> {
   const now = new Date();

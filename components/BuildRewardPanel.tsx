@@ -6,7 +6,11 @@ import KiwiCatchGame, {
   TARGET_SCORE,
   type RoundResult,
 } from "@/components/KiwiCatchGame";
-import { claimRewardWin, requestRewardGameStart } from "@/lib/rewards/client";
+import {
+  claimRewardWin,
+  requestRewardGameStart,
+  trackRewardEvent,
+} from "@/lib/rewards/client";
 
 /**
  * How long the reveal keeps waiting after a round ends, so the outcome lands
@@ -47,6 +51,12 @@ export default function BuildRewardPanel({
   useEffect(() => {
     onRoundActiveChangeRef.current(holdingReveal);
   }, [holdingReveal]);
+
+  // The panel only mounts when the CTA is clicked, so this is the "interested"
+  // step of the funnel.
+  useEffect(() => {
+    trackRewardEvent("reward_game_opened");
+  }, []);
 
   useEffect(
     () => () => {
@@ -114,11 +124,13 @@ export default function BuildRewardPanel({
       beginGrace();
 
       if (!result.won) {
+        trackRewardEvent("reward_game_lost", { score: result.score });
         setPhase("lost");
 
         return;
       }
 
+      trackRewardEvent("reward_game_won", { score: result.score });
       setPhase("won");
       void submitWin();
     },
@@ -148,7 +160,7 @@ export default function BuildRewardPanel({
           <p className="mt-3 text-sm leading-6 text-black/60">
             Catch {TARGET_SCORE} kiwis in 45 seconds while we finish building
             your website. Win and your first month of Kiwi Pro is on us — golden
-            kiwis count double.
+            kiwis count double, and rotten brown ones cost you one.
           </p>
           <button
             type="button"

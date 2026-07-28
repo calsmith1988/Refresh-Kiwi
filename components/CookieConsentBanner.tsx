@@ -39,13 +39,22 @@ function saveConsent(analytics: boolean) {
   window.dispatchEvent(new Event(CONSENT_EVENT));
 }
 
+// Overloaded rather than declared per-file: TypeScript merges Window across
+// the project, so two different gtag signatures would collide.
 declare global {
   interface Window {
-    gtag?: (
-      command: "consent",
-      action: "update",
-      params: { analytics_storage: "granted" | "denied" },
-    ) => void;
+    gtag?: {
+      (
+        command: "consent",
+        action: "update",
+        params: { analytics_storage: "granted" | "denied" },
+      ): void;
+      (
+        command: "event",
+        eventName: string,
+        params?: Record<string, string | number | boolean>,
+      ): void;
+    };
   }
 }
 

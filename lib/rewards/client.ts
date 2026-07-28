@@ -15,6 +15,26 @@ export interface StoredReward {
   expiresAt: string;
 }
 
+/**
+ * GA4 funnel for the game: opened -> won/lost -> attached. This is what the
+ * win rate and the 25-kiwi target get tuned against. Redemption isn't tracked
+ * here — it happens server-side in the Stripe webhook.
+ */
+export function trackRewardEvent(
+  eventName:
+    | "reward_game_opened"
+    | "reward_game_won"
+    | "reward_game_lost"
+    | "reward_attached",
+  params?: Record<string, string | number | boolean>,
+): void {
+  try {
+    window.gtag?.("event", eventName, params);
+  } catch {
+    // Analytics must never break the game.
+  }
+}
+
 function jobHeaders(jobToken: string | null): HeadersInit {
   return {
     "Content-Type": "application/json",

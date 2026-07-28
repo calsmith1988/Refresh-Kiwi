@@ -666,6 +666,11 @@ export default function DashboardPage() {
     null,
   );
   const [showProSheet, setShowProSheet] = useState(false);
+  // A free month won from Kiwi Catch during the build, if it's still unspent.
+  const [activeReward, setActiveReward] = useState<{
+    kind: string;
+    expiresAt: string;
+  } | null>(null);
   const [activeEditModalRequestId, setActiveEditModalRequestId] = useState<
     string | null
   >(null);
@@ -682,6 +687,10 @@ export default function DashboardPage() {
 
   const isPro =
     user?.plan === "pro" && PRO_SUBSCRIPTION_STATUSES.has(user.subscriptionStatus);
+  const rewardDaysLeft = activeReward
+    ? Math.max(0, daysUntil(activeReward.expiresAt))
+    : 0;
+  const showRewardOffer = !isPro && Boolean(activeReward) && rewardDaysLeft > 0;
   const websiteLimit = isPro ? 3 : 1;
   const activeWebsiteCount = websites.length + activeRefreshJobs.length;
   const canAddWebsite = activeWebsiteCount < websiteLimit;
@@ -774,6 +783,7 @@ export default function DashboardPage() {
 
       if (!cancelled?.()) {
         setUser(mePayload.user);
+        setActiveReward(mePayload.activeReward ?? null);
         setWebsites(websitesPayload.websites ?? []);
         setActiveRefreshJobs(websitesPayload.activeRefreshJobs ?? []);
       }
@@ -1960,6 +1970,29 @@ export default function DashboardPage() {
               label="Dismiss"
               className="bg-white"
             />
+          </div>
+        ) : null}
+
+        {showRewardOffer ? (
+          <div className="mt-6 flex flex-col gap-4 rounded-3xl border border-kiwi-green bg-[#f7fbeb] p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+            <div>
+              <p className="font-fraunces text-xl font-semibold text-black">
+                Your free month is waiting 🥝
+              </p>
+              <p className="mt-1 text-sm leading-6 text-black/60">
+                You won your first month of Kiwi Pro. It expires with your
+                preview in {rewardDaysLeft}{" "}
+                {pluralise(rewardDaysLeft, "day")}.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={openProSheet}
+              disabled={billingAction !== null}
+              className="shrink-0 rounded-full bg-[#17351d] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0f2514] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Start Pro — first month free
+            </button>
           </div>
         ) : null}
 
@@ -4621,6 +4654,12 @@ export default function DashboardPage() {
               </h2>
               <ModalCloseButton onClick={() => setShowProSheet(false)} />
             </div>
+            {showRewardOffer ? (
+              <p className="mt-4 rounded-2xl bg-kiwi-green px-4 py-3 text-sm font-semibold leading-6">
+                Your first month is free — you won it. Nothing to pay for 30
+                days, and you can cancel before then.
+              </p>
+            ) : null}
             <ul className="mt-5 space-y-3 text-sm leading-6 text-black/70">
               {[
                 "Your new website online — we host it",

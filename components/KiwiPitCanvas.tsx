@@ -32,6 +32,12 @@ const KIWI_SPRITE_PATH = "/assets/kiwi-slice-v2.png";
 
 interface KiwiPitCanvasProps {
   active: boolean;
+  /**
+   * Fades the pit out and freezes it where it stands — used when something
+   * else needs the screen (the Kiwi Catch round). Unlike dropping `active`,
+   * the pile survives, so it picks up mid-fall when it comes back.
+   */
+  paused?: boolean;
   onComplete?: () => void;
   /** When omitted, the animation runs until `active` becomes false. */
   durationMs?: number;
@@ -70,6 +76,7 @@ function prefersReducedMotion(): boolean {
 
 export default function KiwiPitCanvas({
   active,
+  paused = false,
   onComplete,
   durationMs,
 }: KiwiPitCanvasProps) {
@@ -77,12 +84,14 @@ export default function KiwiPitCanvas({
   const worldRef = useRef<KiwiPitWorld | null>(null);
   const spriteRef = useRef<KiwiSprite | null>(null);
   const activeRef = useRef(active);
+  const pausedRef = useRef(paused);
   const rafRef = useRef<number | null>(null);
   const spawnTimerRef = useRef<number | null>(null);
   const completeTimerRef = useRef<number | null>(null);
   const onCompleteRef = useRef(onComplete);
 
   activeRef.current = active;
+  pausedRef.current = paused;
   onCompleteRef.current = onComplete;
 
   useEffect(() => {
@@ -134,7 +143,10 @@ export default function KiwiPitCanvas({
       const world = worldRef.current;
       const sprite = spriteRef.current;
 
-      if (!world || !sprite) {
+      // While hidden, skip the physics step and the draw entirely — the game
+      // running on top of this needs the frame budget more than an invisible
+      // pile does. The last frame stays on the canvas under the fade.
+      if (!world || !sprite || pausedRef.current) {
         rafRef.current = window.requestAnimationFrame(render);
         return;
       }
@@ -204,7 +216,7 @@ export default function KiwiPitCanvas({
 
     spawnTimerRef.current = window.setInterval(() => {
       const currentWorld = worldRef.current;
-      if (!currentWorld || !activeRef.current) {
+      if (!currentWorld || !activeRef.current || pausedRef.current) {
         return;
       }
 
@@ -241,7 +253,7 @@ export default function KiwiPitCanvas({
       ref={canvasRef}
       aria-hidden="true"
       className={`pointer-events-none fixed inset-0 -z-10 transition-opacity duration-500 ${
-        active ? "opacity-100" : "opacity-0"
+        active && !paused ? "opacity-100" : "opacity-0"
       }`}
     />
   );
