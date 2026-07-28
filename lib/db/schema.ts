@@ -390,6 +390,61 @@ export const adminAuditLog = pgTable(
   }),
 );
 
+/**
+ * Won rewards from the build-time Kiwi Catch game (currently one kind: a free
+ * first month of Pro).
+ *
+ * The row is created when a round starts, not when it's won, so the play clock
+ * lives server-side — that's what makes the win check trustworthy against a
+ * client that just POSTs a win it didn't earn.
+ *
+ * Lifecycle: playing -> issued (won, claim token handed out) -> attached (a
+ * user signed up/claimed and now owns it) -> redeemed (spent on a Stripe
+ * subscription).
+ */
+export const rewards = pgTable(
+  "rewards",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    kind: text("kind").notNull().default("free_month_pro"),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    // NULL until the winner has an account — most wins happen anonymously
+    // mid-build, before signup.
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    // SHA-256 of the claim token handed to the winner. NULL while "playing".
+    tokenHash: text("token_hash"),
+    status: text("status").notNull().default("playing"),
+    gameStartedAt: timestamp("game_started_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    issuedAt: timestamp("issued_at", { withTimezone: true }),
+    attachedAt: timestamp("attached_at", { withTimezone: true }),
+    redeemedAt: timestamp("redeemed_at", { withTimezone: true }),
+    // Deliberately aligned to the site's 7-day preview expiry so the offer and
+    // the preview tell one story ("your free month expires with your preview").
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    jobIdIdx: uniqueIndex("rewards_job_id_idx").on(table.jobId),
+    tokenHashIdx: uniqueIndex("rewards_token_hash_idx").on(table.tokenHash),
+    // One free month per customer, ever — enforced in the database so a race
+    // between two concurrent claims can't hand out a second one.
+    userClaimedIdx: uniqueIndex("rewards_user_claimed_idx")
+      .on(table.userId)
+      .where(
+        sql`${table.userId} IS NOT NULL AND ${table.status} IN ('attached', 'redeemed')`,
+      ),
+  }),
+);
+
 export const backgroundTasks = pgTable(
   "background_tasks",
   {

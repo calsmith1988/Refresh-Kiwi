@@ -43,12 +43,18 @@ import {
   createMetaEventId,
   trackMetaBrowserEvent,
 } from "@/lib/meta/browser";
+import { clearStoredReward, readStoredReward } from "@/lib/rewards/client";
 
 const KiwiPitCanvas = dynamic(() => import("@/components/KiwiPitCanvas"), {
   ssr: false,
 });
 
 const KiwiCelebration = dynamic(() => import("@/components/KiwiCelebration"), {
+  ssr: false,
+});
+
+// Canvas game, and most visitors never open it — keep it out of the first load.
+const BuildRewardPanel = dynamic(() => import("@/components/BuildRewardPanel"), {
   ssr: false,
 });
 
@@ -1145,6 +1151,7 @@ export default function RefreshPage({
   const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
   const [showStartAnotherWarning, setShowStartAnotherWarning] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [showRewardGame, setShowRewardGame] = useState(false);
   // Frozen at reveal so the "Built in" chip never keeps ticking.
   const [builtInMs, setBuiltInMs] = useState<number | null>(null);
   // One celebration per generation — not on reloads of a restored preview.
@@ -1154,6 +1161,11 @@ export default function RefreshPage({
   // Access token issued when the job was created; proves this browser started
   // the job so it may poll/cancel it even while signed out.
   const jobTokenRef = useRef<string | null>(null);
+  // A Kiwi Catch round in play holds the finished-website reveal so a
+  // nearly-won round isn't cut off mid-air. The true build time is parked here
+  // when the hold starts, so the "Built in" chip never counts game time.
+  const rewardRoundActiveRef = useRef(false);
+  const heldRevealElapsedRef = useRef<number | null>(null);
   const elapsedTimerRef = useRef<number | null>(null);
   const statusTimerRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
@@ -1337,6 +1349,32 @@ export default function RefreshPage({
     }
   }, []);
 
+  /** Applies a reveal that was held back while a Kiwi Catch round finished. */
+  const releaseHeldReveal = useCallback(() => {
+    if (heldRevealElapsedRef.current === null) {
+      return;
+    }
+
+    const buildDurationMs = heldRevealElapsedRef.current;
+    heldRevealElapsedRef.current = null;
+    stopTimer();
+    stopStatusRotation();
+    setBuiltInMs(buildDurationMs);
+    setShowRewardGame(false);
+    setIsRefreshing(false);
+  }, [stopStatusRotation, stopTimer]);
+
+  const handleRewardRoundActiveChange = useCallback(
+    (active: boolean) => {
+      rewardRoundActiveRef.current = active;
+
+      if (!active) {
+        releaseHeldReveal();
+      }
+    },
+    [releaseHeldReveal],
+  );
+
   const pollJob = useCallback(
     async (jobId: string) => {
       try {
@@ -1355,9 +1393,20 @@ export default function RefreshPage({
         setJob(nextJob);
 
         if (HOMEPAGE_READY_STATUSES.has(nextJob.status)) {
-          setIsRefreshing(false);
-          stopTimer();
-          stopStatusRotation();
+          if (rewardRoundActiveRef.current) {
+            // Park the real build time and let the round play out; the reveal
+            // is applied by releaseHeldReveal when the round ends.
+            if (heldRevealElapsedRef.current === null) {
+              heldRevealElapsedRef.current =
+                startTimeRef.current !== null
+                  ? Date.now() - startTimeRef.current
+                  : 0;
+            }
+          } else {
+            setIsRefreshing(false);
+            stopTimer();
+            stopStatusRotation();
+          }
         }
 
         if (TERMINAL_STATUSES.has(nextJob.status)) {
@@ -1401,6 +1450,9 @@ export default function RefreshPage({
     setBuiltInMs(null);
     celebrationPlayedRef.current = false;
     setShowCelebration(false);
+    setShowRewardGame(false);
+    rewardRoundActiveRef.current = false;
+    heldRevealElapsedRef.current = null;
     elapsedTimerRef.current = window.setInterval(() => {
       if (startTimeRef.current !== null) {
         setElapsedMs(Date.now() - startTimeRef.current);
@@ -1557,15 +1609,28 @@ export default function RefreshPage({
       return;
     }
 
+    // A free month won during the build is bound to the new account here — the
+    // claim token is this browser's only proof of the win until now.
+    const storedReward = readStoredReward();
+    const rewardToken =
+      storedReward?.jobId === job.id ? storedReward.token : undefined;
+
     const response = await fetch("/api/websites/claim", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ jobId: job.id }),
+      body: JSON.stringify({ jobId: job.id, rewardToken }),
     });
 
     if (!response.ok) {
       const payload = await response.json();
       throw new Error(payload.error ?? "Failed to save website");
+    }
+
+    const claimed = (await response.json()) as { rewardAttached?: boolean };
+
+    // Only drop the token once it's safely bound to the account.
+    if (claimed.rewardAttached) {
+      clearStoredReward();
     }
 
     const refreshed = await fetch(`/api/refresh/${job.id}`, {
@@ -2279,6 +2344,11 @@ export default function RefreshPage({
         : 0;
   const previewHref = normalizePreviewUrl(job?.previewUrl ?? null);
   const showReveal = !isRefreshing && Boolean(previewHref);
+  // Anonymous visitors always see the offer — we can't know who they are yet,
+  // so the real eligibility gate runs server-side when the reward is claimed.
+  // Signed-in users only see it if they've never subscribed.
+  const rewardOfferVisible =
+    !user || (user.plan === "free" && user.subscriptionStatus === "none");
   // Prefer the frozen reveal snapshot; fall back to job timestamps when the
   // preview is restored after a reload (no live timer for that session).
   const readyDurationMs =
@@ -2708,7 +2778,18 @@ export default function RefreshPage({
         ) : null}
 
         <div className="relative z-30 mx-auto w-full max-w-6xl">
-          {isRefreshing ? (
+          {isRefreshing && showRewardGame && job?.id ? (
+            <div className="flex min-h-[60vh] items-center justify-center">
+              <div className="w-full max-w-md rounded-3xl border border-black/10 bg-white/95 p-8 shadow-2xl shadow-black/10 backdrop-blur sm:max-w-xl">
+                <BuildRewardPanel
+                  jobId={job.id}
+                  jobToken={jobTokenRef.current}
+                  onBack={() => setShowRewardGame(false)}
+                  onRoundActiveChange={handleRewardRoundActiveChange}
+                />
+              </div>
+            </div>
+          ) : isRefreshing ? (
             <div className="flex min-h-[60vh] items-center justify-center">
               <div
                 className="w-full max-w-md rounded-3xl border border-black/10 bg-white/95 p-8 text-center shadow-2xl shadow-black/10 backdrop-blur sm:max-w-xl md:max-w-2xl"
@@ -2789,6 +2870,15 @@ export default function RefreshPage({
                     ? `You can leave this page — your ${activeMode === "fresh" ? "website" : "refresh"} keeps going and will be waiting in your dashboard.`
                     : "Keep this tab open — your new website will appear right here in a minute or two."}
                 </p>
+                {job?.id && rewardOfferVisible ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowRewardGame(true)}
+                    className="reward-cta-pulse mt-6 block w-full rounded-full border bg-white px-5 py-3 text-sm font-bold transition hover:border-black/30"
+                  >
+                    🥝 Win your first month free — play while we build
+                  </button>
+                ) : null}
                 {job?.id ? (
                   <button
                     type="button"

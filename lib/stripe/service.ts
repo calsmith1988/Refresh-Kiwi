@@ -16,6 +16,11 @@ import {
   normalizeSupportedCurrency,
 } from "@/lib/pricing/regions";
 import {
+  FREE_MONTH_TRIAL_DAYS,
+  getRedeemableRewardForUser,
+  markRewardRedeemed,
+} from "@/lib/rewards/service";
+import {
   getAppUrl,
   getStripeProPriceId,
   getStripeSecretKey,
@@ -39,6 +44,24 @@ const PRO_SUBSCRIPTION_STATUSES = new Set<SubscriptionStatus>([
 
 function isProStatus(status: SubscriptionStatus): boolean {
   return PRO_SUBSCRIPTION_STATUSES.has(status);
+}
+
+/**
+ * A won free month is a bonus, never a prerequisite for paying us. If the
+ * lookup fails for any reason, checkout continues at full price instead of
+ * breaking the one path that earns revenue.
+ */
+async function findFreeMonthReward(userId: string) {
+  try {
+    return await getRedeemableRewardForUser(userId);
+  } catch (error) {
+    console.error(
+      "[refresh-kiwi] free-month lookup failed; continuing at full price",
+      error,
+    );
+
+    return null;
+  }
 }
 
 function normalizeSubscriptionStatus(
@@ -268,6 +291,10 @@ export async function createProCheckoutSession(params?: {
 
   const appUrl = getAppUrl();
   const metaEventId = params?.metaEventId || `checkout.${user.id}.${Date.now()}`;
+  // A won free month is applied as a 30-day trial: the card is still collected
+  // and "trialing" already counts as Pro everywhere, so no other billing logic
+  // changes. Customer-facing copy always calls it a free month, never a trial.
+  const reward = await findFreeMonthReward(user.id);
   const checkoutParams: Stripe.Checkout.SessionCreateParams & {
     adaptive_pricing?: { enabled: boolean };
     currency?: string;
@@ -289,7 +316,9 @@ export async function createProCheckoutSession(params?: {
         metaEventId,
         currency: pricing.currency,
         countryCode,
+        ...(reward ? { rewardId: reward.id } : {}),
       },
+      ...(reward ? { trial_period_days: FREE_MONTH_TRIAL_DAYS } : {}),
     },
     allow_promotion_codes: true,
     adaptive_pricing: { enabled: true },
@@ -404,6 +433,24 @@ export async function handleSubscriptionUpdated(
     stripeSubscriptionId: subscription.id,
     status: normalizeSubscriptionStatus(subscription.status),
   });
+
+  // The subscription now exists, so a won free month has been spent. Safe to
+  // repeat: markRewardRedeemed only moves rows out of "attached".
+  //
+  // Bookkeeping only, so a failure here must not fail the webhook — the plan
+  // sync above is the part that gates access. The trade-off is that a reward
+  // left stranded in "attached" could fund a second free month if the customer
+  // cancels and resubscribes, which is far cheaper than a plan sync that keeps
+  // failing and retrying.
+  const rewardId = subscription.metadata.rewardId;
+
+  if (rewardId) {
+    try {
+      await markRewardRedeemed(rewardId);
+    } catch (error) {
+      console.error("[refresh-kiwi] could not mark reward redeemed", error);
+    }
+  }
 }
 
 export async function handleSubscriptionDeleted(
