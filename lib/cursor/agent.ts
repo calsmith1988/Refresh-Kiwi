@@ -17,6 +17,21 @@ import type { RunResult } from "@cursor/sdk";
 const MODEL = { id: "composer-2.5" } as const;
 
 /**
+ * Exact token the homepage prompt tells the agent to include in its final
+ * message when the source website can't be read. Detecting it here fails the
+ * job immediately instead of waiting ~55s for a preview sync that can never
+ * succeed (the agent is instructed not to commit in that case).
+ */
+export const SOURCE_UNREACHABLE_MARKER = "SOURCE_UNREACHABLE";
+
+export class SourceUnreachableError extends Error {
+  constructor() {
+    super("Agent reported the source website as unreachable");
+    this.name = "SourceUnreachableError";
+  }
+}
+
+/**
  * The agent's closing message says what it actually did (committed, wrote
  * files, hit a blocker). Logging a snippet makes "finished but produced
  * nothing" failures diagnosable from worker logs alone.
@@ -88,6 +103,10 @@ export async function runHomepagePhase(
 
     if (result.status === "cancelled") {
       throw new Error(`Homepage build was cancelled (run ${result.id})`);
+    }
+
+    if (result.result?.includes(SOURCE_UNREACHABLE_MARKER)) {
+      throw new SourceUnreachableError();
     }
 
     return { agentId: started.agentId, runId: result.id };

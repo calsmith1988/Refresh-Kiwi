@@ -11,6 +11,7 @@ import {
   isRetryableCursorStartupError,
   runFreshHomepagePhase,
   runHomepagePhase,
+  SourceUnreachableError,
 } from "@/lib/cursor/agent";
 import { getDb, schema } from "@/lib/db";
 import { sendOnce } from "@/lib/email/events";
@@ -246,7 +247,9 @@ export async function processRefreshJob(
     await updateJob(jobId, {
       status: "failed" as JobStatus,
       errorMessage:
-        "We couldn't finish refreshing your website this time. It's not you — some sites are tricky to read.",
+        error instanceof SourceUnreachableError
+          ? "We couldn't read that website — it looks offline or parked right now, so there's nothing for us to refresh. Double-check the address and try again."
+          : "We couldn't finish refreshing your website this time. It's not you — some sites are tricky to read.",
     });
   }
 }

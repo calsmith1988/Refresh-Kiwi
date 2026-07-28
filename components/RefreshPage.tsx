@@ -2021,6 +2021,11 @@ export default function RefreshPage({
     }
 
     setErrorMessage(message);
+    // The processing card has already opened by the time a submit fails
+    // (pre-flight rejection, rate limit, server error), so show the same
+    // failure card as a mid-build failure — snapping back to the form with a
+    // small inline message reads like nothing happened.
+    setGenerationFailed(true);
   };
 
   const requireVerification = (generation: PendingGeneration): boolean => {

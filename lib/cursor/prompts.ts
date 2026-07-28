@@ -129,7 +129,7 @@ ${GIT_RULES}
 
 - Try the source URL once; if the fetch fails, retry once with curl. If it still fails — DNS error, timeout, connection refused, a hosting "suspended" or error page, a parked/for-sale page, or an empty page with no real business content — stop.
 - When the source cannot be read, do NOT look for alternative or similar domains, do NOT use archive services like the Wayback Machine, do NOT search the web for the business, and do NOT build a placeholder or generic site.
-- Instead, finish immediately WITHOUT committing anything, and say in your final message that the source website was unreachable. Finishing without a commit is how the platform knows this build failed — committing a guessed or invented site would show a customer a website that is not theirs.
+- Instead, finish immediately WITHOUT committing anything, and include the exact text SOURCE_UNREACHABLE in your final message (plus a short explanation of what you found). That exact token is how the platform detects the failure straight away — committing a guessed or invented site would show a customer a website that is not theirs.
 
 ## Images — hotlink the source site's real images, do not download
 
