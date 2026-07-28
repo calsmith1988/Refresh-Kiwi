@@ -1,5 +1,6 @@
 import { localizeWebsiteImages } from "@/lib/assets/localize";
 import { generateStarterSeedAssets } from "@/lib/assets/starter";
+import { isRetryableCursorStartupError } from "@/lib/cursor/agent";
 import { closeDb, getDb, schema } from "@/lib/db";
 import { processEditRequest } from "@/lib/edits/processor";
 import { processRefreshJob, processFreshJob } from "@/lib/jobs/processor";
@@ -10,6 +11,7 @@ import {
   claimNextBackgroundTask,
   completeBackgroundTask,
   failBackgroundTask,
+  MAX_TASK_ATTEMPTS,
   recoverStaleBackgroundWork,
   resetEntityForRetry,
   type BackgroundTask,
@@ -19,6 +21,12 @@ import { eq } from "drizzle-orm";
 const IDLE_SLEEP_MS = Number(process.env.WORKER_IDLE_SLEEP_MS ?? 5_000);
 const RECOVERY_INTERVAL_MS = Number(
   process.env.WORKER_RECOVERY_INTERVAL_MS ?? 60_000,
+);
+// Transient Cursor capacity errors ([resource_exhausted]) have been observed
+// clearing within ~15s. Pause before the requeued task is reclaimed so the
+// retry doesn't slam straight into the same limit.
+const CURSOR_RETRY_BACKOFF_MS = Number(
+  process.env.WORKER_CURSOR_RETRY_BACKOFF_MS ?? 10_000,
 );
 
 let shouldStop = false;
@@ -48,10 +56,15 @@ async function processTask(task: BackgroundTask): Promise<void> {
     await resetEntityForRetry(task);
   }
 
+  // On the final attempt the processors must fail their entity with the
+  // friendly user-facing message instead of rethrowing for a requeue that
+  // will never happen.
+  const finalAttempt = task.attempts >= MAX_TASK_ATTEMPTS;
+
   switch (task.type) {
     case "refresh-homepage": {
       const payload = payloadValue<{ jobId: string }>(task.payload);
-      await processRefreshJob(payload.jobId);
+      await processRefreshJob(payload.jobId, { finalAttempt });
       break;
     }
 
@@ -72,13 +85,13 @@ async function processTask(task: BackgroundTask): Promise<void> {
           })()
         : [];
 
-      await processFreshJob(payload.jobId, starterAssets);
+      await processFreshJob(payload.jobId, starterAssets, { finalAttempt });
       break;
     }
 
     case "edit-request": {
       const payload = payloadValue<{ editRequestId: string }>(task.payload);
-      await processEditRequest(payload.editRequestId);
+      await processEditRequest(payload.editRequestId, { finalAttempt });
       break;
     }
 
@@ -102,6 +115,7 @@ async function processTask(task: BackgroundTask): Promise<void> {
                 brief: payload.brief ?? "",
               }
           : { type: "business" },
+        { finalAttempt },
       );
       break;
     }
@@ -160,6 +174,10 @@ async function runWorker(): Promise<void> {
         error,
       );
       await failBackgroundTask(task.id, error);
+
+      if (isRetryableCursorStartupError(error)) {
+        await sleep(CURSOR_RETRY_BACKOFF_MS);
+      }
     }
   }
 }

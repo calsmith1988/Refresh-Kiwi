@@ -26,6 +26,7 @@ You are rebuilding small-business websites for non-technical owners. The task pr
 - Always create or update `sites/{slug}/site.json`.
 - Images and videos: follow the prompt's rules exactly. By default that means hotlinking the source site's images/videos by absolute https URL — do **not** download media files unless the prompt explicitly says to. The platform localizes images afterwards.
 - Commit your work to the repository when a phase is complete (some phases are artifact-first — the prompt will say).
+- Commit directly on `main` and push to `origin main`. Never create a new branch and never open a pull request — the platform only reads files from `main`, so work left on any other branch or in a PR is invisible and the build counts as failed.
 
 ## site.json shape
 

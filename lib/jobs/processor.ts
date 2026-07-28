@@ -8,6 +8,7 @@ import {
 } from "@/lib/assets/seed";
 import {
   isCursorStartupError,
+  isRetryableCursorStartupError,
   runFreshHomepagePhase,
   runHomepagePhase,
 } from "@/lib/cursor/agent";
@@ -23,6 +24,15 @@ import { createWebsiteFromJob } from "@/lib/websites/service";
 import type { JobStatus } from "@/lib/jobs/types";
 
 const { jobs, users } = schema;
+
+export interface ProcessorRetryOptions {
+  /**
+   * True when the background task has no attempts left. Retryable Cursor
+   * startup errors are rethrown for a queue-level requeue on earlier
+   * attempts; on the final attempt the entity fails with friendly copy.
+   */
+  finalAttempt?: boolean;
+}
 
 function elapsedSeconds(startedAt: number): string {
   return ((Date.now() - startedAt) / 1000).toFixed(1);
@@ -55,7 +65,10 @@ async function isJobStillActive(jobId: string): Promise<boolean> {
   );
 }
 
-export async function processRefreshJob(jobId: string): Promise<void> {
+export async function processRefreshJob(
+  jobId: string,
+  retryOptions: ProcessorRetryOptions = {},
+): Promise<void> {
   const db = getDb();
 
   const [job] = await db
@@ -202,6 +215,16 @@ export async function processRefreshJob(jobId: string): Promise<void> {
         ? error.message
         : "Unknown error";
 
+    // Transient startup failures (e.g. Cursor [resource_exhausted]) get a
+    // queue-level requeue instead of an instant user-facing failure. The next
+    // claim resets the job back to "queued" via resetEntityForRetry.
+    if (isRetryableCursorStartupError(error) && !retryOptions.finalAttempt) {
+      console.warn(
+        `[refresh-kiwi] job ${jobId} transient Cursor startup failure; requeueing: ${technicalMessage}`,
+      );
+      throw error;
+    }
+
     console.error(`[refresh-kiwi] job ${jobId} failed: ${technicalMessage}`);
     logMemoryUsage("refresh:failed", { jobId });
 
@@ -231,6 +254,7 @@ export async function processRefreshJob(jobId: string): Promise<void> {
 export async function processFreshJob(
   jobId: string,
   seedAssetInputs: SeedAssetInput[] = [],
+  retryOptions: ProcessorRetryOptions = {},
 ): Promise<void> {
   const db = getDb();
 
@@ -398,6 +422,13 @@ export async function processFreshJob(
       : error instanceof Error
         ? error.message
         : "Unknown error";
+
+    if (isRetryableCursorStartupError(error) && !retryOptions.finalAttempt) {
+      console.warn(
+        `[refresh-kiwi] fresh job ${jobId} transient Cursor startup failure; requeueing: ${technicalMessage}`,
+      );
+      throw error;
+    }
 
     console.error(`[refresh-kiwi] fresh job ${jobId} failed: ${technicalMessage}`);
     logMemoryUsage("fresh:failed", { jobId });

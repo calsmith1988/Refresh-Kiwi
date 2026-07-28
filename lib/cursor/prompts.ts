@@ -37,6 +37,20 @@ export interface CustomPagePromptParams extends PromptParams {
   brief: string;
 }
 
+/**
+ * Cloud agents default to branch-and-PR etiquette. Everything downstream
+ * (preview sync, serving, edits, image localization) only ever reads main, so
+ * work left on any other branch silently fails the whole build. Every prompt
+ * must carry these rules.
+ */
+const GIT_RULES = [
+  "## Git — commit directly to main",
+  "",
+  "- Do all work on the branch that is already checked out (main). Commit there and push with git push origin main.",
+  "- Never create a new branch, never run git checkout -b, and never open a pull request (do not use any PR tool).",
+  "- The platform only reads files from main. Work left on another branch or in a PR is invisible and makes the whole build count as failed.",
+].join("\n");
+
 function buildFormRules(slug: string): string {
   return [
     "## Contact forms",
@@ -107,7 +121,9 @@ OUTPUT: sites/${slug}/
    - brandName, slug ("${slug}"), sourceUrl
    - pages: [{ "path": "/", "title": "Home", "gated": false }]
    - discoveredPages: [] unless obvious nav paths are already visible without extra browsing
-5. When index.html, styles.css, and site.json are written under sites/${slug}/, commit and push them to the repository, then finish. The commit is required — the platform falls back to reading the repo when run artifacts are unavailable, so finishing without a commit can make the whole build count as failed.
+5. When index.html, styles.css, and site.json are written under sites/${slug}/, commit them directly on main and push to origin main (no new branch, no pull request), then finish. The commit is required — the platform falls back to reading the repo when run artifacts are unavailable, so finishing without a commit can make the whole build count as failed.
+
+${GIT_RULES}
 
 ## Images — hotlink the source site's real images, do not download
 
@@ -215,7 +231,9 @@ ${formatSeedAssets(seedAssets)}
    - brandName, slug ("${slug}"), sourceUrl null
    - pages: [{ "path": "/", "title": "Home", "gated": false }]
    - discoveredPages: []
-5. Commit the finished homepage files to the repo before finishing. Do not finish until index.html, styles.css, and site.json are written under sites/${slug}/ and available from the run artifacts or the repository.
+5. Commit the finished homepage files directly on main and push to origin main (no new branch, no pull request) before finishing. Do not finish until index.html, styles.css, and site.json are written under sites/${slug}/ and available from the run artifacts or the repository.
+
+${GIT_RULES}
 
 ## Images and logo
 
@@ -298,7 +316,9 @@ The homepage already exists. Your job is to expand it into a small multi-page we
 8. Update site.json with:
    - pages: include "/" plus each generated page with path, title, and gated false
    - discoveredPages: []
-9. Commit the finished multi-page site to the repo.
+9. Commit the finished multi-page site directly on main and push to origin main (no new branch, no pull request).
+
+${GIT_RULES}
 
 ${buildFormRules(slug)}
 
@@ -337,7 +357,9 @@ The homepage already exists. Your job is to crawl the source website for importa
 10. Update site.json with:
    - pages: include "/" plus each generated page with path, title, and gated false
    - discoveredPages: include any meaningful internal pages you found but did not generate
-11. Commit the finished multi-page site to the repo.
+11. Commit the finished multi-page site directly on main and push to origin main (no new branch, no pull request).
+
+${GIT_RULES}
 
 ${buildFormRules(slug)}
 
@@ -401,7 +423,9 @@ The homepage already exists. Your job is to add exactly one polished page that m
 9. Update site.json with:
    - pages: include "/" plus all existing pages and the new page with path, title, and gated false
    - discoveredPages: preserve existing discoveredPages when present
-10. Commit the finished custom page to the repo.
+10. Commit the finished custom page directly on main and push to origin main (no new branch, no pull request).
+
+${GIT_RULES}
 
 ${buildFormRules(slug)}
 
@@ -452,7 +476,9 @@ ${legalDraft}
 9. Update site.json with:
    - pages: include "/" plus all existing pages and each legal page with path, title, and gated false
    - discoveredPages: include any meaningful pages discovered but not generated
-10. Commit the finished legal pages to the repo.
+10. Commit the finished legal pages directly on main and push to origin main (no new branch, no pull request).
+
+${GIT_RULES}
 
 ${buildFormRules(slug)}
 
@@ -489,7 +515,7 @@ USER REQUEST: ${editPrompt}
 
 ## Scope
 
-1. Your workspace may be behind the repository — pull the latest main branch before reading or changing anything.
+1. Your workspace may be behind the repository, or checked out on a leftover branch — run git checkout main and pull the latest before reading or changing anything.
 2. Work only inside sites/${slug}/.
 3. Read the existing files first, especially index.html, styles.css, script.js if present, and site.json.
 4. Apply the requested change while preserving the current design language, brand colours, layout quality, responsive behavior, asset paths, and favicon <link> tags in <head>.
@@ -501,7 +527,9 @@ USER REQUEST: ${editPrompt}
    If the edit asks for new imagery, use existing local assets first, then only use URLs explicitly provided by the user or present in the original source context. Never invent image paths.
 8. Videos may appear as YouTube/Vimeo iframes or hotlinked <video> tags pointing at the original site — preserve them as-is. If the edit asks for a new video, only use an embed or URL that exists on the source site or that the user provided; never download video files or invent video URLs.
 9. Update site.json only if the edit changes metadata or titles on existing pages. Never add new entries to site.json pages.
-10. Commit the finished edit to the repo, then verify only the files you changed — a full-site review is not needed for a small edit.
+10. Commit the finished edit directly on main and push to origin main (no new branch, no pull request), then verify only the files you changed — a full-site review is not needed for a small edit.
+
+${GIT_RULES}
 
 ${buildFormRules(slug)}
 

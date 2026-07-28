@@ -35,6 +35,7 @@ function cloudOptions(repoUrl: string) {
   return {
     repos: [{ url: repoUrl, startingRef: "main" }],
     workOnCurrentBranch: true,
+    autoCreatePR: false,
     skipReviewerRequest: true,
   };
 }
@@ -398,4 +399,19 @@ export async function runEditPhase(
 
 export function isCursorStartupError(error: unknown): error is CursorAgentError {
   return error instanceof CursorAgentError;
+}
+
+/**
+ * Startup errors worth an automatic requeue instead of failing the job:
+ * anything the backend flags retryable, plus transient capacity errors like
+ * [resource_exhausted], which have been observed arriving without the flag
+ * and clearing within seconds.
+ */
+export function isRetryableCursorStartupError(error: unknown): boolean {
+  return (
+    isCursorStartupError(error) &&
+    (error.isRetryable ||
+      error.code === "resource_exhausted" ||
+      error.message.includes("resource_exhausted"))
+  );
 }

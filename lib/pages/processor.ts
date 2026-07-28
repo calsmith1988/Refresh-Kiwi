@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import { localizeWebsiteImages } from "@/lib/assets/localize";
 import {
   isCursorStartupError,
+  isRetryableCursorStartupError,
   runAdditionalPagesPhase,
   runCustomPagePhase,
   runLegalPagesPhase,
@@ -81,6 +82,7 @@ async function describeExistingLegalPages(jobId: string): Promise<string> {
 export async function processAdditionalPages(
   websiteId: string,
   options: PageGenerationOptions = { type: "business" },
+  retryOptions: { finalAttempt?: boolean } = {},
 ): Promise<void> {
   const db = getDb();
   const [website] = await db
@@ -245,6 +247,15 @@ export async function processAdditionalPages(
       : error instanceof Error
         ? error.message
         : "Unknown error";
+
+    // Transient startup failures get a queue-level requeue; this processor
+    // re-runs regardless of job status, so no entity reset is needed.
+    if (isRetryableCursorStartupError(error) && !retryOptions.finalAttempt) {
+      console.warn(
+        `[refresh-kiwi] additional pages websiteId=${websiteId} transient Cursor startup failure; requeueing: ${technicalMessage}`,
+      );
+      throw error;
+    }
 
     console.error(
       `[refresh-kiwi] additional pages failed websiteId=${websiteId}: ${technicalMessage}`,

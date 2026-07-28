@@ -14,6 +14,9 @@ const GITHUB_SYNC_ATTEMPTS = 15;
 const GITHUB_SYNC_DELAY_MS = 3_000;
 const ARTIFACT_SYNC_ATTEMPTS = 5;
 const ARTIFACT_SYNC_DELAY_MS = 2_000;
+// Give a normal push-to-main time to land before checking whether the agent
+// left the finished site on its own branch instead.
+const BRANCH_RESCUE_AFTER_ATTEMPTS = 5;
 const REQUIRED_HOMEPAGE_FILES = ["index.html", "site.json"] as const;
 
 export { githubHeaders, parseGithubRepo };
@@ -147,13 +150,19 @@ async function uploadSyncedPreview(slug: string, outputDir: string): Promise<voi
   }
 }
 
-export async function syncFromGithubMain(slug: string, outputDir: string): Promise<boolean> {
+async function resolveParsedRepo(slug: string) {
   const repoUrl = await resolveSitesRepoUrlForSlug(slug);
   const parsed = parseGithubRepo(repoUrl);
 
   if (!parsed) {
     throw new Error(`Sites repo for ${slug} is not a GitHub repository URL`);
   }
+
+  return parsed;
+}
+
+export async function syncFromGithubMain(slug: string, outputDir: string): Promise<boolean> {
+  const parsed = await resolveParsedRepo(slug);
 
   const prefix = `sites/${slug}/`;
   const treeUrl = `https://api.github.com/repos/${parsed.owner}/${parsed.repo}/git/trees/main?recursive=1`;
@@ -231,6 +240,128 @@ export async function syncFromGithubMain(slug: string, outputDir: string): Promi
   return true;
 }
 
+/**
+ * Rescue for a misbehaving agent that committed the finished site to its own
+ * branch (typically cursor/*, often behind a PR) instead of main. Everything
+ * downstream — preview sync, serving, edits, image localization — only reads
+ * main, so find a non-main branch whose tree contains the complete site and
+ * merge it into main via the GitHub merge API.
+ */
+async function tryMergeAgentBranchIntoMain(slug: string): Promise<boolean> {
+  const parsed = await resolveParsedRepo(slug);
+  const prefix = `sites/${slug}/`;
+  const base = `https://api.github.com/repos/${parsed.owner}/${parsed.repo}`;
+
+  let branches: Array<{ name: string; commit: { sha: string } }>;
+
+  try {
+    const response = await fetch(`${base}/branches?per_page=100`, {
+      headers: githubHeaders(),
+    });
+
+    if (!response.ok) {
+      return false;
+    }
+
+    branches = (await response.json()) as Array<{
+      name: string;
+      commit: { sha: string };
+    }>;
+  } catch (error) {
+    console.warn(`[refresh-kiwi] branch rescue: could not list branches for ${slug}:`, error);
+    return false;
+  }
+
+  const candidates: Array<{ name: string; committedAt: number }> = [];
+
+  for (const branch of branches) {
+    if (branch.name === "main") {
+      continue;
+    }
+
+    try {
+      const treeResponse = await fetch(
+        `${base}/git/trees/${encodeURIComponent(branch.commit.sha)}?recursive=1`,
+        { headers: githubHeaders() },
+      );
+
+      if (!treeResponse.ok) {
+        continue;
+      }
+
+      const tree = (await treeResponse.json()) as {
+        tree: Array<{ path: string; type: string }>;
+      };
+      const relativePaths = tree.tree
+        .filter((item) => item.type === "blob" && item.path.startsWith(prefix))
+        .map((item) => relativePathFromPrefix(item.path, prefix));
+
+      if (relativePaths.length === 0 || !hasRequiredHomepageFiles(relativePaths)) {
+        continue;
+      }
+
+      const commitResponse = await fetch(`${base}/commits/${branch.commit.sha}`, {
+        headers: githubHeaders(),
+      });
+      const commit = commitResponse.ok
+        ? ((await commitResponse.json()) as {
+            commit?: { committer?: { date?: string } };
+          })
+        : null;
+
+      candidates.push({
+        name: branch.name,
+        committedAt: Date.parse(commit?.commit?.committer?.date ?? "") || 0,
+      });
+    } catch {
+      continue;
+    }
+  }
+
+  // Prefer the most recent work — old stale branches must not resurrect
+  // outdated content.
+  candidates.sort((a, b) => b.committedAt - a.committedAt);
+
+  for (const candidate of candidates) {
+    try {
+      const mergeResponse = await fetch(`${base}/merges`, {
+        method: "POST",
+        headers: {
+          ...githubHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          base: "main",
+          head: candidate.name,
+          commit_message: `Rescue: merge ${candidate.name} into main (agent committed off-main)`,
+        }),
+      });
+
+      // 201 = merged. 204 = branch already contained in main, meaning it
+      // isn't the missing work — try the next candidate.
+      if (mergeResponse.status === 201) {
+        console.warn(
+          `[refresh-kiwi] site files for ${prefix} were left on branch ${candidate.name}; merged into main`,
+        );
+        return true;
+      }
+
+      if (mergeResponse.status !== 204) {
+        console.warn(
+          `[refresh-kiwi] branch rescue: merging ${candidate.name} into main failed (${mergeResponse.status})`,
+        );
+      }
+    } catch (error) {
+      console.warn(
+        `[refresh-kiwi] branch rescue: merging ${candidate.name} into main failed:`,
+        error,
+      );
+    }
+  }
+
+  return false;
+}
+
 export async function syncPreviewFromAgent(
   agentId: string,
   slug: string,
@@ -259,6 +390,8 @@ export async function syncPreviewFromAgent(
     `[refresh-kiwi] no Cursor artifacts for ${prefix}, falling back to GitHub main`,
   );
 
+  let branchRescueAttempted = false;
+
   for (let attempt = 1; attempt <= GITHUB_SYNC_ATTEMPTS; attempt++) {
     const syncedFromGithub = await syncFromGithubMain(slug, outputDir);
 
@@ -266,6 +399,16 @@ export async function syncPreviewFromAgent(
       await uploadSyncedPreview(slug, outputDir);
       logMemoryUsage("preview-sync:complete", { slug, source: "github" });
       return;
+    }
+
+    // If main still has nothing after a reasonable wait, check whether the
+    // agent committed the site to its own branch and merge it into main.
+    if (!branchRescueAttempted && attempt >= BRANCH_RESCUE_AFTER_ATTEMPTS) {
+      branchRescueAttempted = true;
+
+      if (await tryMergeAgentBranchIntoMain(slug)) {
+        continue;
+      }
     }
 
     if (attempt < GITHUB_SYNC_ATTEMPTS) {

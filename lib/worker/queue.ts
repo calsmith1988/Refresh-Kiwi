@@ -15,7 +15,7 @@ export type BackgroundTaskType =
 export type BackgroundTaskPayload = typeof backgroundTasks.$inferSelect.payload;
 export type BackgroundTask = typeof backgroundTasks.$inferSelect;
 
-const MAX_ATTEMPTS = 3;
+export const MAX_TASK_ATTEMPTS = 3;
 
 /**
  * A single staleness window for a task AND the job/edit it drives. Previously
@@ -59,7 +59,7 @@ export async function claimNextBackgroundTask(): Promise<BackgroundTask | null> 
       SELECT id
       FROM background_tasks
       WHERE status = 'queued'
-        AND attempts < ${MAX_ATTEMPTS}
+        AND attempts < ${MAX_TASK_ATTEMPTS}
       ORDER BY created_at
       FOR UPDATE SKIP LOCKED
       LIMIT 1
@@ -105,7 +105,7 @@ export async function failBackgroundTask(
   await getDb().execute(sql`
     UPDATE background_tasks
     SET
-      status = CASE WHEN attempts >= ${MAX_ATTEMPTS} THEN 'failed' ELSE 'queued' END,
+      status = CASE WHEN attempts >= ${MAX_TASK_ATTEMPTS} THEN 'failed' ELSE 'queued' END,
       error_message = ${message},
       locked_at = NULL,
       updated_at = now()
@@ -170,7 +170,7 @@ export async function recoverStaleBackgroundWork(): Promise<void> {
       updated_at = now()
     WHERE status = 'running'
       AND updated_at < now() - make_interval(mins => ${STALE_MINUTES})
-      AND attempts < ${MAX_ATTEMPTS}
+      AND attempts < ${MAX_TASK_ATTEMPTS}
   `);
 
   await getDb().execute(sql`

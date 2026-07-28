@@ -1,7 +1,11 @@
 import { and, desc, eq, isNotNull } from "drizzle-orm";
 
 import { localizeWebsiteImages } from "@/lib/assets/localize";
-import { isCursorStartupError, runEditPhase } from "@/lib/cursor/agent";
+import {
+  isCursorStartupError,
+  isRetryableCursorStartupError,
+  runEditPhase,
+} from "@/lib/cursor/agent";
 import { getSitesRepoUrl } from "@/lib/cursor/config";
 import { RunTimeoutError } from "@/lib/cursor/run";
 import {
@@ -81,7 +85,10 @@ async function isEditStillRunning(editRequestId: string): Promise<boolean> {
   return editRequest?.status === "running";
 }
 
-export async function processEditRequest(editRequestId: string): Promise<void> {
+export async function processEditRequest(
+  editRequestId: string,
+  retryOptions: { finalAttempt?: boolean } = {},
+): Promise<void> {
   const db = getDb();
   const [editRequest] = await db
     .select({
@@ -160,6 +167,15 @@ export async function processEditRequest(editRequestId: string): Promise<void> {
       : error instanceof Error
         ? error.message
         : "Unknown edit error";
+
+    // Transient startup failures get a queue-level requeue; the next claim
+    // resets the edit back to "queued" via resetEntityForRetry.
+    if (isRetryableCursorStartupError(error) && !retryOptions.finalAttempt) {
+      console.warn(
+        `[refresh-kiwi] edit request ${editRequest.id} transient Cursor startup failure; requeueing: ${technicalMessage}`,
+      );
+      throw error;
+    }
 
     console.error(
       `[refresh-kiwi] edit request ${editRequest.id} failed: ${technicalMessage}`,
