@@ -586,6 +586,18 @@ function isPromptStarter(value: string): boolean {
   return PROMPT_STARTERS.some((starter) => promptFromStarter(starter) === trimmed);
 }
 
+/** Monochrome Google "G" — no asset file needed. */
+function GoogleMark({ className = "h-5 w-5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden className={className}>
+      <path
+        fill="currentColor"
+        d="M21.35 11.1H12.18v2.96h5.26a4.52 4.52 0 0 1-1.96 2.97v2.5h3.18C20.72 17.69 22 15.14 22 12.09c0-.69-.06-1.35-.18-1.99zM12.18 22c2.7 0 4.96-.89 6.61-2.42l-3.18-2.5c-.88.59-2.01.94-3.43.94-2.64 0-4.88-1.78-5.68-4.18H3.27v2.63A9.99 9.99 0 0 0 12.18 22zM6.5 13.84a5.99 5.99 0 0 1 0-3.68V7.53H3.27a10 10 0 0 0 0 8.94l3.23-2.63zM12.18 5.96c1.47 0 2.79.51 3.83 1.5l2.87-2.87C17.14 2.99 14.88 2 12.18 2A9.99 9.99 0 0 0 3.27 7.53l3.23 2.63c.8-2.4 3.04-4.2 5.68-4.2z"
+      />
+    </svg>
+  );
+}
+
 function BusinessIcon({ name }: { name: BusinessIconName }) {
   const common = {
     fill: "none",
@@ -3561,7 +3573,7 @@ export default function RefreshPage({
                         />
                         <div className="mt-3 grid gap-2 sm:grid-cols-2">
                           <label className="flex cursor-pointer flex-col rounded-2xl border border-black/10 px-4 py-3 text-sm font-semibold transition hover:border-black/25">
-                            <span>Logo</span>
+                            <span>Add logo</span>
                             <span className="mt-1 truncate text-xs font-normal text-black/45">
                               {freshLogo?.name ?? "Optional PNG, JPG, SVG..."}
                             </span>
@@ -3575,7 +3587,7 @@ export default function RefreshPage({
                             />
                           </label>
                           <label className="flex cursor-pointer flex-col rounded-2xl border border-black/10 px-4 py-3 text-sm font-semibold transition hover:border-black/25">
-                            <span>Photos</span>
+                            <span>Add photos</span>
                             <span className="mt-1 truncate text-xs font-normal text-black/45">
                               {freshImages.length > 0
                                 ? `${freshImages.length} selected`
@@ -3688,8 +3700,8 @@ export default function RefreshPage({
                           onClick={() => chooseHeroMode("fresh", "google")}
                           className="group rounded-[1.35rem] border-2 border-black/10 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-black/30 hover:shadow-xl hover:shadow-black/10 sm:rounded-[1.5rem] sm:p-5"
                         >
-                          <span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-black/10 bg-white text-base font-black text-black sm:h-10 sm:w-10 sm:text-lg">
-                            G
+                          <span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-black/10 bg-white text-black sm:h-10 sm:w-10">
+                            <GoogleMark className="h-[1.15rem] w-[1.15rem] sm:h-5 sm:w-5" />
                           </span>
                           <span className="mt-3 block font-fraunces text-[1.3rem] font-semibold leading-tight tracking-tight sm:mt-4 sm:text-xl">
                             I&apos;m on Google, no website
@@ -3742,7 +3754,16 @@ export default function RefreshPage({
           {!showReveal ? (
             <>
           {/* ───────────────────────── Social strip ───────────────────────── */}
-          <section className="relative z-10 border-y border-black/5 bg-white px-5 py-6 sm:px-8">
+          <section
+            className={`relative z-10 border-y border-black/5 bg-white px-5 py-6 transition sm:px-8 ${
+              // On mobile the hero chooser sits over this strip — hide the text
+              // so only the popup reads. Desktop has enough room that it never
+              // peeks through, so leave it alone there.
+              !hasChosenHeroMode
+                ? "max-sm:pointer-events-none max-sm:select-none max-sm:opacity-0"
+                : ""
+            }`}
+          >
             <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-center gap-x-5 gap-y-3 text-sm font-medium text-black/40 sm:gap-x-8">
               <span className="font-semibold text-black/55">
                 Built for:
