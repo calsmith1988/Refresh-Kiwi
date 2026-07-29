@@ -4,6 +4,14 @@ import { useCallback, useEffect, useState } from "react";
 
 type Tab = "overview" | "users" | "websites" | "domains" | "audit";
 
+function previewHref(slug: string): string {
+  const appUrl = (
+    process.env.NEXT_PUBLIC_APP_URL?.trim() || "https://refresh.kiwi"
+  ).replace(/\/$/, "");
+
+  return `${appUrl}/preview/${slug}/`;
+}
+
 type SeriesPoint = { day: string; value: number };
 
 type Stats = {
@@ -742,7 +750,7 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
                           <td className={td}>
                             <a
                               className="underline"
-                              href={`/preview/${website.slug}/`}
+                              href={previewHref(website.slug)}
                               target="_blank"
                               rel="noreferrer"
                             >
@@ -855,7 +863,7 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
                       <td className={td}>
                         <a
                           className="underline"
-                          href={`/preview/${website.slug}/`}
+                          href={previewHref(website.slug)}
                           target="_blank"
                           rel="noreferrer"
                         >
