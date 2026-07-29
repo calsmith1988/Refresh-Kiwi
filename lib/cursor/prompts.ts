@@ -1,7 +1,4 @@
-import {
-  buildDesignDirectionSection,
-  pickDesignDirection,
-} from "@/lib/cursor/design-directions";
+import { buildDesignRecipeSection } from "@/lib/cursor/design-directions";
 
 export interface PromptParams {
   sourceUrl: string | null;
@@ -193,15 +190,15 @@ ${GIT_RULES}
 - If there is no clear branding, or the colours are genuinely poor, choose your own tasteful modern palette instead.
 - Either way, make the wow factor come from layout, typography, spacing, and motion — not from swapping the brand's identity.
 
-${buildDesignDirectionSection(pickDesignDirection(slug))}
+${buildDesignRecipeSection(slug)}
 
 ## Design bar
 
 Create a proper landing page redesign:
-- Above-the-fold hero with a clear headline, subheadline, primary CTA, secondary CTA, and visual composition.
+- Above-the-fold hero following the assigned hero recipe, with a clear headline, a supporting line, and an obvious primary action.
 - Strong responsive layout with spacing, contrast, hierarchy, and sections that feel intentionally designed.
 - Convert long source copy into short marketing copy, cards, stats, badges, testimonial blocks, and CTAs.
-- Include only the strongest content: services, trust proof, coverage/location, offer, testimonials, contact CTA.
+- Choose the strongest 4-6 content sections for this business (services, trust proof, coverage/location, offer, process, gallery, FAQs, testimonials, contact CTA) and order them the way the design direction suggests — do not default to the same services → stats → testimonials → CTA rhythm on every site.
 - If the business has a real phone number, keep a tap-to-call action always reachable on mobile: a tel: link in the sticky header, or a small fixed call button that never covers content. Do not invent a number if none exists.
 - Add micro-interactions, hover states, or subtle scroll animations if useful, but keep it static and fast.
 - Do not use emoji as UI icons; use inline SVG if icons are needed.
@@ -288,14 +285,14 @@ ${GIT_RULES}
 - Exactly one <h1> per page. Meaningful alt text on content images; alt="" on decorative ones.
 - Do not write canonical tags, robots.txt, or sitemap.xml — the platform generates those.
 
-${buildDesignDirectionSection(pickDesignDirection(slug))}
+${buildDesignRecipeSection(slug)}
 
 ## Design bar
 
 Create a proper small-business landing page:
-- Above-the-fold hero with a clear headline, subheadline, primary CTA, secondary CTA, and visual composition.
+- Above-the-fold hero following the assigned hero recipe, with a clear headline, a supporting line, and an obvious primary action.
 - Strong responsive layout with spacing, contrast, hierarchy, and sections that feel intentionally designed.
-- Turn the brief into short marketing copy, cards, stats, testimonials/placeholders only when credible, service blocks, FAQs, and CTAs.
+- Turn the brief into short marketing copy, cards, stats, testimonials/placeholders only when credible, service blocks, FAQs, and CTAs. Choose the strongest 4-6 sections for this business and order them the way the design direction suggests — do not default to the same services → stats → testimonials → CTA rhythm on every site.
 - If contact details, locations, hours, prices, or social proof are present in the brief, include them. Do not invent phone numbers, addresses, awards, or testimonials.
 - If the brief includes a real phone number, keep a tap-to-call action always reachable on mobile: a tel: link in the sticky header, or a small fixed call button that never covers content.
 - Add micro-interactions, hover states, or subtle scroll animations if useful, but keep it static and fast.

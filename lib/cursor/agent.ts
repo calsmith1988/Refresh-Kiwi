@@ -1,7 +1,7 @@
 import { Agent, CursorAgentError } from "@cursor/sdk";
 
 import { getCursorApiKey } from "@/lib/cursor/config";
-import { pickDesignDirection } from "@/lib/cursor/design-directions";
+import { pickDesignRecipe } from "@/lib/cursor/design-directions";
 import {
   buildAdditionalPagesPrompt,
   buildCustomPagePrompt,
@@ -46,6 +46,13 @@ function logRunSummary(phase: string, slug: string, result: RunResult): void {
   }
 }
 
+/** Compact recipe summary for worker logs, e.g. "split-stage/mosaic/Syne + Albert Sans/dark-canvas". */
+function formatRecipeForLog(slug: string): string {
+  const recipe = pickDesignRecipe(slug);
+
+  return `${recipe.direction.name}/${recipe.hero.name}/${recipe.fonts.name}/${recipe.colors.name}`;
+}
+
 function cloudOptions(repoUrl: string) {
   return {
     repos: [{ url: repoUrl, startingRef: "main" }],
@@ -85,7 +92,7 @@ export async function runHomepagePhase(
     const started = { agentId: agent.agentId, runId: run.id };
 
     console.info(
-      `[refresh-kiwi] homepage agent started agentId=${started.agentId} runId=${started.runId} slug=${params.slug} designDirection=${pickDesignDirection(params.slug).name}`,
+      `[refresh-kiwi] homepage agent started agentId=${started.agentId} runId=${started.runId} slug=${params.slug} designRecipe=${formatRecipeForLog(params.slug)}`,
     );
 
     await onStarted?.(started);
@@ -145,7 +152,7 @@ export async function runFreshHomepagePhase(
     const started = { agentId: agent.agentId, runId: run.id };
 
     console.info(
-      `[refresh-kiwi] fresh homepage agent started agentId=${started.agentId} runId=${started.runId} slug=${params.slug} designDirection=${pickDesignDirection(params.slug).name}`,
+      `[refresh-kiwi] fresh homepage agent started agentId=${started.agentId} runId=${started.runId} slug=${params.slug} designRecipe=${formatRecipeForLog(params.slug)}`,
     );
 
     await onStarted?.(started);
