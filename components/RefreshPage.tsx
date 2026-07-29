@@ -1109,6 +1109,13 @@ export default function RefreshPage({
   const [hasChosenHeroMode, setHasChosenHeroMode] = useState(false);
   const [url, setUrl] = useState("");
   const [freshEntry, setFreshEntry] = useState<FreshEntry>("describe");
+  // The describe card asks "talk or type?" before showing any tools, so
+  // first-time visitors only ever see the inputs for the path they chose.
+  const [freshComposer, setFreshComposer] = useState<"choose" | "talk" | "type">(
+    "choose",
+  );
+  // Without voice (no OpenAI key), typing is the only composer — no doors.
+  const freshComposerView = voiceInputEnabled ? freshComposer : "type";
   const [gbpQuery, setGbpQuery] = useState("");
   const [freshPrompt, setFreshPrompt] = useState("");
   const [freshLogo, setFreshLogo] = useState<File | null>(null);
@@ -1218,36 +1225,44 @@ export default function RefreshPage({
     [showVerification],
   );
 
-  const chooseHeroMode = useCallback((mode: FlowMode) => {
-    setFlowMode(mode);
-    setGenerationSource(mode);
-    setHasChosenHeroMode(true);
-    setErrorMessage(null);
+  const chooseHeroMode = useCallback(
+    (mode: FlowMode, entry: FreshEntry = "describe") => {
+      setFlowMode(mode);
+      setGenerationSource(mode);
+      setHasChosenHeroMode(true);
+      setErrorMessage(null);
+      setFreshComposer("choose");
 
-    if (mode === "fresh") {
-      setFreshEntry("describe");
-      setPlaceSuggestions([]);
-      setSelectedGbpPlace(null);
-      setSelectedGbpPhotoNames([]);
-      setForceUrlRefresh(false);
-    } else {
-      setFreshEntry("describe");
-      setGbpQuery("");
-      setPlaceSuggestions([]);
-      setSelectedGbpPlace(null);
-      setSelectedGbpPhotoNames([]);
-    }
-
-    window.setTimeout(() => {
-      const target = document.getElementById(
-        mode === "fresh" ? "fresh-input" : "refresh-input",
-      );
-
-      if (target instanceof HTMLElement) {
-        target.focus();
+      if (mode === "fresh") {
+        setFreshEntry(entry);
+        setPlaceSuggestions([]);
+        setSelectedGbpPlace(null);
+        setSelectedGbpPhotoNames([]);
+        setForceUrlRefresh(false);
+      } else {
+        setFreshEntry("describe");
+        setGbpQuery("");
+        setPlaceSuggestions([]);
+        setSelectedGbpPlace(null);
+        setSelectedGbpPhotoNames([]);
       }
-    }, 0);
-  }, []);
+
+      window.setTimeout(() => {
+        const target = document.getElementById(
+          mode === "fresh"
+            ? entry === "google"
+              ? "fresh-google-input"
+              : "fresh-input"
+            : "refresh-input",
+        );
+
+        if (target instanceof HTMLElement) {
+          target.focus();
+        }
+      }, 0);
+    },
+    [],
+  );
 
   useEffect(() => {
     return () => {
@@ -1954,6 +1969,8 @@ export default function RefreshPage({
     setFlowMode("fresh");
     setGenerationSource("fresh");
     setFreshEntry("describe");
+    // A starter is a typing aid, so land them in the typing view.
+    setFreshComposer("type");
     setErrorMessage(null);
     setFreshPrompt((current) => {
       const trimmed = current.trim();
@@ -3298,40 +3315,38 @@ export default function RefreshPage({
                         <p className="mt-1 text-sm leading-6 text-black/45">
                           {freshEntry === "google"
                             ? "Use your Google listing details and photos to create a new website."
-                            : "Start from a simple brief, then add a logo or photos if you have them."}
+                            : freshComposer === "talk"
+                              ? "Talk naturally — you can tidy the words up after."
+                              : freshComposer === "type"
+                                ? "A few sentences is plenty."
+                                : "Two ways to do it — pick whichever feels easier."}
                         </p>
                       </div>
                       {googleBusinessImportEnabled ? (
-                        <div className="inline-flex shrink-0 rounded-full border border-black/10 bg-[#faf8f1] p-1">
-                          {(["describe", "google"] as const).map((entry) => (
-                            <button
-                              key={entry}
-                              type="button"
-                              onClick={() => {
-                                setFreshEntry(entry);
-                                setPlaceSuggestions([]);
-                                setPlacesSearchError(null);
-                                // Keep any Google listing selection when the user
-                                // toggles to "Describe it" and back — only clear
-                                // it when they explicitly hit Back on the listing.
-                                setGenerationSource(
-                                  entry === "google" && selectedGbpPlace
-                                    ? "gbp"
-                                    : "fresh",
-                                );
-                              }}
-                              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
-                                freshEntry === entry
-                                  ? "bg-[#141811] text-white"
-                                  : "text-black/50 hover:text-black"
-                              }`}
-                            >
-                              {entry === "google"
-                                ? "Use Google listing"
-                                : "Describe it"}
-                            </button>
-                          ))}
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const entry =
+                              freshEntry === "google" ? "describe" : "google";
+
+                            setFreshEntry(entry);
+                            setPlaceSuggestions([]);
+                            setPlacesSearchError(null);
+                            // Keep any Google listing selection when the user
+                            // switches to describe and back — only clear it when
+                            // they explicitly hit Back on the listing.
+                            setGenerationSource(
+                              entry === "google" && selectedGbpPlace
+                                ? "gbp"
+                                : "fresh",
+                            );
+                          }}
+                          className="shrink-0 self-start text-xs font-semibold text-black/45 underline decoration-black/20 underline-offset-4 transition hover:text-black"
+                        >
+                          {freshEntry === "google"
+                            ? "Describe it instead"
+                            : "Use my Google listing instead"}
+                        </button>
                       ) : null}
                     </div>
 
@@ -3453,13 +3468,84 @@ export default function RefreshPage({
                         <label htmlFor="fresh-input" className="sr-only">
                           Describe the website you want
                         </label>
-                        {voiceInputEnabled ? (
+                        {freshComposerView === "choose" ? (
+                          <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                            <button
+                              type="button"
+                              onClick={() => setFreshComposer("talk")}
+                              className="group rounded-3xl border-2 border-black/10 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-black/30 hover:shadow-xl hover:shadow-black/10"
+                            >
+                              <span
+                                className="grid h-11 w-11 place-items-center rounded-full bg-kiwi-green text-black"
+                                aria-hidden
+                              >
+                                <svg
+                                  viewBox="0 0 24 24"
+                                  className="h-5 w-5"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                >
+                                  <rect x="9" y="2" width="6" height="12" rx="3" />
+                                  <path d="M5 10v1a7 7 0 0 0 14 0v-1" />
+                                  <path d="M12 18v4" />
+                                </svg>
+                              </span>
+                              <span className="mt-3 block font-fraunces text-xl font-semibold tracking-tight">
+                                Tell us about it
+                              </span>
+                              <span className="mt-1 block text-sm leading-6 text-black/55">
+                                Talk for 30 seconds — we&apos;ll do the typing.
+                              </span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFreshComposer("type");
+                                window.requestAnimationFrame(() => {
+                                  freshInputRef.current?.focus();
+                                });
+                              }}
+                              className="group rounded-3xl border-2 border-black/10 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-black/30 hover:shadow-xl hover:shadow-black/10"
+                            >
+                              <span
+                                className="grid h-11 w-11 place-items-center rounded-full bg-[#141811] text-white"
+                                aria-hidden
+                              >
+                                <svg
+                                  viewBox="0 0 24 24"
+                                  className="h-5 w-5"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                >
+                                  <path d="M12 20h9" />
+                                  <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                                </svg>
+                              </span>
+                              <span className="mt-3 block font-fraunces text-xl font-semibold tracking-tight">
+                                Type it yourself
+                              </span>
+                              <span className="mt-1 block text-sm leading-6 text-black/55">
+                                Write a few sentences about your business.
+                              </span>
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                        {freshComposerView === "talk" ? (
                           <VoiceDictation
+                            autoStart
                             onTranscript={handleVoiceTranscript}
                             disabled={isRefreshing}
                           />
-                        ) : null}
-                        <PromptStarterCarousel onSelect={handleSelectPromptStarter} />
+                        ) : (
+                          <PromptStarterCarousel onSelect={handleSelectPromptStarter} />
+                        )}
                         <textarea
                           ref={freshInputRef}
                           id="fresh-input"
@@ -3467,9 +3553,9 @@ export default function RefreshPage({
                           value={freshPrompt}
                           onChange={(event) => setFreshPrompt(event.target.value)}
                           placeholder={
-                            voiceInputEnabled
-                              ? "…or type it here: the business name, what you sell, who it's for, and any must-have sections."
-                              : "Tell us the business name, what you sell, who it is for, the style you like, and any must-have sections..."
+                            freshComposerView === "talk"
+                              ? "Your words will land here — tidy them up or add more."
+                              : "Tell us the business name, what you sell, who it is for, and any must-have sections..."
                           }
                           className="mt-4 w-full resize-none rounded-3xl bg-[#faf8f1] px-5 py-4 text-base leading-7 outline-none placeholder:text-black/30"
                         />
@@ -3515,10 +3601,17 @@ export default function RefreshPage({
                         >
                           Create it →
                         </button>
-                        <p className="mt-3 text-center text-xs leading-5 text-black/40">
-                          Tip: include your audience, services, location, tone, and
-                          any must-have sections.
-                        </p>
+                        {voiceInputEnabled ? (
+                          <button
+                            type="button"
+                            onClick={() => setFreshComposer("choose")}
+                            className="mt-3 w-full text-center text-xs font-semibold text-black/40 underline decoration-black/20 underline-offset-4 transition hover:text-black"
+                          >
+                            ← Back
+                          </button>
+                        ) : null}
+                          </>
+                        )}
                       </form>
                     )}
                   </div>
@@ -3534,7 +3627,11 @@ export default function RefreshPage({
 
               {!hasChosenHeroMode ? (
                 <div className="absolute inset-0 z-30 flex items-start justify-center px-3 pb-8 pt-6 sm:items-center sm:px-6 sm:py-8">
-                  <div className="relative w-full max-w-2xl overflow-hidden rounded-[1.75rem] border border-black/10 bg-white/85 p-3 shadow-2xl shadow-black/15 backdrop-blur-xl sm:rounded-[2rem] sm:p-6">
+                  <div
+                    className={`relative w-full overflow-hidden rounded-[1.75rem] border border-black/10 bg-white/85 p-3 shadow-2xl shadow-black/15 backdrop-blur-xl sm:rounded-[2rem] sm:p-6 ${
+                      googleBusinessImportEnabled ? "max-w-3xl" : "max-w-2xl"
+                    }`}
+                  >
                     <Image
                       src={kiwiGroupBackground}
                       alt=""
@@ -3549,11 +3646,17 @@ export default function RefreshPage({
                     <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.22),transparent_28%,transparent_72%,rgba(20,24,17,0.06))]" />
                     <div className="relative text-center">
                       <h2 className="font-fraunces text-[1.7rem] font-semibold leading-none tracking-tight sm:text-4xl">
-                        What do you want to do?
+                        Which sounds like you?
                       </h2>
                     </div>
 
-                    <div className="relative mt-4 grid gap-2.5 sm:mt-6 sm:grid-cols-2 sm:gap-3">
+                    <div
+                      className={`relative mt-4 grid gap-2.5 sm:mt-6 sm:gap-3 ${
+                        googleBusinessImportEnabled
+                          ? "sm:grid-cols-3"
+                          : "sm:grid-cols-2"
+                      }`}
+                    >
                       <button
                         type="button"
                         onClick={() => chooseHeroMode("refresh")}
@@ -3562,16 +3665,44 @@ export default function RefreshPage({
                         <span className="flex h-9 w-9 items-center justify-center rounded-full bg-kiwi-green text-base font-black text-black sm:h-10 sm:w-10 sm:text-lg">
                           ↻
                         </span>
-                        <span className="mt-3 block font-fraunces text-[1.55rem] font-semibold leading-tight tracking-tight sm:mt-4 sm:text-2xl">
-                          I want to refresh my website
+                        <span
+                          className={`mt-3 block font-fraunces font-semibold leading-tight tracking-tight sm:mt-4 ${
+                            googleBusinessImportEnabled
+                              ? "text-[1.3rem] sm:text-xl"
+                              : "text-[1.55rem] sm:text-2xl"
+                          }`}
+                        >
+                          I already have a website
                         </span>
                         <span className="mt-1.5 block text-sm leading-6 text-black/55 sm:mt-2">
-                          I have a website and want a better version.
+                          We&apos;ll turn it into a fresh, modern version.
                         </span>
                         <span className="mt-3 inline-flex text-sm font-bold text-black transition group-hover:translate-x-1 sm:mt-4">
                           Refresh my site →
                         </span>
                       </button>
+
+                      {googleBusinessImportEnabled ? (
+                        <button
+                          type="button"
+                          onClick={() => chooseHeroMode("fresh", "google")}
+                          className="group rounded-[1.35rem] border-2 border-black/10 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-black/30 hover:shadow-xl hover:shadow-black/10 sm:rounded-[1.5rem] sm:p-5"
+                        >
+                          <span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-black/10 bg-white text-base font-black text-black sm:h-10 sm:w-10 sm:text-lg">
+                            G
+                          </span>
+                          <span className="mt-3 block font-fraunces text-[1.3rem] font-semibold leading-tight tracking-tight sm:mt-4 sm:text-xl">
+                            I&apos;m on Google, no website
+                          </span>
+                          <span className="mt-1.5 block text-sm leading-6 text-black/55 sm:mt-2">
+                            We&apos;ll build one from your Google Business
+                            listing.
+                          </span>
+                          <span className="mt-3 inline-flex text-sm font-bold text-black transition group-hover:translate-x-1 sm:mt-4">
+                            Use my listing →
+                          </span>
+                        </button>
+                      ) : null}
 
                       <button
                         type="button"
@@ -3581,12 +3712,17 @@ export default function RefreshPage({
                         <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#141811] text-base font-black text-white sm:h-10 sm:w-10 sm:text-lg">
                           +
                         </span>
-                        <span className="mt-3 block font-fraunces text-[1.55rem] font-semibold leading-tight tracking-tight sm:mt-4 sm:text-2xl">
-                          I want to create a fresh website
+                        <span
+                          className={`mt-3 block font-fraunces font-semibold leading-tight tracking-tight sm:mt-4 ${
+                            googleBusinessImportEnabled
+                              ? "text-[1.3rem] sm:text-xl"
+                              : "text-[1.55rem] sm:text-2xl"
+                          }`}
+                        >
+                          I&apos;m starting from scratch
                         </span>
                         <span className="mt-1.5 block text-sm leading-6 text-black/55 sm:mt-2">
-                          I&apos;m starting from scratch — describe it or build
-                          from my Google listing.
+                          Tell us about your business — talk or type.
                         </span>
                         <span className="mt-3 inline-flex text-sm font-bold text-black transition group-hover:translate-x-1 sm:mt-4">
                           Create my site →

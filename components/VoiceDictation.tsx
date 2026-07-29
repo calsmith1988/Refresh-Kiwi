@@ -37,6 +37,12 @@ type Phase = "idle" | "requesting" | "recording" | "transcribing";
 interface VoiceDictationProps {
   onTranscript: (text: string) => void;
   disabled?: boolean;
+  /**
+   * Ask for the mic as soon as the component mounts. Used when the tap that
+   * revealed this component was itself "I want to talk" — asking again would
+   * be a second, redundant tap.
+   */
+  autoStart?: boolean;
 }
 
 function pickRecorderMimeType(): string | undefined {
@@ -97,6 +103,7 @@ function MicIcon() {
 export default function VoiceDictation({
   onTranscript,
   disabled = false,
+  autoStart = false,
 }: VoiceDictationProps) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [notice, setNotice] = useState<string | null>(null);
@@ -111,6 +118,10 @@ export default function VoiceDictation({
 
   const onTranscriptRef = useRef(onTranscript);
   onTranscriptRef.current = onTranscript;
+
+  // Lets the mount effect trigger recording without listing the (re-created
+  // every render) startRecording function as a dependency.
+  const startRecordingRef = useRef<() => void>(() => undefined);
 
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -139,8 +150,16 @@ export default function VoiceDictation({
     audioContextRef.current = null;
   };
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    // Reset explicitly: StrictMode's dev remount reuses the same refs, so a
+    // stale true here would silently discard every transcript.
+    unmountedRef.current = false;
+
+    if (autoStart) {
+      startRecordingRef.current();
+    }
+
+    return () => {
       unmountedRef.current = true;
 
       if (recorderRef.current && recorderRef.current.state !== "inactive") {
@@ -160,10 +179,11 @@ export default function VoiceDictation({
       }
 
       streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
       void audioContextRef.current?.close().catch(() => undefined);
-    },
-    [],
-  );
+      audioContextRef.current = null;
+    };
+  }, [autoStart]);
 
   const startMeter = (stream: MediaStream) => {
     const AudioContextCtor =
@@ -178,6 +198,9 @@ export default function VoiceDictation({
 
     const context = new AudioContextCtor();
     audioContextRef.current = context;
+    // Auto-started recordings can create the context outside a direct user
+    // gesture, which leaves it suspended in Chrome until resumed.
+    void context.resume().catch(() => undefined);
 
     const analyser = context.createAnalyser();
     analyser.fftSize = 256;
@@ -317,8 +340,10 @@ export default function VoiceDictation({
       return;
     }
 
-    // The permission prompt can outlive the panel (e.g. they navigated away).
-    if (unmountedRef.current) {
+    // The permission prompt can outlive the panel (they navigated away), and
+    // StrictMode's dev remount can race two grants — whichever lands second
+    // must not leave the first stream holding the mic open.
+    if (unmountedRef.current || streamRef.current) {
       stream.getTracks().forEach((track) => track.stop());
 
       return;
@@ -372,10 +397,17 @@ export default function VoiceDictation({
     }, 200);
   };
 
-  // Old browsers without MediaRecorder just never see the mic — the textarea
-  // is the whole experience for them, as before.
+  startRecordingRef.current = () => void startRecording();
+
+  // This component is now the chosen path, not a decoration, so a browser
+  // without MediaRecorder gets a gentle redirect rather than a blank space.
   if (!supported) {
-    return null;
+    return (
+      <div className="mt-4 rounded-3xl border border-black/10 bg-white p-4 text-xs leading-5 text-black/55 sm:p-5">
+        Voice isn&apos;t available in this browser — no problem, just type it
+        in the box below.
+      </div>
+    );
   }
 
   const isRecording = phase === "recording";
