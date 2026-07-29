@@ -76,6 +76,7 @@ export const users = pgTable(
     emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
     twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
     twoFactorSecret: text("two_factor_secret"),
+    twoFactorLastUsedCounter: integer("two_factor_last_used_counter"),
     marketingEmailsEnabled: boolean("marketing_emails_enabled")
       .notNull()
       .default(true),

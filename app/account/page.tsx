@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useRef, useState } from "react";
 
 import ModalCloseButton from "@/components/ModalCloseButton";
@@ -1212,9 +1213,20 @@ export default function AccountPage() {
               <form onSubmit={enableTwoFactor} className="mt-6 space-y-4">
                 <div className="rounded-2xl bg-[#faf8f1] p-4">
                   <p className="text-sm font-semibold text-black">
-                    Add this to your authenticator app
+                    Scan this with your authenticator app
                   </p>
-                  <p className="mt-2 break-all rounded-2xl bg-white p-3 font-mono text-xs text-black/70">
+                  <div className="mt-3 flex justify-center rounded-2xl bg-white p-4">
+                    <QRCodeSVG
+                      value={twoFactorSetup.otpauthUrl}
+                      size={168}
+                      marginSize={1}
+                      aria-label="Two-factor authentication setup QR code"
+                    />
+                  </div>
+                  <p className="mt-3 text-xs text-black/50">
+                    Can&apos;t scan? Enter this key manually:
+                  </p>
+                  <p className="mt-1 break-all rounded-2xl bg-white p-3 font-mono text-xs text-black/70">
                     {twoFactorSetup.secret}
                   </p>
                   <a

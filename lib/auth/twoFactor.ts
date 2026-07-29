@@ -110,27 +110,35 @@ export function buildTotpUri(params: {
   return `otpauth://totp/${encodeURIComponent(label)}?${query.toString()}`;
 }
 
-export function verifyTotpCode(params: {
+/**
+ * Returns the time-step counter the code matched against, or null if invalid.
+ * Callers must persist the matched counter and reject any counter that is not
+ * strictly greater than the last one used, so a code can never be replayed
+ * within its validity window (RFC 6238 section 5.2).
+ */
+export function matchTotpCode(params: {
   secret: string;
   code: string;
   window?: number;
-}): boolean {
+}): number | null {
   const code = params.code.replace(/\s+/g, "");
 
   if (!/^\d{6}$/.test(code)) {
-    return false;
+    return null;
   }
 
   const currentCounter = Math.floor(Date.now() / 1000 / TOTP_STEP_SECONDS);
   const window = params.window ?? 1;
 
   for (let offset = -window; offset <= window; offset += 1) {
-    if (safeCompare(hotp(params.secret, currentCounter + offset), code)) {
-      return true;
+    const counter = currentCounter + offset;
+
+    if (safeCompare(hotp(params.secret, counter), code)) {
+      return counter;
     }
   }
 
-  return false;
+  return null;
 }
 
 export function createRecoveryCodes(): string[] {

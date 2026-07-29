@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, isNull, lt, or } from "drizzle-orm";
 
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import {
@@ -23,8 +23,8 @@ import {
   consumeRecoveryCode,
   createRecoveryCodes,
   createTwoFactorSecret,
+  matchTotpCode,
   replaceRecoveryCodes,
-  verifyTotpCode,
 } from "@/lib/auth/twoFactor";
 import { getDb, schema } from "@/lib/db";
 import {
@@ -175,10 +175,33 @@ export async function completeTwoFactorLogin(params: {
     throw new Error("Two-factor authentication is not enabled for this account");
   }
 
-  const validTotp = verifyTotpCode({
+  const matchedCounter = matchTotpCode({
     secret: user.twoFactorSecret,
     code: params.code,
   });
+  // Atomically claim the time step: the update only succeeds when this counter
+  // is newer than the last one used, so a code can't be replayed within its
+  // validity window (even by two concurrent login attempts).
+  const validTotp =
+    matchedCounter !== null &&
+    (
+      await getDb()
+        .update(users)
+        .set({
+          twoFactorLastUsedCounter: matchedCounter,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(users.id, user.id),
+            or(
+              isNull(users.twoFactorLastUsedCounter),
+              lt(users.twoFactorLastUsedCounter, matchedCounter),
+            ),
+          ),
+        )
+        .returning({ id: users.id })
+    ).length > 0;
   const validRecoveryCode = validTotp
     ? false
     : await consumeRecoveryCode({ userId: user.id, code: params.code });
@@ -517,7 +540,12 @@ export async function enableTwoFactor(params: {
     throw new Error("Start two-factor setup first");
   }
 
-  if (!verifyTotpCode({ secret: user.twoFactorSecret, code: params.code })) {
+  const matchedCounter = matchTotpCode({
+    secret: user.twoFactorSecret,
+    code: params.code,
+  });
+
+  if (matchedCounter === null) {
     throw new Error("Invalid authenticator code");
   }
 
@@ -528,6 +556,7 @@ export async function enableTwoFactor(params: {
     .update(users)
     .set({
       twoFactorEnabled: true,
+      twoFactorLastUsedCounter: matchedCounter,
       updatedAt: new Date(),
     })
     .where(eq(users.id, user.id))
@@ -559,6 +588,7 @@ export async function disableTwoFactor(params: {
     .set({
       twoFactorEnabled: false,
       twoFactorSecret: null,
+      twoFactorLastUsedCounter: null,
       updatedAt: new Date(),
     })
     .where(eq(users.id, user.id))
