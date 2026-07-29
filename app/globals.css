@@ -334,6 +334,22 @@ button:disabled,
   animation: reward-cta-pulse 2.4s ease-in-out infinite;
 }
 
+/* Recording state for the voice-input button. The breathing ring makes "it's
+   listening, tap again to stop" readable without reading anything. */
+@keyframes voice-ring-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(214, 69, 65, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 12px rgba(214, 69, 65, 0.1);
+  }
+}
+
+.voice-ring-pulse {
+  animation: voice-ring-pulse 1.5s ease-in-out infinite;
+}
+
 /* Thin rounded scrollbar for popup panels so it doesn't clash with their
    rounded-3xl corners. Track margins keep the thumb clear of the radius. */
 .modal-scroll::-webkit-scrollbar {
@@ -369,12 +385,18 @@ button:disabled,
   .kiwi-pop,
   .edit-message-in,
   .edit-button-shimmer,
-  .reward-cta-pulse {
+  .reward-cta-pulse,
+  .voice-ring-pulse {
     animation: none;
   }
 
   .reward-cta-pulse {
     border-color: rgba(197, 230, 106, 0.95);
+  }
+
+  /* Static ring so the recording state stays unmistakable without motion. */
+  .voice-ring-pulse {
+    box-shadow: 0 0 0 6px rgba(214, 69, 65, 0.18);
   }
 
   .edit-button-shimmer {

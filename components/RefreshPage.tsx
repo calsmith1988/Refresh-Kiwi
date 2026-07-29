@@ -48,6 +48,7 @@ import {
   readStoredReward,
   trackRewardEvent,
 } from "@/lib/rewards/client";
+import { trackVoiceEvent } from "@/lib/speech/client";
 
 const KiwiPitCanvas = dynamic(() => import("@/components/KiwiPitCanvas"), {
   ssr: false,
@@ -59,6 +60,11 @@ const KiwiCelebration = dynamic(() => import("@/components/KiwiCelebration"), {
 
 // Canvas game, and most visitors never open it — keep it out of the first load.
 const BuildRewardPanel = dynamic(() => import("@/components/BuildRewardPanel"), {
+  ssr: false,
+});
+
+// Mic/MediaRecorder are browser-only, so no SSR pass.
+const VoiceDictation = dynamic(() => import("@/components/VoiceDictation"), {
   ssr: false,
 });
 
@@ -1088,8 +1094,10 @@ function BeforeAfterReveal({
 
 export default function RefreshPage({
   googleBusinessImportEnabled = false,
+  voiceInputEnabled = false,
 }: {
   googleBusinessImportEnabled?: boolean;
+  voiceInputEnabled?: boolean;
 }) {
   const { pricing, selectedCurrency, selectPricingCurrency } = usePricing();
   const [flowMode, setFlowMode] = useState<FlowMode>("refresh");
@@ -1174,6 +1182,9 @@ export default function RefreshPage({
   const statusTimerRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const freshInputRef = useRef<HTMLTextAreaElement | null>(null);
+  // Whether any of the current brief came from voice — powers the GA funnel's
+  // "voice briefs convert better" comparison at submit time.
+  const usedVoiceInputRef = useRef(false);
   const heroSectionRef = useRef<HTMLElement | null>(null);
   const heroPointerFrameRef = useRef<number | null>(null);
   const [heroPointer, setHeroPointer] = useState({ x: 0.58, y: 0.46 });
@@ -1959,6 +1970,21 @@ export default function RefreshPage({
     });
   };
 
+  const handleVoiceTranscript = (text: string) => {
+    usedVoiceInputRef.current = true;
+    // Append rather than replace — people talk, read it back, and talk again.
+    setFreshPrompt((current) => {
+      const trimmed = current.trim();
+
+      return trimmed ? `${trimmed}\n\n${text}` : text;
+    });
+
+    // Focus so editing the transcript is zero taps away.
+    window.requestAnimationFrame(() => {
+      freshInputRef.current?.focus();
+    });
+  };
+
   const handleSelectPlace = async (suggestion: PlaceSuggestion) => {
     setIsLoadingPlaceDetails(true);
     setErrorMessage(null);
@@ -2264,6 +2290,11 @@ export default function RefreshPage({
         token: createdJob.accessToken,
       });
       beginPolling(createdJob.id);
+
+      if (usedVoiceInputRef.current) {
+        trackVoiceEvent("voice_submitted", { characters: freshPrompt.length });
+        usedVoiceInputRef.current = false;
+      }
     } catch (error) {
       setIsRefreshing(false);
       stopTimer();
@@ -3422,6 +3453,12 @@ export default function RefreshPage({
                         <label htmlFor="fresh-input" className="sr-only">
                           Describe the website you want
                         </label>
+                        {voiceInputEnabled ? (
+                          <VoiceDictation
+                            onTranscript={handleVoiceTranscript}
+                            disabled={isRefreshing}
+                          />
+                        ) : null}
                         <PromptStarterCarousel onSelect={handleSelectPromptStarter} />
                         <textarea
                           ref={freshInputRef}
@@ -3429,7 +3466,11 @@ export default function RefreshPage({
                           rows={3}
                           value={freshPrompt}
                           onChange={(event) => setFreshPrompt(event.target.value)}
-                          placeholder="Tell us the business name, what you sell, who it is for, the style you like, and any must-have sections..."
+                          placeholder={
+                            voiceInputEnabled
+                              ? "…or type it here: the business name, what you sell, who it's for, and any must-have sections."
+                              : "Tell us the business name, what you sell, who it is for, the style you like, and any must-have sections..."
+                          }
                           className="mt-4 w-full resize-none rounded-3xl bg-[#faf8f1] px-5 py-4 text-base leading-7 outline-none placeholder:text-black/30"
                         />
                         <div className="mt-3 grid gap-2 sm:grid-cols-2">

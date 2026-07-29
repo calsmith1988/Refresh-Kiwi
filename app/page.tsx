@@ -23,6 +23,7 @@ export default function Home() {
   return (
     <RefreshPage
       googleBusinessImportEnabled={Boolean(process.env.GOOGLE_PLACES_API_KEY)}
+      voiceInputEnabled={Boolean(process.env.OPENAI_API_KEY)}
     />
   );
 }
