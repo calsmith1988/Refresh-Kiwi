@@ -9,7 +9,7 @@ function previewHref(slug: string): string {
     process.env.NEXT_PUBLIC_APP_URL?.trim() || "https://refresh.kiwi"
   ).replace(/\/$/, "");
 
-  return `${appUrl}/preview/${slug}/`;
+  return `${appUrl}/preview/${slug}/index.html`;
 }
 
 type SeriesPoint = { day: string; value: number };

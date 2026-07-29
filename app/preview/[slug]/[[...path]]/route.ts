@@ -127,8 +127,13 @@ export async function GET(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Invalid preview slug" }, { status: 400 });
   }
 
-  if (!pathSegments?.length && !new URL(request.url).pathname.endsWith("/")) {
-    return NextResponse.redirect(new URL(`/preview/${slug}/`, request.url));
+  // Directory-style URLs can leave generated sites resolving against a bad
+  // base (we've seen agents bake localhost:10000 into client redirects).
+  // Always land on the explicit index document, matching the dashboard links.
+  if (!pathSegments?.length) {
+    return NextResponse.redirect(
+      new URL(`/preview/${slug}/index.html`, request.url),
+    );
   }
 
   const websiteAccess = await getWebsiteAccessBySlug(slug);
