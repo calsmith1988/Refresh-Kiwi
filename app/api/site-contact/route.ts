@@ -212,7 +212,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Forbidden." }, { status: 403 });
   }
 
-  if (target.status !== "live" || !target.ownerIsPro || !target.ownerEmail) {
+  if (target.status !== "live" || !target.ownerIsPro || !target.enquiryEmail) {
     return NextResponse.json({
       ok: false,
       error: FRIENDLY_INACTIVE_MESSAGE,
@@ -236,7 +236,7 @@ export async function POST(request: Request) {
   }
 
   await sendContactEnquiryEmail({
-    to: target.ownerEmail,
+    to: target.enquiryEmail,
     siteName: target.brandName ?? target.slug,
     visitorName: validation.value.name,
     visitorEmail: validation.value.email,

@@ -96,5 +96,8 @@ Before you finish, re-open every HTML file you wrote or changed and verify:
 3. Stylesheet and script references resolve from the page's own path (root-relative preview paths on nested pages, never bare relative paths like `href="styles.css"` on subpages).
 4. No `localhost`, `127.0.0.1`, or port-based origins anywhere.
 5. Every grid column class used in the markup has a full-width base rule outside media queries (see the grid column rules above) — this is what stops sections collapsing to one-word-per-line overlapping columns on phones.
+6. Below-the-fold images have `loading="lazy"` (leave the hero and other above-the-fold images eager).
+7. The page starts with a skip link (`<a class="skip-link" href="#main">Skip to content</a>` or equivalent) that is visually hidden until focused, and the target id exists.
+8. Any `og:image` is a full absolute `https://` URL — never a root-relative path.
 
 This check should take under a minute. Do not skip it, and do not add build tooling to perform it — read the files directly.

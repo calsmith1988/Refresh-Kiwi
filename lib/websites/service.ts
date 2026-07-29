@@ -112,6 +112,7 @@ export function toWebsiteResponse(website: typeof websites.$inferSelect) {
       website.customDomainLastCheckedAt?.toISOString() ?? null,
     seoSearchConsoleToken: website.seoSearchConsoleToken,
     seoAnalyticsId: website.seoAnalyticsId,
+    contactEmail: website.contactEmail,
     expiresAt: website.expiresAt.toISOString(),
     publishedAt: website.publishedAt?.toISOString() ?? null,
     createdAt: website.createdAt.toISOString(),
@@ -478,6 +479,7 @@ export async function updateOwnedWebsiteSeoSettings(params: {
   userId: string;
   searchConsoleToken: string | null;
   analyticsId: string | null;
+  contactEmail: string | null;
 }) {
   const website = await getOwnedWebsite(params);
 
@@ -490,6 +492,7 @@ export async function updateOwnedWebsiteSeoSettings(params: {
     .set({
       seoSearchConsoleToken: params.searchConsoleToken,
       seoAnalyticsId: params.analyticsId,
+      contactEmail: params.contactEmail,
       updatedAt: new Date(),
     })
     .where(eq(websites.id, website.id))
@@ -675,6 +678,7 @@ export async function getWebsiteContactTarget(slug: string) {
       status: websites.status,
       customDomain: websites.customDomain,
       customDomainStatus: websites.customDomainStatus,
+      contactEmail: websites.contactEmail,
       user: {
         email: users.email,
         plan: users.plan,
@@ -697,6 +701,7 @@ export async function getWebsiteContactTarget(slug: string) {
     status: website.status,
     customDomain: website.customDomain,
     customDomainStatus: website.customDomainStatus,
+    enquiryEmail: website.contactEmail ?? website.user?.email ?? null,
     ownerEmail: website.user?.email ?? null,
     ownerPlan: website.user?.plan ?? null,
     subscriptionStatus: website.user?.subscriptionStatus ?? null,

@@ -16,6 +16,22 @@ interface RouteContext {
   params: Promise<{ websiteId: string }>;
 }
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function normalizeContactEmail(input: string): string | null {
+  const email = input.trim().toLowerCase();
+
+  if (!email) {
+    return null;
+  }
+
+  if (email.length > 200 || !EMAIL_PATTERN.test(email)) {
+    throw new Error("Enter a valid email address for enquiries");
+  }
+
+  return email;
+}
+
 export async function PATCH(request: Request, context: RouteContext) {
   const user = await getCurrentUser();
 
@@ -31,6 +47,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     const body = (await request.json()) as {
       searchConsoleToken?: string;
       analyticsId?: string;
+      contactEmail?: string;
     };
 
     const website = await updateOwnedWebsiteSeoSettings({
@@ -40,6 +57,7 @@ export async function PATCH(request: Request, context: RouteContext) {
         body.searchConsoleToken ?? "",
       ),
       analyticsId: normalizeAnalyticsId(body.analyticsId ?? ""),
+      contactEmail: normalizeContactEmail(body.contactEmail ?? ""),
     });
 
     return NextResponse.json({ website: toWebsiteResponse(website) });

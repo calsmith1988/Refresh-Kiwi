@@ -68,6 +68,7 @@ type Website = {
   customDomainHelpUrl: string | null;
   seoSearchConsoleToken: string | null;
   seoAnalyticsId: string | null;
+  contactEmail: string | null;
   homepageScreenshotUrl: string;
   expiresAt: string;
   publishedAt: string | null;
@@ -599,7 +600,10 @@ export default function DashboardPage() {
   const [renameValues, setRenameValues] = useState<Record<string, string>>({});
   const [domainValues, setDomainValues] = useState<Record<string, string>>({});
   const [seoValues, setSeoValues] = useState<
-    Record<string, { searchConsole: string; analyticsId: string }>
+    Record<
+      string,
+      { searchConsole: string; analyticsId: string; contactEmail: string }
+    >
   >({});
   const [savingSeoWebsiteId, setSavingSeoWebsiteId] = useState<string | null>(
     null,
@@ -1670,6 +1674,7 @@ export default function DashboardPage() {
     const values = seoValues[website.id] ?? {
       searchConsole: website.seoSearchConsoleToken ?? "",
       analyticsId: website.seoAnalyticsId ?? "",
+      contactEmail: website.contactEmail ?? "",
     };
 
     setSavingSeoWebsiteId(website.id);
@@ -1683,6 +1688,7 @@ export default function DashboardPage() {
         body: JSON.stringify({
           searchConsoleToken: values.searchConsole,
           analyticsId: values.analyticsId,
+          contactEmail: values.contactEmail,
         }),
       });
       const payload = await response.json();
@@ -3821,7 +3827,7 @@ export default function DashboardPage() {
                                 id={`seo-modal-${website.id}`}
                                 className="font-fraunces text-3xl font-semibold tracking-tight"
                               >
-                                Search &amp; analytics
+                                Advanced settings
                               </h2>
                               <p className="mt-2 text-sm leading-6 text-black/55">
                                 You don&apos;t need to touch this — your website
@@ -3868,6 +3874,10 @@ export default function DashboardPage() {
                                         current[website.id]?.analyticsId ??
                                         website.seoAnalyticsId ??
                                         "",
+                                      contactEmail:
+                                        current[website.id]?.contactEmail ??
+                                        website.contactEmail ??
+                                        "",
                                     },
                                   }))
                                 }
@@ -3903,10 +3913,58 @@ export default function DashboardPage() {
                                         website.seoSearchConsoleToken ??
                                         "",
                                       analyticsId: event.target.value,
+                                      contactEmail:
+                                        current[website.id]?.contactEmail ??
+                                        website.contactEmail ??
+                                        "",
                                     },
                                   }))
                                 }
                                 placeholder="G-XXXXXXXXXX"
+                                className="mt-2 h-12 w-full rounded-full border border-black/10 bg-white px-5 text-sm outline-none placeholder:text-black/30 focus:border-black/30"
+                              />
+                            </div>
+
+                            <div>
+                              <label
+                                htmlFor={`seo-contact-${website.id}`}
+                                className="text-sm font-semibold text-black"
+                              >
+                                Where enquiries are sent
+                              </label>
+                              <p className="mt-1 text-xs leading-5 text-black/45">
+                                Messages from your website&apos;s contact form
+                                {user?.email
+                                  ? ` go to ${user.email}.`
+                                  : " go to your account email."}{" "}
+                                Add a different address here if you&apos;d rather
+                                receive them somewhere else.
+                              </p>
+                              <input
+                                id={`seo-contact-${website.id}`}
+                                type="email"
+                                value={
+                                  seoValues[website.id]?.contactEmail ??
+                                  website.contactEmail ??
+                                  ""
+                                }
+                                onChange={(event) =>
+                                  setSeoValues((current) => ({
+                                    ...current,
+                                    [website.id]: {
+                                      searchConsole:
+                                        current[website.id]?.searchConsole ??
+                                        website.seoSearchConsoleToken ??
+                                        "",
+                                      analyticsId:
+                                        current[website.id]?.analyticsId ??
+                                        website.seoAnalyticsId ??
+                                        "",
+                                      contactEmail: event.target.value,
+                                    },
+                                  }))
+                                }
+                                placeholder={user?.email ?? "you@example.com"}
                                 className="mt-2 h-12 w-full rounded-full border border-black/10 bg-white px-5 text-sm outline-none placeholder:text-black/30 focus:border-black/30"
                               />
                             </div>

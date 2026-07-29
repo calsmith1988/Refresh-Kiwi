@@ -275,6 +275,9 @@ export const websites = pgTable(
     /** GA4 measurement ID (G-XXXXXXX), injected as a gtag snippet when the
      * site is served on its custom domain. */
     seoAnalyticsId: text("seo_analytics_id"),
+    /** Optional override for where contact-form enquiries are sent. Falls back
+     * to the owner's account email when null. */
+    contactEmail: text("contact_email"),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     publishedAt: timestamp("published_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })

@@ -51,12 +51,30 @@ const GIT_RULES = [
   "- The platform only reads files from main. Work left on another branch or in a PR is invisible and makes the whole build count as failed.",
 ].join("\n");
 
+/**
+ * Public origin used when a prompt needs a full absolute URL (e.g. og:image
+ * for locally-stored assets). Guarded against localhost so dev environments
+ * never leak a forbidden origin into agent prompts.
+ */
+function publicOrigin(): string {
+  const configured = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, "");
+
+  if (!configured || /localhost|127\.0\.0\.1/i.test(configured)) {
+    return "https://refresh.kiwi";
+  }
+
+  return configured;
+}
+
 function buildFormRules(slug: string): string {
   return [
     "## Contact forms",
     "",
-    "- Do not add contact forms by default. Only add a contact form when the user explicitly asks for one.",
-    "- When a contact form is requested, use Refresh Kiwi's form relay pattern below. Do not build custom backends, third-party form services, mailto form actions, or fake success alerts.",
+    "- Homepages and contact pages should include one short enquiry form by default, in the contact/CTA section — the platform emails enquiries to the business owner, so the form works with zero setup. Skip it only if the user explicitly asked for no form.",
+    "- Other page types (about, services, legal, etc.) only get a form when the user asks for one. Never more than one form per page.",
+    "- When editing an existing site, do not add a new form unless the request asks for it — but if a page already has a broken or decorative form, rewire it to the relay pattern below.",
+    "- Keep the fields to name, email, and message (plus the hidden fields shown). Style the form to match the site's design — the markup below is structural, not visual.",
+    "- Always use Refresh Kiwi's form relay pattern below. Do not build custom backends, third-party form services, mailto form actions, or fake success alerts.",
     "- The form posts root-relative JSON to /api/site-contact so it works on both previews and custom domains. Keep the hidden slug value exactly as shown.",
     "",
     "```html",
@@ -135,6 +153,7 @@ ${GIT_RULES}
 
 - Reuse the source website's actual images by referencing their absolute URLs directly in <img> tags (or CSS backgrounds where it suits the design). Do not download or save image files — hotlinking is fast and the platform localises images later.
 - Always put the business logo in the header if the source site has one. Look for header/nav logo images first; apple-touch-icon or favicon are fallbacks only if they are high enough quality.
+- If the source site has no usable logo, render the brand name as styled text in the header (typography treated as a wordmark) — never substitute a generic icon, emoji, or unrelated clipart image as the logo.
 - Use the strongest photos for the hero and supporting sections. Skip tiny icons, badges, stock-photo watermarks, and tracking pixels.
 - If the homepage has a gallery, portfolio, case studies, or team photos, you may rebuild those sections with as many source images as the design deserves — do not artificially limit image count.
 - Only use https image URLs; http-only images will be blocked in the preview.
@@ -153,7 +172,7 @@ ${GIT_RULES}
 
 - <title>: specific and human, "Brand — what they do in Town" style, under 60 characters. Not "Home".
 - <meta name="description">: one compelling sentence about the real offer, under 160 characters.
-- Open Graph tags: og:title, og:description, og:type "website", and og:image set to the strongest real image URL you used on the page.
+- Open Graph tags: og:title, og:description, og:type "website", and og:image set to the strongest real image URL you used on the page. og:image must be a full absolute https:// URL (hotlinked source images already are) — never a root-relative path, because social networks cannot resolve relative og:image URLs.
 - One <script type="application/ld+json"> LocalBusiness block in <head> using only facts you actually saw on the source site: name, telephone, address, openingHours, areaServed, image. Omit any field you don't have — never invent facts. Skip the "url" field; the platform handles canonical URLs.
 - Exactly one <h1> per page. Meaningful alt text on content images; alt="" on decorative ones.
 - Do not write canonical tags, robots.txt, or sitemap.xml — the platform generates those.
@@ -183,6 +202,7 @@ Create a proper landing page redesign:
 - Strong responsive layout with spacing, contrast, hierarchy, and sections that feel intentionally designed.
 - Convert long source copy into short marketing copy, cards, stats, badges, testimonial blocks, and CTAs.
 - Include only the strongest content: services, trust proof, coverage/location, offer, testimonials, contact CTA.
+- If the business has a real phone number, keep a tap-to-call action always reachable on mobile: a tel: link in the sticky header, or a small fixed call button that never covers content. Do not invent a number if none exists.
 - Add micro-interactions, hover states, or subtle scroll animations if useful, but keep it static and fast.
 - Do not use emoji as UI icons; use inline SVG if icons are needed.
 
@@ -244,6 +264,7 @@ ${GIT_RULES}
 ## Images and logo
 
 - Use the provided logo in the header if a logo asset is listed above.
+- If no logo asset is provided, render the brand name as styled text in the header (typography treated as a wordmark) — never substitute a generic icon, emoji, or clipart image as the logo.
 - Use provided image assets as real site imagery where they fit: hero, services, gallery, team, product, or proof sections. If the brief says these are selected photos from a business listing, treat them as preferred real business photos and use several of them prominently instead of abstract/generated-looking imagery.
 - If multiple generated image assets are listed, use them as separate focused images in different sections. Do not visually combine them into one collage or describe them as one image.
 - Reference provided assets exactly by the public URLs listed above. Do not invent local image paths.
@@ -262,7 +283,7 @@ ${GIT_RULES}
 
 - <title>: specific and human, "Brand — what they do in Town" style, under 60 characters. Not "Home".
 - <meta name="description">: one compelling sentence about the real offer, under 160 characters.
-- Open Graph tags: og:title, og:description, og:type "website", and og:image set to the strongest image URL you used on the page.
+- Open Graph tags: og:title, og:description, og:type "website", and og:image set to the strongest image URL you used on the page. og:image must be a full absolute https:// URL — provided assets are root-relative /preview/ paths, so prefix them with ${publicOrigin()} for og:image only (keep root-relative paths everywhere else). Skip og:image entirely if the page has no real image.
 - If the brief includes real business facts (name, phone, address, opening hours, service area), add one <script type="application/ld+json"> LocalBusiness block in <head> with only those facts. Omit any field the brief doesn't provide — never invent facts. Skip the "url" field; the platform handles canonical URLs.
 - Exactly one <h1> per page. Meaningful alt text on content images; alt="" on decorative ones.
 - Do not write canonical tags, robots.txt, or sitemap.xml — the platform generates those.
@@ -276,6 +297,7 @@ Create a proper small-business landing page:
 - Strong responsive layout with spacing, contrast, hierarchy, and sections that feel intentionally designed.
 - Turn the brief into short marketing copy, cards, stats, testimonials/placeholders only when credible, service blocks, FAQs, and CTAs.
 - If contact details, locations, hours, prices, or social proof are present in the brief, include them. Do not invent phone numbers, addresses, awards, or testimonials.
+- If the brief includes a real phone number, keep a tap-to-call action always reachable on mobile: a tel: link in the sticky header, or a small fixed call button that never covers content.
 - Add micro-interactions, hover states, or subtle scroll animations if useful, but keep it static and fast.
 - Do not use emoji as UI icons; use inline SVG if icons are needed.
 
