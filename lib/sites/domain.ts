@@ -93,11 +93,3 @@ export function sitesSlugFromHost(host: string): string | null {
 export function sitesHomepageUrl(slug: string): string {
   return `https://${slug}.${getSitesDomain()}/`;
 }
-
-export function sitesUrlForPath(slug: string, pathSegments: string[] = []): string {
-  if (pathSegments.length === 0) {
-    return sitesHomepageUrl(slug);
-  }
-
-  return `https://${slug}.${getSitesDomain()}/${pathSegments.join("/")}`;
-}

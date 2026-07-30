@@ -21,8 +21,13 @@ export function normalizeSlug(value: string): string {
     .slice(0, 48);
 }
 
+/**
+ * Format check only — used at serve time (preview route), so it must accept
+ * every slug that exists in the database. Reserved sites-subdomain words are
+ * blocked at creation time in resolveUniqueSlug instead.
+ */
 export function isValidSlug(slug: string): boolean {
-  return SLUG_PATTERN.test(slug) && !isReservedSitesSubdomain(slug);
+  return SLUG_PATTERN.test(slug);
 }
 
 export async function resolveUniqueSlug(
