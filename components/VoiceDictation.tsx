@@ -43,6 +43,14 @@ interface VoiceDictationProps {
    * be a second, redundant tap.
    */
   autoStart?: boolean;
+  /**
+   * "full" is the home-page brief recorder (big card, guided prompts).
+   * "compact" is a one-line mic row for short commands like edit requests —
+   * no prompts, no card, and it hides entirely in unsupported browsers.
+   */
+  variant?: "full" | "compact";
+  /** Tagged onto every GA voice event so funnels can be split by surface. */
+  context?: string;
 }
 
 function pickRecorderMimeType(): string | undefined {
@@ -104,6 +112,8 @@ export default function VoiceDictation({
   onTranscript,
   disabled = false,
   autoStart = false,
+  variant = "full",
+  context,
 }: VoiceDictationProps) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [notice, setNotice] = useState<string | null>(null);
@@ -132,6 +142,13 @@ export default function VoiceDictation({
   const clockTimerRef = useRef<number | null>(null);
   const startedAtRef = useRef(0);
   const unmountedRef = useRef(false);
+
+  const track = (
+    eventName: Parameters<typeof trackVoiceEvent>[0],
+    params?: Record<string, string | number | boolean>,
+  ) => {
+    trackVoiceEvent(eventName, context ? { context, ...params } : params);
+  };
 
   const releaseHardware = () => {
     if (meterRafRef.current !== null) {
@@ -270,7 +287,7 @@ export default function VoiceDictation({
       }
 
       if (!response.ok || !payload.text) {
-        trackVoiceEvent("voice_error");
+        track("voice_error");
         setPhase("idle");
         setNotice(
           payload.error ??
@@ -280,7 +297,7 @@ export default function VoiceDictation({
         return;
       }
 
-      trackVoiceEvent("voice_transcribed", {
+      track("voice_transcribed", {
         seconds: Math.round(durationMs / 1000),
         characters: payload.text.length,
       });
@@ -292,10 +309,10 @@ export default function VoiceDictation({
         return;
       }
 
-      trackVoiceEvent("voice_error");
+      track("voice_error");
       setPhase("idle");
       setNotice(
-        "We couldn't reach the transcriber — check your connection, or just type it below.",
+        "We couldn't reach the transcriber — check your connection, or just type it instead.",
       );
     }
   };
@@ -324,17 +341,17 @@ export default function VoiceDictation({
 
     setNotice(null);
     setPhase("requesting");
-    trackVoiceEvent("voice_opened");
+    track("voice_opened");
 
     let stream: MediaStream;
 
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch {
-      trackVoiceEvent("voice_permission_denied");
+      track("voice_permission_denied");
       setPhase("idle");
       setNotice(
-        "No worries — the mic is blocked or busy, so just type it in the box below instead.",
+        "No worries — the mic is blocked or busy, so just type it instead.",
       );
 
       return;
@@ -399,9 +416,15 @@ export default function VoiceDictation({
 
   startRecordingRef.current = () => void startRecording();
 
-  // This component is now the chosen path, not a decoration, so a browser
-  // without MediaRecorder gets a gentle redirect rather than a blank space.
+  // In the full variant this component is the chosen path, not a decoration,
+  // so a browser without MediaRecorder gets a gentle redirect rather than a
+  // blank space. The compact variant is an extra next to a textarea, so it
+  // simply disappears.
   if (!supported) {
+    if (variant === "compact") {
+      return null;
+    }
+
     return (
       <div className="mt-4 rounded-3xl border border-black/10 bg-white p-4 text-xs leading-5 text-black/55 sm:p-5">
         Voice isn&apos;t available in this browser — no problem, just type it
@@ -413,6 +436,87 @@ export default function VoiceDictation({
   const isRecording = phase === "recording";
   const isTranscribing = phase === "transcribing";
   const isRequesting = phase === "requesting";
+
+  if (variant === "compact") {
+    return (
+      <div className="mt-2">
+        {!isRecording ? (
+          <button
+            type="button"
+            onClick={() => void startRecording()}
+            disabled={disabled || isTranscribing || isRequesting}
+            className="flex items-center gap-2.5 text-left disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <span
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-kiwi-green text-black shadow-sm"
+              aria-hidden
+            >
+              {isTranscribing ? (
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-black/25 border-t-black" />
+              ) : (
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-[18px] w-[18px]"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <rect x="9" y="2" width="6" height="12" rx="3" />
+                  <path d="M5 10v1a7 7 0 0 0 14 0v-1" />
+                  <path d="M12 18v4" />
+                </svg>
+              )}
+            </span>
+            <span className="text-xs font-semibold text-black/55">
+              {isTranscribing
+                ? "Turning your words into text…"
+                : isRequesting
+                  ? "Waiting for your mic…"
+                  : "Rather talk than type? Tap the mic and say it"}
+            </span>
+          </button>
+        ) : (
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={stopRecording}
+              aria-label="Stop recording"
+              className="voice-ring-pulse grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#D64541] text-white shadow-sm transition hover:brightness-95"
+            >
+              <span className="h-3 w-3 rounded-[3px] bg-white" aria-hidden />
+            </button>
+            <span className="text-xs font-bold text-[#B4451F]">
+              Recording — tap to stop
+            </span>
+            <span className="text-xs font-semibold tabular-nums text-black/45">
+              {formatClock(elapsedMs)}
+            </span>
+            <span
+              ref={meterRef}
+              className="flex h-4 items-center gap-[2px]"
+              aria-hidden
+            >
+              {[0, 1, 2, 3, 4].map((bar) => (
+                <span
+                  key={bar}
+                  className="h-full w-[3px] origin-center rounded-full bg-[#6F9B24]"
+                  style={{ transform: "scaleY(0.2)" }}
+                />
+              ))}
+            </span>
+          </div>
+        )}
+
+        {notice ? (
+          <p className="mt-2 text-xs leading-5 text-[#B4451F]" role="status">
+            {notice}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <div className="mt-4 rounded-3xl border border-black/10 bg-white p-4 sm:p-5">

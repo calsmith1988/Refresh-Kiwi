@@ -3079,6 +3079,15 @@ export default function RefreshPage({
                       ? `This is your homepage to start with. Take it online to add your other pages and keep making changes — or keep the preview free until ${expiryLabel} while you decide.`
                       : "This is your homepage to start with. Take it online to add your other pages and keep making changes — or keep the preview free for 7 days while you decide."}
                 </p>
+                {!job?.isClaimed ? (
+                  // Design taste is the #1 silent "no" at this moment — this
+                  // line turns "I don't like it" into a free move instead of
+                  // a dead end.
+                  <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-black/55">
+                    Want different colours, photos or layout? Just ask — you
+                    get 3 free changes from your dashboard.
+                  </p>
+                ) : null}
               </div>
 
               <div className="mx-auto mt-5 max-w-4xl rounded-3xl border border-black/10 bg-white p-2 shadow-2xl shadow-[#8bbf4d]/20 sm:mt-7 sm:p-3 lg:max-w-6xl">
@@ -3188,8 +3197,9 @@ export default function RefreshPage({
                     </div>
 
                     <p className="mt-4 text-sm leading-6 text-black/55">
-                      Want something changed? Head to your dashboard to ask for
-                      changes, swap photos and manage your website.
+                      Want different colours or a different layout? Just ask
+                      in your dashboard — plain words work. That&apos;s also
+                      where you swap photos and manage your website.
                     </p>
                     <Link
                       href="/dashboard"

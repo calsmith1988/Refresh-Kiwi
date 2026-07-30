@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -18,6 +19,13 @@ import {
   createMetaEventId,
   trackMetaBrowserEvent,
 } from "@/lib/meta/browser";
+
+// MediaRecorder is browser-only. Rendered without a server-side feature flag
+// (this is a client page): if transcription is ever unconfigured, the mic
+// shows its own friendly notice rather than breaking the form.
+const VoiceDictation = dynamic(() => import("@/components/VoiceDictation"), {
+  ssr: false,
+});
 
 type User = {
   id: string;
@@ -334,29 +342,59 @@ const PAGE_FLOW_OPTIONS = [
   },
 ] as const;
 
-// Starter ideas for the edit box. Chips ending in "…" prefill a sentence the
-// user finishes with their own details (the AI can't know their hours or
-// number); the others are complete instructions the AI has context for.
-const EDIT_SUGGESTIONS: Array<{ label: string; prompt: string }> = [
+// Starter ideas for the edit box, split into details (facts on the page) and
+// look (design taste). Prompts ending in a space prefill a sentence the user
+// finishes with their own details (the AI can't know their hours or number);
+// the others are complete instructions the AI has context for. The look
+// prompts steer towards a *direction* rather than a re-roll, because directed
+// design changes converge and re-rolls don't.
+const EDIT_SUGGESTION_GROUPS: Array<{
+  heading: string;
+  items: Array<{ label: string; prompt: string }>;
+}> = [
   {
-    label: "Change the phone number",
-    prompt: "Change the phone number to ",
+    heading: "Fix the details",
+    items: [
+      {
+        label: "Change the phone number",
+        prompt: "Change the phone number to ",
+      },
+      {
+        label: "Change opening hours",
+        prompt: "Change the opening hours to ",
+      },
+      {
+        label: "Add a customer review",
+        prompt: "Add this customer review: ",
+      },
+      {
+        label: "Make the phone number bigger",
+        prompt: "Make the phone number bigger and easier to spot",
+      },
+    ],
   },
   {
-    label: "Change opening hours",
-    prompt: "Change the opening hours to ",
-  },
-  {
-    label: "Add a customer review",
-    prompt: "Add this customer review: ",
-  },
-  {
-    label: "Make the phone number bigger",
-    prompt: "Make the phone number bigger and easier to spot",
-  },
-  {
-    label: "Try different colours",
-    prompt: "Try a different colour scheme that still suits the business",
+    heading: "Change the look",
+    items: [
+      {
+        label: "Try different colours",
+        prompt: "Try a different colour scheme that still suits the business",
+      },
+      {
+        label: "Make it feel more…",
+        prompt: "Make the whole design feel more ",
+      },
+      {
+        label: "Rearrange the page",
+        prompt:
+          "Rearrange the homepage sections into a different order that flows better",
+      },
+      {
+        label: "A completely different design",
+        prompt:
+          "Redesign the homepage with a completely different look and layout, keeping all the words and details the same",
+      },
+    ],
   },
 ];
 
@@ -433,6 +471,11 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 /** How long failed/cancelled edit banners stay on the website card. */
 const EDIT_OUTCOME_VISIBLE_MS = DAY_MS;
 const DASHBOARD_TOUR_STORAGE_KEY = "refresh-kiwi:dashboard-tour-dismissed";
+/**
+ * The tour still opens for new users (?tour) and still records dismissals —
+ * only the visual block is hidden while we replace the card grid with a video.
+ */
+const DASHBOARD_TOUR_UI_ENABLED = false;
 
 function shouldShowEditOutcomeBanner(
   editRequest: Website["latestEditRequest"],
@@ -2144,7 +2187,10 @@ export default function DashboardPage() {
           ) : null}
         </section>
 
-        {showDashboardTour && !isLoading && websites.length > 0 ? (
+        {DASHBOARD_TOUR_UI_ENABLED &&
+        showDashboardTour &&
+        !isLoading &&
+        websites.length > 0 ? (
           <section className="relative mt-6 overflow-hidden rounded-3xl border-2 border-kiwi-green bg-[#C5E66A] p-5 shadow-xl shadow-[#8bbf4d]/10 sm:p-6">
             <Image
               src={kiwiGroupBackground}
@@ -4366,64 +4412,79 @@ export default function DashboardPage() {
                           <p className="text-sm font-semibold text-black">
                             What would you like changed?
                           </p>
-                          <div className="mt-2.5 flex flex-wrap gap-2">
-                            {EDIT_SUGGESTIONS.map((suggestion) => {
-                              const selected = isEditSuggestionSelected(
-                                editPrompt,
-                                suggestion.prompt,
-                              );
+                          {EDIT_SUGGESTION_GROUPS.map((group, groupIndex) => {
+                            const isLastGroup =
+                              groupIndex === EDIT_SUGGESTION_GROUPS.length - 1;
 
-                              return (
-                                <button
-                                  key={suggestion.label}
-                                  type="button"
-                                  onClick={() => {
-                                    setEditPrompts((current) => ({
-                                      ...current,
-                                      [website.id]: suggestion.prompt,
-                                    }));
-                                    // Put the cursor in the box so they can
-                                    // finish the sentence straight away.
-                                    focusEditPrompt();
-                                  }}
-                                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
-                                    selected
-                                      ? "border-kiwi-green bg-kiwi-green/35 text-black"
-                                      : "border-black/10 bg-white text-black/60 hover:border-black/25 hover:text-black"
-                                  }`}
-                                >
-                                  {selected ? (
-                                    <span className="grid h-4 w-4 place-items-center rounded-full bg-[#3f8f22] text-white">
-                                      <DashboardIcon
-                                        name="check"
-                                        className="h-2.5 w-2.5"
-                                      />
-                                    </span>
+                            return (
+                              <div key={group.heading} className="mt-3">
+                                <p className="text-[0.65rem] font-bold uppercase tracking-[0.1em] text-black/40">
+                                  {group.heading}
+                                </p>
+                                <div className="mt-1.5 flex flex-wrap gap-2">
+                                  {group.items.map((suggestion) => {
+                                    const selected = isEditSuggestionSelected(
+                                      editPrompt,
+                                      suggestion.prompt,
+                                    );
+
+                                    return (
+                                      <button
+                                        key={suggestion.label}
+                                        type="button"
+                                        onClick={() => {
+                                          setEditPrompts((current) => ({
+                                            ...current,
+                                            [website.id]: suggestion.prompt,
+                                          }));
+                                          // Put the cursor in the box so they
+                                          // can finish the sentence straight
+                                          // away.
+                                          focusEditPrompt();
+                                        }}
+                                        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                                          selected
+                                            ? "border-kiwi-green bg-kiwi-green/35 text-black"
+                                            : "border-black/10 bg-white text-black/60 hover:border-black/25 hover:text-black"
+                                        }`}
+                                      >
+                                        {selected ? (
+                                          <span className="grid h-4 w-4 place-items-center rounded-full bg-[#3f8f22] text-white">
+                                            <DashboardIcon
+                                              name="check"
+                                              className="h-2.5 w-2.5"
+                                            />
+                                          </span>
+                                        ) : null}
+                                        {suggestion.label}
+                                      </button>
+                                    );
+                                  })}
+                                  {isLastGroup ? (
+                                    <button
+                                      type="button"
+                                      onClick={focusEditPrompt}
+                                      className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white px-3 py-1.5 text-xs font-medium text-black/60 transition hover:border-black/25 hover:text-black"
+                                    >
+                                      Other
+                                      <svg
+                                        aria-hidden
+                                        viewBox="0 0 24 24"
+                                        className="h-3.5 w-3.5"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                      >
+                                        <path d="M6 9l6 6 6-6" />
+                                      </svg>
+                                    </button>
                                   ) : null}
-                                  {suggestion.label}
-                                </button>
-                              );
-                            })}
-                            <button
-                              type="button"
-                              onClick={focusEditPrompt}
-                              className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white px-3 py-1.5 text-xs font-medium text-black/60 transition hover:border-black/25 hover:text-black"
-                            >
-                              Other
-                              <svg
-                                aria-hidden
-                                viewBox="0 0 24 24"
-                                className="h-3.5 w-3.5"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <path d="M6 9l6 6 6-6" />
-                              </svg>
-                            </button>
-                          </div>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
 
                         <div className="mt-5">
@@ -4508,6 +4569,23 @@ export default function DashboardPage() {
                               {editPromptLength} / {EDIT_PROMPT_SOFT_LIMIT}
                             </span>
                           </div>
+                          <VoiceDictation
+                            variant="compact"
+                            context="edit"
+                            onTranscript={(text) =>
+                              setEditPrompts((current) => {
+                                const existing =
+                                  current[website.id]?.trim() ?? "";
+
+                                return {
+                                  ...current,
+                                  [website.id]: existing
+                                    ? `${existing} ${text.trim()}`
+                                    : text.trim(),
+                                };
+                              })
+                            }
+                          />
                         </div>
 
                         <div className="mt-5 flex items-start gap-3">
