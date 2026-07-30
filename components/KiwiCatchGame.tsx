@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { prepareSprite } from "@/lib/kiwi-pit/prepareSprite";
 import type { KiwiSprite } from "@/lib/kiwi-pit/prepareSprite";
@@ -8,10 +8,11 @@ import type { KiwiSprite } from "@/lib/kiwi-pit/prepareSprite";
 const KIWI_SPRITE_PATH = "/assets/kiwi-slice-v2.png";
 
 /**
- * The round is a fixed length and the win is only settled when the clock runs
- * out. That guarantees a minimum time investment (the whole point — the game
- * exists to make a 2-3 minute build disappear), and it keeps every round
- * comfortably past the server's minimum play time in lib/rewards/service.ts.
+ * The round runs its full length even after the target is hit: the win is
+ * banked the moment the score crosses TARGET_SCORE and the rest becomes bonus
+ * play. The game exists to make a 2-3 minute build disappear, so ending early
+ * would defeat the point — but a "Collect" escape hatch appears once the win
+ * is banked. Server-side minimum play time lives in lib/rewards/service.ts.
  */
 export const ROUND_MS = 45_000;
 export const TARGET_SCORE = 25;
@@ -61,7 +62,14 @@ export interface RoundResult {
   won: boolean;
 }
 
+export type WinSaveState = "idle" | "saving" | "saved" | "error";
+
 type KiwiKind = "normal" | "golden" | "rotten";
+
+type Phase =
+  | { kind: "ready" }
+  | { kind: "running" }
+  | { kind: "done"; result: RoundResult };
 
 interface FallingKiwi {
   x: number;
@@ -83,7 +91,14 @@ interface ScorePop {
 }
 
 interface KiwiCatchGameProps {
+  /** Starts the server-side round clock. Throw to keep the game on its current screen. */
+  onRequestStart: () => Promise<void>;
+  /** Fired once per round, the moment the score first crosses TARGET_SCORE. */
+  onTargetReached: () => void;
   onRoundEnd: (result: RoundResult) => void;
+  onBack: () => void;
+  winSaveState: WinSaveState;
+  onRetrySave: () => void;
 }
 
 function prefersReducedMotion(): boolean {
@@ -147,25 +162,81 @@ function roundedRectPath(
   ctx.closePath();
 }
 
+function drawStage(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  basketX: number,
+) {
+  const backdrop = ctx.createLinearGradient(0, 0, 0, height);
+  backdrop.addColorStop(0, "#ffffff");
+  backdrop.addColorStop(1, "#f3f7e6");
+  ctx.fillStyle = backdrop;
+  ctx.fillRect(0, 0, width, height);
+
+  const left = basketX - BASKET_WIDTH / 2;
+  const top = height - BASKET_BOTTOM_GAP - BASKET_HEIGHT;
+
+  ctx.save();
+  roundedRectPath(ctx, left, top, BASKET_WIDTH, BASKET_HEIGHT, 9);
+  ctx.fillStyle = BRAND_GREEN;
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = INK;
+  ctx.stroke();
+
+  // Punnet weave hint so it reads as a basket rather than a bar.
+  ctx.strokeStyle = "rgba(20, 24, 17, 0.28)";
+  ctx.lineWidth = 1.5;
+
+  for (let i = 1; i < 4; i += 1) {
+    const x = left + (BASKET_WIDTH / 4) * i;
+    ctx.beginPath();
+    ctx.moveTo(x, top + 3);
+    ctx.lineTo(x, top + BASKET_HEIGHT - 3);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
 /**
  * Kiwi Catch. Deliberately not built on the matter-js kiwi pit: kinematic
  * falling gives exact control over fall time and spawn rate (so difficulty is
  * tunable) and makes catch detection a single line crossing test. It shares the
  * pit's sprite pipeline so it still looks like the rest of the site.
+ *
+ * The whole flow lives in this one frame: instructions overlay -> countdown ->
+ * play -> result overlay. The build status strip above it stays visible the
+ * entire time (rendered by BuildRewardPanel).
  */
-export default function KiwiCatchGame({ onRoundEnd }: KiwiCatchGameProps) {
+export default function KiwiCatchGame({
+  onRequestStart,
+  onTargetReached,
+  onRoundEnd,
+  onBack,
+  winSaveState,
+  onRetrySave,
+}: KiwiCatchGameProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const spriteRef = useRef<KiwiSprite | null>(null);
   const rottenSpriteRef = useRef<KiwiSprite | null>(null);
   const onRoundEndRef = useRef(onRoundEnd);
+  const onTargetReachedRef = useRef(onTargetReached);
+  const finishEarlyRef = useRef<(() => void) | null>(null);
+  const [phase, setPhase] = useState<Phase>({ kind: "ready" });
+  const [runId, setRunId] = useState(0);
+  const [isStarting, setIsStarting] = useState(false);
   const [hud, setHud] = useState({
     score: 0,
     remainingMs: ROUND_MS,
-    countdownSeconds: Math.ceil(COUNTDOWN_MS / 1000),
+    countdownSeconds: 0,
+    banked: false,
   });
 
   onRoundEndRef.current = onRoundEnd;
+  onTargetReachedRef.current = onTargetReached;
 
   useEffect(() => {
     const image = new Image();
@@ -177,7 +248,66 @@ export default function KiwiCatchGame({ onRoundEnd }: KiwiCatchGameProps) {
     };
   }, []);
 
+  const play = useCallback(async () => {
+    setIsStarting(true);
+
+    try {
+      // The server round clock must be running before the countdown starts,
+      // so a win can never be reported for a round the server didn't see.
+      await onRequestStart();
+      setHud({
+        score: 0,
+        remainingMs: ROUND_MS,
+        countdownSeconds: Math.ceil(COUNTDOWN_MS / 1000),
+        banked: false,
+      });
+      setPhase({ kind: "running" });
+      setRunId((id) => id + 1);
+      canvasRef.current?.focus({ preventScroll: true });
+    } catch {
+      // The parent surfaces the error message; stay on the current screen.
+    } finally {
+      setIsStarting(false);
+    }
+  }, [onRequestStart]);
+
+  // Static stage behind the instructions / result overlays.
   useEffect(() => {
+    if (phase.kind === "running") {
+      return;
+    }
+
+    const wrap = wrapRef.current;
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+
+    if (!wrap || !canvas || !ctx) {
+      return;
+    }
+
+    const render = () => {
+      const width = Math.max(240, wrap.clientWidth);
+      const dpr = window.devicePixelRatio || 1;
+
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(STAGE_HEIGHT * dpr);
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${STAGE_HEIGHT}px`;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      drawStage(ctx, width, STAGE_HEIGHT, width / 2);
+    };
+
+    render();
+    window.addEventListener("resize", render);
+
+    return () => window.removeEventListener("resize", render);
+  }, [phase.kind]);
+
+  useEffect(() => {
+    if (runId === 0 || phase.kind !== "running") {
+      return;
+    }
+
     const wrap = wrapRef.current;
     const canvas = canvasRef.current;
 
@@ -204,6 +334,7 @@ export default function KiwiCatchGame({ onRoundEnd }: KiwiCatchGameProps) {
     let currentScore = 0;
     let spawnAccumulator = 0;
     let hudAccumulator = 0;
+    let banked = false;
     let finished = false;
     let raf: number | null = null;
 
@@ -265,12 +396,24 @@ export default function KiwiCatchGame({ onRoundEnd }: KiwiCatchGameProps) {
       }
 
       finished = true;
-      setHud({ score: currentScore, remainingMs: 0, countdownSeconds: 0 });
-      onRoundEndRef.current({
+      finishEarlyRef.current = null;
+
+      const result = {
         score: currentScore,
-        won: currentScore >= TARGET_SCORE,
+        won: banked || currentScore >= TARGET_SCORE,
+      };
+
+      setHud({
+        score: currentScore,
+        remainingMs: 0,
+        countdownSeconds: 0,
+        banked,
       });
+      setPhase({ kind: "done", result });
+      onRoundEndRef.current(result);
     };
+
+    finishEarlyRef.current = finish;
 
     const drawKiwiAt = (kiwi: FallingKiwi) => {
       const rotten = kiwi.kind === "rotten";
@@ -319,33 +462,6 @@ export default function KiwiCatchGame({ onRoundEnd }: KiwiCatchGameProps) {
       ctx.restore();
     };
 
-    const drawBasket = () => {
-      const left = basketX - BASKET_WIDTH / 2;
-      const top = height - BASKET_BOTTOM_GAP - BASKET_HEIGHT;
-
-      ctx.save();
-      roundedRectPath(ctx, left, top, BASKET_WIDTH, BASKET_HEIGHT, 9);
-      ctx.fillStyle = BRAND_GREEN;
-      ctx.fill();
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = INK;
-      ctx.stroke();
-
-      // Punnet weave hint so it reads as a basket rather than a bar.
-      ctx.strokeStyle = "rgba(20, 24, 17, 0.28)";
-      ctx.lineWidth = 1.5;
-
-      for (let i = 1; i < 4; i += 1) {
-        const x = left + (BASKET_WIDTH / 4) * i;
-        ctx.beginPath();
-        ctx.moveTo(x, top + 3);
-        ctx.lineTo(x, top + BASKET_HEIGHT - 3);
-        ctx.stroke();
-      }
-
-      ctx.restore();
-    };
-
     const drawScorePops = (now: number) => {
       for (const pop of scorePops) {
         const t = Math.min(1, (now - pop.startedAt) / SCORE_POP_MS);
@@ -381,7 +497,30 @@ export default function KiwiCatchGame({ onRoundEnd }: KiwiCatchGameProps) {
       }
 
       drawScorePops(now);
-      drawBasket();
+
+      // Basket redrawn from drawStage's pieces so play and idle frames match.
+      const left = basketX - BASKET_WIDTH / 2;
+      const top = height - BASKET_BOTTOM_GAP - BASKET_HEIGHT;
+
+      ctx.save();
+      roundedRectPath(ctx, left, top, BASKET_WIDTH, BASKET_HEIGHT, 9);
+      ctx.fillStyle = BRAND_GREEN;
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = INK;
+      ctx.stroke();
+      ctx.strokeStyle = "rgba(20, 24, 17, 0.28)";
+      ctx.lineWidth = 1.5;
+
+      for (let i = 1; i < 4; i += 1) {
+        const x = left + (BASKET_WIDTH / 4) * i;
+        ctx.beginPath();
+        ctx.moveTo(x, top + 3);
+        ctx.lineTo(x, top + BASKET_HEIGHT - 3);
+        ctx.stroke();
+      }
+
+      ctx.restore();
 
       if (showCountdown) {
         ctx.save();
@@ -455,6 +594,15 @@ export default function KiwiCatchGame({ onRoundEnd }: KiwiCatchGameProps) {
             // Floored at zero: a negative score reads as punishment, and the
             // round has to feel winnable right up to the buzzer.
             currentScore = Math.max(0, currentScore + value);
+
+            // The win banks the moment the target is crossed — the rest of
+            // the round is bonus play. The score can dip below the target
+            // afterwards (rotten kiwis), but a banked win stays banked.
+            if (!banked && currentScore >= TARGET_SCORE) {
+              banked = true;
+              onTargetReachedRef.current();
+            }
+
             scorePops.push({
               x: kiwi.x,
               y: catchLineY,
@@ -490,6 +638,7 @@ export default function KiwiCatchGame({ onRoundEnd }: KiwiCatchGameProps) {
           countdownSeconds: playing
             ? 0
             : Math.max(1, Math.ceil((COUNTDOWN_MS - sinceStart) / 1000)),
+          banked,
         });
       }
 
@@ -537,17 +686,20 @@ export default function KiwiCatchGame({ onRoundEnd }: KiwiCatchGameProps) {
       canvas.removeEventListener("pointerdown", movePointer);
       canvas.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("resize", onResize);
+      finishEarlyRef.current = null;
 
       if (raf !== null) {
         window.cancelAnimationFrame(raf);
       }
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runId]);
 
   const progress = Math.min(100, (hud.score / TARGET_SCORE) * 100);
-  const reachedTarget = hud.score >= TARGET_SCORE;
   const secondsLeft = Math.ceil(hud.remainingMs / 1000);
   const isCountingIn = hud.countdownSeconds > 0;
+  const isRunning = phase.kind === "running";
+  const won = phase.kind === "done" && phase.result.won;
 
   return (
     <div ref={wrapRef} className="w-full">
@@ -556,14 +708,23 @@ export default function KiwiCatchGame({ onRoundEnd }: KiwiCatchGameProps) {
           {hud.score}
           <span className="text-black/40"> / {TARGET_SCORE} kiwis</span>
         </span>
+        {hud.banked && isRunning ? (
+          <span className="rounded-full bg-kiwi-green px-2.5 py-0.5 text-xs font-bold">
+            ✓ Free month won
+          </span>
+        ) : null}
         <span
           className={`tabular-nums ${
-            !isCountingIn && secondsLeft <= 10 ? "text-[#B4451F]" : "text-black/40"
+            isRunning && !isCountingIn && secondsLeft <= 10 && !hud.banked
+              ? "text-[#B4451F]"
+              : "text-black/40"
           }`}
         >
-          {isCountingIn
-            ? `Starts in ${hud.countdownSeconds}s`
-            : `${secondsLeft}s left`}
+          {!isRunning
+            ? `${Math.ceil(ROUND_MS / 1000)}s`
+            : isCountingIn
+              ? `Starts in ${hud.countdownSeconds}s`
+              : `${secondsLeft}s left`}
         </span>
       </div>
 
@@ -577,26 +738,126 @@ export default function KiwiCatchGame({ onRoundEnd }: KiwiCatchGameProps) {
       >
         <div
           className={`h-full rounded-full transition-[width] duration-150 ${
-            reachedTarget ? "bg-[#6F9B24]" : "bg-kiwi-green"
+            hud.banked ? "bg-[#F2C14E]" : "bg-kiwi-green"
           }`}
           style={{ width: `${progress}%` }}
         />
       </div>
 
-      <canvas
-        ref={canvasRef}
-        tabIndex={0}
-        role="application"
-        aria-label="Kiwi Catch — move the punnet to catch falling kiwis and avoid the rotten brown ones"
-        className="mt-3 w-full cursor-none rounded-2xl border border-black/10 outline-none focus-visible:ring-2 focus-visible:ring-kiwi-green"
-        style={{ touchAction: "none" }}
-      />
+      <div className="relative mt-3">
+        <canvas
+          ref={canvasRef}
+          tabIndex={0}
+          role="application"
+          aria-label="Kiwi Catch — move the punnet to catch falling kiwis and avoid the rotten brown ones"
+          className={`w-full rounded-2xl border border-black/10 outline-none focus-visible:ring-2 focus-visible:ring-kiwi-green ${
+            isRunning ? "cursor-none" : ""
+          }`}
+          style={{ touchAction: "none" }}
+        />
 
-      <p className="mt-2 text-xs text-black/45">
-        {reachedTarget
-          ? "Target reached — keep catching until the clock runs out."
-          : "Drag or move your mouse to slide the punnet. Golden kiwis are worth two, rotten brown ones cost you one."}
-      </p>
+        {phase.kind === "ready" ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-white/80 p-6 text-center backdrop-blur-[2px]">
+            <h2 className="font-fraunces text-[clamp(1.25rem,4.5vw,1.7rem)] font-semibold leading-tight tracking-tight">
+              Win your first month free
+            </h2>
+            <p className="mt-2 max-w-sm text-sm leading-6 text-black/60">
+              Catch {TARGET_SCORE} kiwis in {Math.ceil(ROUND_MS / 1000)} seconds.
+              Golden ones count double — dodge the rotten brown ones.
+            </p>
+            <button
+              type="button"
+              onClick={() => void play()}
+              disabled={isStarting}
+              className="mt-5 rounded-full bg-kiwi-green px-8 py-3 text-sm font-bold transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isStarting ? "Getting the punnet…" : "Play"}
+            </button>
+          </div>
+        ) : null}
+
+        {phase.kind === "done" ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-white/85 p-6 text-center backdrop-blur-[2px]">
+            {won ? (
+              <>
+                <h2 className="font-fraunces text-[clamp(1.25rem,4.5vw,1.7rem)] font-semibold leading-tight tracking-tight">
+                  You won a free month 🥝
+                </h2>
+                <p className="mt-2 max-w-sm text-sm leading-6 text-black/60">
+                  {phase.result.score} kiwis caught.{" "}
+                  {winSaveState === "saving"
+                    ? "Locking in your free month…"
+                    : winSaveState === "error"
+                      ? "We couldn't confirm it just now — try again below."
+                      : "Your first month of Kiwi Pro is saved to this website — save your site to lock it in."}
+                </p>
+                {winSaveState === "error" ? (
+                  <button
+                    type="button"
+                    onClick={onRetrySave}
+                    className="mt-5 rounded-full border border-black/15 bg-white px-6 py-3 text-sm font-semibold transition hover:border-black/30"
+                  >
+                    Try saving your free month again
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={onBack}
+                    className="mt-5 rounded-full bg-kiwi-green px-8 py-3 text-sm font-bold transition hover:brightness-95"
+                  >
+                    Back to your build
+                  </button>
+                )}
+              </>
+            ) : (
+              <>
+                <h2 className="font-fraunces text-[clamp(1.25rem,4.5vw,1.7rem)] font-semibold leading-tight tracking-tight">
+                  So close — {phase.result.score} of {TARGET_SCORE}
+                </h2>
+                <p className="mt-2 max-w-sm text-sm leading-6 text-black/60">
+                  Another go? The offer stands until your website is ready.
+                </p>
+                <div className="mt-5 flex items-center gap-4">
+                  <button
+                    type="button"
+                    onClick={() => void play()}
+                    disabled={isStarting}
+                    className="rounded-full bg-kiwi-green px-8 py-3 text-sm font-bold transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isStarting ? "Getting the punnet…" : "Play again"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onBack}
+                    className="text-sm font-semibold text-black/45 underline decoration-black/20 underline-offset-4 transition hover:text-black"
+                  >
+                    Back to build
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        ) : null}
+      </div>
+
+      <div className="mt-2 flex items-center justify-between gap-3">
+        <p className="text-xs text-black/45">
+          {hud.banked && isRunning
+            ? "Free month banked — bonus kiwis until the buzzer."
+            : isRunning
+              ? "Drag or move your mouse to slide the punnet."
+              : "Golden kiwis are worth two, rotten brown ones cost you one."}
+        </p>
+        {hud.banked && isRunning ? (
+          <button
+            type="button"
+            onClick={() => finishEarlyRef.current?.()}
+            className="shrink-0 text-xs font-bold text-black underline decoration-black/25 underline-offset-2 transition hover:decoration-black"
+          >
+            Collect →
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }

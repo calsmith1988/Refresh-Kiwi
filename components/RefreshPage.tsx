@@ -1211,6 +1211,12 @@ export default function RefreshPage({
   const [showStartAnotherWarning, setShowStartAnotherWarning] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const [showRewardGame, setShowRewardGame] = useState(false);
+  // Latest Kiwi Catch outcome for this build. A win is final (the reward is
+  // saved server-side the moment the target is banked), so "lost" never
+  // overwrites "won".
+  const [rewardOutcome, setRewardOutcome] = useState<"won" | "lost" | null>(
+    null,
+  );
   // Frozen at reveal so the "Built in" chip never keeps ticking.
   const [builtInMs, setBuiltInMs] = useState<number | null>(null);
   // One celebration per generation — not on reloads of a restored preview.
@@ -1521,6 +1527,7 @@ export default function RefreshPage({
     celebrationPlayedRef.current = false;
     setShowCelebration(false);
     setShowRewardGame(false);
+    setRewardOutcome(null);
     rewardRoundActiveRef.current = false;
     heldRevealElapsedRef.current = null;
     elapsedTimerRef.current = window.setInterval(() => {
@@ -2605,6 +2612,14 @@ export default function RefreshPage({
         <KiwiCelebration onDone={() => setShowCelebration(false)} />
       ) : null}
 
+      {/* The won reward follows the user through the rest of the build and the
+          reveal, so there's never a doubt it stuck. */}
+      {rewardOutcome === "won" && (isRefreshing || showReveal) ? (
+        <div className="fixed bottom-4 right-4 z-40 flex items-center gap-2 rounded-full border border-black/10 bg-kiwi-green px-4 py-2 text-xs font-bold shadow-lg shadow-black/15">
+          🥝 Free month won
+        </div>
+      ) : null}
+
       {/* ───────────────────────── Header ───────────────────────── */}
       <header className="sticky top-0 z-40 border-b border-black/5 bg-[#faf8f1]/85 backdrop-blur-md">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-5 sm:px-8">
@@ -2882,8 +2897,14 @@ export default function RefreshPage({
                 <BuildRewardPanel
                   jobId={job.id}
                   jobToken={jobTokenRef.current}
+                  buildElapsedMs={elapsedMs}
                   onBack={() => setShowRewardGame(false)}
                   onRoundActiveChange={handleRewardRoundActiveChange}
+                  onOutcome={(outcome) =>
+                    setRewardOutcome((current) =>
+                      current === "won" ? current : outcome,
+                    )
+                  }
                 />
               </div>
             </div>
@@ -2969,13 +2990,21 @@ export default function RefreshPage({
                     : "Keep this tab open — your new website will appear right here in a minute or two."}
                 </p>
                 {job?.id && rewardOfferVisible ? (
-                  <button
-                    type="button"
-                    onClick={() => setShowRewardGame(true)}
-                    className="reward-cta-pulse mt-6 block w-full rounded-full border bg-white px-5 py-3 text-sm font-bold transition hover:border-black/30"
-                  >
-                    🥝 Win your first month free — play while we build
-                  </button>
+                  rewardOutcome === "won" ? (
+                    <div className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-kiwi-green/25 px-5 py-3 text-sm font-bold">
+                      🥝 Free month won — saved to this website
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setShowRewardGame(true)}
+                      className="reward-cta-pulse mt-6 block w-full rounded-full border bg-white px-5 py-3 text-sm font-bold transition hover:border-black/30"
+                    >
+                      {rewardOutcome === "lost"
+                        ? "🥝 So close — have another go"
+                        : "🥝 Win your first month free — play while we build"}
+                    </button>
+                  )
                 ) : null}
                 {job?.id ? (
                   <button

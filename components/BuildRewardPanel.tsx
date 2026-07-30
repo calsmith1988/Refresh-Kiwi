@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import KiwiCatchGame, {
   TARGET_SCORE,
   type RoundResult,
+  type WinSaveState,
 } from "@/components/KiwiCatchGame";
 import {
   claimRewardWin,
@@ -19,34 +20,49 @@ import {
  */
 const OUTCOME_GRACE_MS = 8_000;
 
-type Phase = "intro" | "playing" | "won" | "lost";
-type WinState = "saving" | "saved" | "error";
+export type RewardOutcome = "won" | "lost";
 
 interface BuildRewardPanelProps {
   jobId: string;
   jobToken: string | null;
+  /** Live build elapsed time, shown in the status strip above the game. */
+  buildElapsedMs: number;
   onBack: () => void;
   /** True while the finished-website reveal should wait for the round. */
   onRoundActiveChange: (active: boolean) => void;
+  /** Latest round outcome, so the progress screen can react to it. A win is final. */
+  onOutcome: (outcome: RewardOutcome) => void;
 }
 
+function formatElapsed(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+}
+
+/**
+ * Thin frame around Kiwi Catch: a tappable build-status strip on top, the game
+ * below. All game phases (instructions, countdown, play, result) happen inside
+ * the game's own canvas frame so switching to the game never feels like
+ * leaving the build.
+ */
 export default function BuildRewardPanel({
   jobId,
   jobToken,
+  buildElapsedMs,
   onBack,
   onRoundActiveChange,
+  onOutcome,
 }: BuildRewardPanelProps) {
-  const [phase, setPhase] = useState<Phase>("intro");
-  const [roundKey, setRoundKey] = useState(0);
-  const [score, setScore] = useState(0);
-  const [isStarting, setIsStarting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [winState, setWinState] = useState<WinState>("saving");
+  const [winState, setWinState] = useState<WinSaveState>("idle");
   const [holdingReveal, setHoldingReveal] = useState(false);
   const graceTimerRef = useRef<number | null>(null);
+  const wonRef = useRef(false);
   const onRoundActiveChangeRef = useRef(onRoundActiveChange);
+  const onOutcomeRef = useRef(onOutcome);
 
   onRoundActiveChangeRef.current = onRoundActiveChange;
+  onOutcomeRef.current = onOutcome;
 
   useEffect(() => {
     onRoundActiveChangeRef.current(holdingReveal);
@@ -86,26 +102,26 @@ export default function BuildRewardPanel({
 
   const startRound = useCallback(async () => {
     setErrorMessage(null);
-    setIsStarting(true);
 
+    // Throws on failure so the game stays on its current screen; the message
+    // renders below the game.
     try {
       await requestRewardGameStart({ jobId, jobToken });
-      clearGrace();
-      setScore(0);
-      setRoundKey((key) => key + 1);
-      setPhase("playing");
-      setHoldingReveal(true);
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : "We couldn't start the game.",
       );
-    } finally {
-      setIsStarting(false);
+      throw error;
     }
+
+    clearGrace();
+    setWinState("idle");
+    setHoldingReveal(true);
   }, [clearGrace, jobId, jobToken]);
 
   const submitWin = useCallback(async () => {
     setWinState("saving");
+    setErrorMessage(null);
 
     try {
       await claimRewardWin({ jobId, jobToken });
@@ -118,106 +134,64 @@ export default function BuildRewardPanel({
     }
   }, [jobId, jobToken]);
 
+  // Fired mid-round the moment the target score is banked: the win is saved
+  // immediately rather than at the buzzer, so bonus play is risk-free.
+  const handleTargetReached = useCallback(() => {
+    wonRef.current = true;
+    trackRewardEvent("reward_game_won", { score: TARGET_SCORE });
+    onOutcomeRef.current("won");
+    void submitWin();
+  }, [submitWin]);
+
   const handleRoundEnd = useCallback(
     (result: RoundResult) => {
-      setScore(result.score);
       beginGrace();
 
-      if (!result.won) {
+      if (!result.won && !wonRef.current) {
         trackRewardEvent("reward_game_lost", { score: result.score });
-        setPhase("lost");
-
-        return;
+        onOutcomeRef.current("lost");
       }
-
-      trackRewardEvent("reward_game_won", { score: result.score });
-      setPhase("won");
-      void submitWin();
     },
-    [beginGrace, submitWin],
+    [beginGrace],
   );
 
   return (
     <div className="preview-pop text-left">
       <div className="flex items-center justify-between gap-3">
-        <span className="rounded-full bg-kiwi-green px-3 py-1 text-[0.65rem] font-bold uppercase tracking-[0.12em]">
-          One-time offer
-        </span>
         <button
           type="button"
           onClick={onBack}
-          className="text-xs font-semibold text-black/45 underline decoration-black/20 underline-offset-4 transition hover:text-black"
+          className="flex min-w-0 items-center gap-2 rounded-full border border-black/10 bg-white px-3.5 py-1.5 text-xs font-semibold transition hover:border-black/25"
         >
-          Back to progress
+          <span
+            aria-hidden
+            className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-kiwi-green"
+          />
+          <span className="truncate">
+            Building your website —{" "}
+            <span className="tabular-nums">{formatElapsed(buildElapsedMs)}</span>
+            <span className="text-black/40"> / ~2 min</span>
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={onBack}
+          className="shrink-0 text-xs font-semibold text-black/45 underline decoration-black/20 underline-offset-4 transition hover:text-black"
+        >
+          Back
         </button>
       </div>
 
-      {phase === "intro" ? (
-        <>
-          <h2 className="mt-4 font-fraunces text-[clamp(1.35rem,5vw,1.9rem)] font-semibold leading-tight tracking-tight">
-            Win your first month free
-          </h2>
-          <p className="mt-3 text-sm leading-6 text-black/60">
-            Catch {TARGET_SCORE} kiwis in 45 seconds while we finish building
-            your website. Win and your first month of Kiwi Pro is on us — golden
-            kiwis count double, and rotten brown ones cost you one.
-          </p>
-          <button
-            type="button"
-            onClick={() => void startRound()}
-            disabled={isStarting}
-            className="mt-6 w-full rounded-full bg-kiwi-green px-6 py-3 text-sm font-bold transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {isStarting ? "Getting the punnet…" : "Play Kiwi Catch"}
-          </button>
-        </>
-      ) : null}
-
-      {phase === "playing" ? (
-        <div className="mt-4">
-          <KiwiCatchGame key={roundKey} onRoundEnd={handleRoundEnd} />
-        </div>
-      ) : null}
-
-      {phase === "won" ? (
-        <>
-          <h2 className="mt-4 font-fraunces text-[clamp(1.35rem,5vw,1.9rem)] font-semibold leading-tight tracking-tight">
-            You won a free month 🥝
-          </h2>
-          <p className="mt-3 text-sm leading-6 text-black/60">
-            {score} kiwis caught. Your first month of Kiwi Pro is free —
-            it&apos;s saved to this website, so save your site to lock it in.
-          </p>
-          {winState === "error" ? (
-            <button
-              type="button"
-              onClick={() => void submitWin()}
-              className="mt-5 w-full rounded-full border border-black/15 bg-white px-6 py-3 text-sm font-semibold transition hover:border-black/30"
-            >
-              Try saving your free month again
-            </button>
-          ) : null}
-        </>
-      ) : null}
-
-      {phase === "lost" ? (
-        <>
-          <h2 className="mt-4 font-fraunces text-[clamp(1.35rem,5vw,1.9rem)] font-semibold leading-tight tracking-tight">
-            So close — {score} of {TARGET_SCORE}
-          </h2>
-          <p className="mt-3 text-sm leading-6 text-black/60">
-            Another go? The offer stands until your website is ready.
-          </p>
-          <button
-            type="button"
-            onClick={() => void startRound()}
-            disabled={isStarting}
-            className="mt-6 w-full rounded-full bg-kiwi-green px-6 py-3 text-sm font-bold transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {isStarting ? "Getting the punnet…" : "Play again"}
-          </button>
-        </>
-      ) : null}
+      <div className="mt-4">
+        <KiwiCatchGame
+          onRequestStart={startRound}
+          onTargetReached={handleTargetReached}
+          onRoundEnd={handleRoundEnd}
+          onBack={onBack}
+          winSaveState={winState}
+          onRetrySave={() => void submitWin()}
+        />
+      </div>
 
       {errorMessage ? (
         <p className="mt-4 text-xs leading-5 text-[#B4451F]">{errorMessage}</p>

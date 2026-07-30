@@ -13,11 +13,14 @@ export const FREE_MONTH_REWARD_KIND = "free_month_pro";
 export const FREE_MONTH_TRIAL_DAYS = 30;
 
 /**
- * A Kiwi Catch round lasts 45 seconds. Requiring 40 seconds of server-measured
- * play means a client that skips the game and POSTs straight to the win
- * endpoint is rejected, without penalising anyone who genuinely played.
+ * The win is banked the moment the target score is crossed mid-round, so this
+ * floor must sit below the earliest legitimate bank. Spawn maths make 25
+ * points before ~21s of play physically impossible (only ~24 kiwis have even
+ * fallen by then, averaging ~1.2 points each including duds), and the server
+ * clock starts a further 3s before play (the countdown). A client that skips
+ * the game and POSTs straight to the win endpoint is still rejected.
  */
-export const MIN_PLAY_MS = 40_000;
+export const MIN_PLAY_MS = 20_000;
 
 /** Statuses where a build is still in flight, so the game is worth offering. */
 const GAME_START_STATUSES = new Set<JobStatus>([
