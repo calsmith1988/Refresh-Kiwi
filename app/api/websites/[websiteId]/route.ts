@@ -5,6 +5,7 @@ import {
   archiveOwnedWebsite,
   renameOwnedWebsite,
   toWebsiteResponse,
+  updateOwnedWebsiteSubdomain,
 } from "@/lib/websites/service";
 
 export const runtime = "nodejs";
@@ -25,22 +26,38 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   try {
     const { websiteId } = await context.params;
-    const body = (await request.json()) as { name?: string };
+    const body = (await request.json()) as {
+      name?: string;
+      subdomain?: string;
+    };
 
-    if (!body.name) {
-      return NextResponse.json({ error: "name is required" }, { status: 400 });
+    if (!body.name && !body.subdomain) {
+      return NextResponse.json(
+        { error: "name or subdomain is required" },
+        { status: 400 },
+      );
     }
 
-    const website = await renameOwnedWebsite({
-      websiteId,
-      userId: user.id,
-      name: body.name,
-    });
+    let website = body.name
+      ? await renameOwnedWebsite({
+          websiteId,
+          userId: user.id,
+          name: body.name,
+        })
+      : null;
 
-    return NextResponse.json({ website: toWebsiteResponse(website) });
+    if (body.subdomain) {
+      website = await updateOwnedWebsiteSubdomain({
+        websiteId,
+        userId: user.id,
+        subdomain: body.subdomain,
+      });
+    }
+
+    return NextResponse.json({ website: toWebsiteResponse(website!) });
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Failed to rename website";
+      error instanceof Error ? error.message : "Failed to update website";
 
     return NextResponse.json({ error: message }, { status: 400 });
   }

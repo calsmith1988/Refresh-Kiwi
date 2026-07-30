@@ -58,13 +58,22 @@ async function uniqueJobSlug(baseSlug: string): Promise<string> {
   const db = getDb();
 
   return resolveUniqueSlug(baseSlug, async (candidate) => {
-    const existing = await db
-      .select({ id: jobs.id })
-      .from(jobs)
-      .where(eq(jobs.slug, candidate))
-      .limit(1);
+    // A new slug must not collide with an existing job slug or with a
+    // subdomain another website has claimed on the sites domain.
+    const [existingJob, existingSubdomain] = await Promise.all([
+      db
+        .select({ id: jobs.id })
+        .from(jobs)
+        .where(eq(jobs.slug, candidate))
+        .limit(1),
+      db
+        .select({ id: websites.id })
+        .from(websites)
+        .where(eq(websites.subdomain, candidate))
+        .limit(1),
+    ]);
 
-    return existing.length > 0;
+    return existingJob.length > 0 || existingSubdomain.length > 0;
   });
 }
 

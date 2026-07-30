@@ -350,6 +350,7 @@ export async function getAdminUserDetail(userId: string) {
     websites: userWebsites.map((website) => ({
       id: website.id,
       slug: website.slug,
+      subdomain: website.subdomain,
       brandName: website.brandName,
       status: website.status,
       customDomain: website.customDomain,
@@ -393,6 +394,7 @@ export async function listAdminWebsites(params: {
       id: websites.id,
       jobId: websites.jobId,
       slug: websites.slug,
+      subdomain: websites.subdomain,
       brandName: websites.brandName,
       status: websites.status,
       generationMode: websites.generationMode,

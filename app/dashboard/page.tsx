@@ -34,6 +34,7 @@ type Website = {
   generationMode: "refresh" | "fresh";
   creationPrompt: string | null;
   slug: string;
+  subdomain: string | null;
   brandName: string | null;
   jobStatus:
     | "queued"
@@ -481,7 +482,7 @@ function publicWebsiteHref(website: Website): string {
   }
 
   if (website.status === "live") {
-    return `https://${website.slug}.${sitesDomain()}/`;
+    return `https://${website.subdomain ?? website.slug}.${sitesDomain()}/`;
   }
 
   return previewHref(website.slug);
@@ -612,6 +613,13 @@ export default function DashboardPage() {
   const [editPrompts, setEditPrompts] = useState<Record<string, string>>({});
   const [editTargets, setEditTargets] = useState<Record<string, string>>({});
   const [renameValues, setRenameValues] = useState<Record<string, string>>({});
+  const [subdomainValues, setSubdomainValues] = useState<Record<string, string>>(
+    {},
+  );
+  const [savingAddressWebsiteId, setSavingAddressWebsiteId] = useState<
+    string | null
+  >(null);
+  const [addressError, setAddressError] = useState<string | null>(null);
   const [domainValues, setDomainValues] = useState<Record<string, string>>({});
   const [seoValues, setSeoValues] = useState<
     Record<
@@ -1268,6 +1276,12 @@ export default function DashboardPage() {
         [website.id]:
           current[website.id] ?? website.brandName ?? website.slug,
       }));
+      setSubdomainValues((current) => ({
+        ...current,
+        [website.id]:
+          current[website.id] ?? website.subdomain ?? website.slug,
+      }));
+      setAddressError(null);
       setDomainValues((current) => ({
         ...current,
         [website.id]: current[website.id] ?? website.customDomain ?? "",
@@ -1681,6 +1695,41 @@ export default function DashboardPage() {
       );
     } finally {
       setRenamingWebsiteId(null);
+    }
+  };
+
+  const changeWebsiteAddress = async (website: Website) => {
+    const subdomain = (
+      subdomainValues[website.id] ??
+      website.subdomain ??
+      website.slug
+    )
+      .trim()
+      .toLowerCase();
+
+    setSavingAddressWebsiteId(website.id);
+    setAddressError(null);
+
+    try {
+      const response = await fetch(`/api/websites/${website.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subdomain }),
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Failed to change web address");
+      }
+
+      await loadDashboard();
+      closeWebsiteActionModal();
+    } catch (error) {
+      setAddressError(
+        error instanceof Error ? error.message : "Failed to change web address",
+      );
+    } finally {
+      setSavingAddressWebsiteId(null);
     }
   };
 
@@ -3996,7 +4045,7 @@ export default function DashboardPage() {
                               </button>
                               {seoSavedWebsiteId === website.id ? (
                                 <span className="text-sm font-medium text-black/55">
-                                  Saved — live on your domain within a minute.
+                                  Saved — live on your website within a minute.
                                 </span>
                               ) : null}
                             </div>
@@ -4006,8 +4055,9 @@ export default function DashboardPage() {
                             <p className="text-sm font-semibold text-black">
                               For your SEO person
                             </p>
-                            {website.customDomainStatus === "connected" &&
-                            website.customDomain ? (
+                            {(website.customDomainStatus === "connected" &&
+                              website.customDomain) ||
+                            website.status === "live" ? (
                               <>
                                 <p className="mt-1 text-xs leading-5 text-black/50">
                                   These are generated automatically — nothing to
@@ -4015,7 +4065,7 @@ export default function DashboardPage() {
                                 </p>
                                 <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs font-semibold">
                                   <a
-                                    href={`https://${website.customDomain}/sitemap.xml`}
+                                    href={`${publicWebsiteHref(website).replace(/\/$/, "")}/sitemap.xml`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-black underline decoration-black/25 underline-offset-2 transition hover:decoration-black"
@@ -4023,7 +4073,7 @@ export default function DashboardPage() {
                                     sitemap.xml
                                   </a>
                                   <a
-                                    href={`https://${website.customDomain}/robots.txt`}
+                                    href={`${publicWebsiteHref(website).replace(/\/$/, "")}/robots.txt`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-black underline decoration-black/25 underline-offset-2 transition hover:decoration-black"
@@ -4035,8 +4085,7 @@ export default function DashboardPage() {
                             ) : (
                               <p className="mt-1 text-xs leading-5 text-black/50">
                                 A sitemap, robots.txt, and these codes take effect
-                                once your own domain is connected (see Manage
-                                domain).
+                                once your website is online.
                               </p>
                             )}
                           </div>
@@ -4108,6 +4157,65 @@ export default function DashboardPage() {
                               </button>
                             </div>
                           </form>
+                          {website.status === "live" ? (
+                            <form
+                              className="mt-8 border-t border-black/10 pt-6"
+                              onSubmit={(event) => {
+                                event.preventDefault();
+                                void changeWebsiteAddress(website);
+                              }}
+                            >
+                              <label
+                                htmlFor={`subdomain-${website.id}`}
+                                className="text-sm font-semibold text-black"
+                              >
+                                Web address
+                              </label>
+                              <p className="mt-1 text-sm leading-6 text-black/55">
+                                Your site&apos;s address on Refresh Kiwi. Links
+                                to the old address will keep redirecting here.
+                              </p>
+                              <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+                                <div className="flex h-12 flex-1 items-center overflow-hidden rounded-full border border-black/10 bg-white pr-5 focus-within:border-black/30">
+                                  <input
+                                    id={`subdomain-${website.id}`}
+                                    value={
+                                      subdomainValues[website.id] ??
+                                      website.subdomain ??
+                                      website.slug
+                                    }
+                                    onChange={(event) =>
+                                      setSubdomainValues((current) => ({
+                                        ...current,
+                                        [website.id]: event.target.value,
+                                      }))
+                                    }
+                                    autoCapitalize="none"
+                                    autoCorrect="off"
+                                    spellCheck={false}
+                                    className="h-full min-w-0 flex-1 bg-transparent px-5 text-sm outline-none placeholder:text-black/30"
+                                  />
+                                  <span className="shrink-0 text-sm text-black/40">
+                                    .{sitesDomain()}
+                                  </span>
+                                </div>
+                                <button
+                                  type="submit"
+                                  disabled={savingAddressWebsiteId === website.id}
+                                  className="h-12 rounded-full bg-[#141811] px-6 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  {savingAddressWebsiteId === website.id
+                                    ? "Saving..."
+                                    : "Save address"}
+                                </button>
+                              </div>
+                              {addressError ? (
+                                <p className="mt-3 text-sm text-red-600">
+                                  {addressError}
+                                </p>
+                              ) : null}
+                            </form>
+                          ) : null}
                         </div>
                       </div>
                     ) : null}

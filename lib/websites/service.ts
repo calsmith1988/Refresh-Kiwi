@@ -1,8 +1,8 @@
-import { and, count, desc, eq, inArray, isNull, ne } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNull, ne, or } from "drizzle-orm";
 
 import { getDb, schema } from "@/lib/db";
 import { deleteRenderCustomDomain } from "@/lib/render/domains";
-import { getSitesDomain } from "@/lib/sites/domain";
+import { getSitesDomain, isReservedSitesSubdomain } from "@/lib/sites/domain";
 import { deleteSiteDirectoryFromR2 } from "@/lib/storage/r2";
 
 const { editRequests, jobs, users, websites } = schema;
@@ -100,6 +100,7 @@ export function toWebsiteResponse(website: typeof websites.$inferSelect) {
     generationMode: website.generationMode,
     creationPrompt: website.creationPrompt,
     slug: website.slug,
+    subdomain: website.subdomain,
     brandName: website.brandName,
     status: website.status,
     freeEditsUsed: website.freeEditsUsed,
@@ -482,6 +483,79 @@ export async function renameOwnedWebsite(params: {
   return updated;
 }
 
+const SUBDOMAIN_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+export function normalizeSubdomain(input: string): string {
+  const subdomain = input
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, "")
+    .split(".")[0]!
+    .replace(/\/.*$/, "");
+
+  if (
+    subdomain.length < 3 ||
+    subdomain.length > 48 ||
+    !SUBDOMAIN_PATTERN.test(subdomain)
+  ) {
+    throw new Error(
+      "Web addresses can use lowercase letters, numbers and hyphens (3-48 characters), like joes-plumbing.",
+    );
+  }
+
+  if (isReservedSitesSubdomain(subdomain)) {
+    throw new Error("That web address is reserved. Try a different one.");
+  }
+
+  return subdomain;
+}
+
+export async function updateOwnedWebsiteSubdomain(params: {
+  websiteId: string;
+  userId: string;
+  subdomain: string;
+}) {
+  const subdomain = normalizeSubdomain(params.subdomain);
+  const website = await getOwnedWebsite(params);
+
+  if (!website) {
+    throw new Error("Website not found");
+  }
+
+  // Same address as the site's own slug — store null so the slug stays the
+  // single source of truth and the unique index isn't occupied needlessly.
+  const value = subdomain === website.slug ? null : subdomain;
+
+  if (value) {
+    const db = getDb();
+    const [clash] = await db
+      .select({ id: websites.id })
+      .from(websites)
+      .where(
+        and(
+          ne(websites.id, website.id),
+          or(eq(websites.subdomain, value), eq(websites.slug, value)),
+        ),
+      )
+      .limit(1);
+
+    if (clash) {
+      throw new Error("That web address is already taken. Try a different one.");
+    }
+  }
+
+  const [updated] = await getDb()
+    .update(websites)
+    .set({
+      subdomain: value,
+      updatedAt: new Date(),
+    })
+    .where(eq(websites.id, website.id))
+    .returning();
+
+  return updated;
+}
+
 export async function updateOwnedWebsiteSeoSettings(params: {
   websiteId: string;
   userId: string;
@@ -631,29 +705,50 @@ export async function getWebsiteAccessBySlug(slug: string) {
 }
 
 /**
- * Access check for `{slug}.refreshkiwi.site`. Only live Pro sites graduate
- * off /preview/ — everything else 404s on the sites domain.
+ * Access check for `{label}.refreshkiwi.site`, where label is the website's
+ * chosen subdomain (or its slug when no subdomain is set). Only live Pro
+ * sites graduate off /preview/ — everything else 404s on the sites domain.
+ *
+ * `sitesLabel` in the result is the canonical label; when the request came in
+ * on a different label (e.g. the original slug after a rename), the caller
+ * should 301 to the canonical host.
  */
-export async function getWebsiteAccessBySitesSlug(slug: string) {
-  const [website] = await getDb()
-    .select({
-      id: websites.id,
-      status: websites.status,
-      slug: websites.slug,
-      expiresAt: websites.expiresAt,
-      customDomain: websites.customDomain,
-      customDomainStatus: websites.customDomainStatus,
-      seoSearchConsoleToken: websites.seoSearchConsoleToken,
-      seoAnalyticsId: websites.seoAnalyticsId,
-      user: {
-        plan: users.plan,
-        subscriptionStatus: users.subscriptionStatus,
-      },
-    })
+export async function getWebsiteAccessBySitesLabel(label: string) {
+  const selection = {
+    id: websites.id,
+    status: websites.status,
+    slug: websites.slug,
+    subdomain: websites.subdomain,
+    expiresAt: websites.expiresAt,
+    customDomain: websites.customDomain,
+    customDomainStatus: websites.customDomainStatus,
+    seoSearchConsoleToken: websites.seoSearchConsoleToken,
+    seoAnalyticsId: websites.seoAnalyticsId,
+    user: {
+      plan: users.plan,
+      subscriptionStatus: users.subscriptionStatus,
+    },
+  };
+
+  const db = getDb();
+  // A chosen subdomain wins over another site's slug with the same value
+  // (the clash check in updateOwnedWebsiteSubdomain prevents this anyway).
+  const [bySubdomain] = await db
+    .select(selection)
     .from(websites)
     .leftJoin(users, eq(websites.userId, users.id))
-    .where(eq(websites.slug, slug))
+    .where(eq(websites.subdomain, label))
     .limit(1);
+  const website =
+    bySubdomain ??
+    (
+      await db
+        .select(selection)
+        .from(websites)
+        .leftJoin(users, eq(websites.userId, users.id))
+        .where(eq(websites.slug, label))
+        .limit(1)
+    )[0];
 
   if (!website) {
     return null;
@@ -672,6 +767,7 @@ export async function getWebsiteAccessBySitesSlug(slug: string) {
     isExpired,
     userIsPro,
     isSitesEligible: isAllowed && isLive && userIsPro,
+    sitesLabel: website.subdomain ?? website.slug,
   };
 }
 
@@ -727,6 +823,7 @@ export async function getWebsiteContactTarget(slug: string) {
     .select({
       id: websites.id,
       slug: websites.slug,
+      subdomain: websites.subdomain,
       brandName: websites.brandName,
       status: websites.status,
       customDomain: websites.customDomain,
@@ -750,6 +847,7 @@ export async function getWebsiteContactTarget(slug: string) {
   return {
     websiteId: website.id,
     slug: website.slug,
+    sitesLabel: website.subdomain ?? website.slug,
     brandName: website.brandName,
     status: website.status,
     customDomain: website.customDomain,

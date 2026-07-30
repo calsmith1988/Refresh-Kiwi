@@ -12,13 +12,17 @@ function previewHref(slug: string): string {
   return `${appUrl}/preview/${slug}/index.html`;
 }
 
-function publicWebsiteHref(website: { slug: string; status: string }): string {
+function publicWebsiteHref(website: {
+  slug: string;
+  subdomain?: string | null;
+  status: string;
+}): string {
   if (website.status === "live") {
     const sitesDomain = (
       process.env.NEXT_PUBLIC_SITES_DOMAIN?.trim() || "refreshkiwi.site"
     ).replace(/^\.+|\.+$/g, "");
 
-    return `https://${website.slug}.${sitesDomain}/`;
+    return `https://${website.subdomain ?? website.slug}.${sitesDomain}/`;
   }
 
   return previewHref(website.slug);
@@ -75,6 +79,7 @@ type AdminUserDetail = {
   websites: Array<{
     id: string;
     slug: string;
+    subdomain: string | null;
     brandName: string | null;
     status: string;
     customDomain: string | null;
@@ -105,6 +110,7 @@ type AdminUserDetail = {
 type AdminWebsiteRow = {
   id: string;
   slug: string;
+  subdomain: string | null;
   brandName: string | null;
   status: string;
   generationMode: string;

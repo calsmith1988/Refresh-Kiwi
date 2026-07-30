@@ -12,10 +12,10 @@ import {
   buildCustomDomainSitemap,
   injectSeoTags,
 } from "@/lib/seo/customDomain";
-import { sitesSlugFromHost } from "@/lib/sites/domain";
+import { getSitesDomain, sitesSlugFromHost } from "@/lib/sites/domain";
 import {
   getWebsiteAccessByCustomDomain,
-  getWebsiteAccessBySitesSlug,
+  getWebsiteAccessBySitesLabel,
 } from "@/lib/websites/service";
 
 export const runtime = "nodejs";
@@ -30,7 +30,8 @@ type ServedWebsite = {
   customDomainStatus?: string | null;
   seoSearchConsoleToken: string | null;
   seoAnalyticsId: string | null;
-  redirectToCustomDomain: string | null;
+  /** Host to 301 to (custom domain, or renamed sites subdomain). */
+  redirectToHost: string | null;
 };
 
 function rewriteLocalPreviewOrigins(
@@ -61,19 +62,23 @@ function notFound(reason: string, extra: Record<string, string> = {}) {
 }
 
 async function resolveWebsite(host: string): Promise<ServedWebsite | null> {
-  const sitesSlug = sitesSlugFromHost(host);
+  const sitesLabel = sitesSlugFromHost(host);
 
-  if (sitesSlug) {
-    const access = await getWebsiteAccessBySitesSlug(sitesSlug);
+  if (sitesLabel) {
+    const access = await getWebsiteAccessBySitesLabel(sitesLabel);
 
     if (!access?.isSitesEligible) {
       return null;
     }
 
-    const redirectToCustomDomain =
+    // Priority: connected custom domain > canonical sites label. Both are
+    // 301s so search engines only ever index one host per site.
+    const redirectToHost =
       access.customDomainStatus === "connected" && access.customDomain
         ? access.customDomain
-        : null;
+        : access.sitesLabel !== sitesLabel
+          ? `${access.sitesLabel}.${getSitesDomain()}`
+          : null;
 
     return {
       slug: access.slug,
@@ -81,7 +86,7 @@ async function resolveWebsite(host: string): Promise<ServedWebsite | null> {
       customDomainStatus: access.customDomainStatus,
       seoSearchConsoleToken: access.seoSearchConsoleToken,
       seoAnalyticsId: access.seoAnalyticsId,
-      redirectToCustomDomain,
+      redirectToHost,
     };
   }
 
@@ -97,7 +102,7 @@ async function resolveWebsite(host: string): Promise<ServedWebsite | null> {
     customDomainStatus: access.customDomainStatus,
     seoSearchConsoleToken: access.seoSearchConsoleToken,
     seoAnalyticsId: access.seoAnalyticsId,
-    redirectToCustomDomain: null,
+    redirectToHost: null,
   };
 }
 
@@ -124,13 +129,11 @@ export async function GET(request: Request, context: RouteContext) {
 
   const { path } = await context.params;
 
-  // Once a real custom domain is connected, the sites subdomain is a
-  // permanent redirect so Google only indexes one host.
-  if (website.redirectToCustomDomain) {
+  if (website.redirectToHost) {
     const targetPath =
       path && path.length > 0 ? `/${path.join("/")}` : "/";
     return NextResponse.redirect(
-      `https://${website.redirectToCustomDomain}${targetPath}`,
+      `https://${website.redirectToHost}${targetPath}`,
       301,
     );
   }

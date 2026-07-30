@@ -69,7 +69,7 @@ function hostFromHeader(value: string | null): string | null {
 
 function isAllowedOrigin(params: {
   request: Request;
-  slug: string;
+  sitesLabel: string;
   customDomain: string | null;
   customDomainStatus: string;
 }): boolean {
@@ -85,8 +85,8 @@ function isAllowedOrigin(params: {
     return true;
   }
 
-  // Graduated Pro sites on `{slug}.refreshkiwi.site`.
-  if (sitesSlugFromHost(host) === params.slug) {
+  // Graduated Pro sites on `{label}.refreshkiwi.site`.
+  if (sitesSlugFromHost(host) === params.sitesLabel) {
     return true;
   }
 
@@ -212,7 +212,7 @@ export async function POST(request: Request) {
   if (
     !isAllowedOrigin({
       request,
-      slug: target.slug,
+      sitesLabel: target.sitesLabel,
       customDomain: target.customDomain,
       customDomainStatus: target.customDomainStatus,
     })

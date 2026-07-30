@@ -255,6 +255,10 @@ export const websites = pgTable(
       .default("refresh"),
     creationPrompt: text("creation_prompt"),
     slug: text("slug").notNull().unique(),
+    /** Public label for `{subdomain}.refreshkiwi.site`. Null means "use the
+     * slug". The slug stays the storage key everywhere; this only changes the
+     * public address. */
+    subdomain: text("subdomain"),
     brandName: text("brand_name"),
     status: websiteStatusEnum("status").notNull().default("preview"),
     freeEditsUsed: integer("free_edits_used").notNull().default(0),
@@ -294,6 +298,10 @@ export const websites = pgTable(
     customDomainIdx: uniqueIndex("websites_custom_domain_idx")
       .on(table.customDomain)
       .where(sql`${table.customDomain} IS NOT NULL`),
+    // One website per sites-domain subdomain, mirroring the custom-domain rule.
+    subdomainIdx: uniqueIndex("websites_subdomain_idx")
+      .on(table.subdomain)
+      .where(sql`${table.subdomain} IS NOT NULL`),
   }),
 );
 
