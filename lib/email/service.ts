@@ -336,6 +336,8 @@ export async function sendUpgradeSuccessEmail(params: { to: string }) {
     text: [
       "Welcome to Kiwi Pro. Your website is now online, hosted by us.",
       "",
+      "You'll find its live Refresh Kiwi address on your dashboard (yourbusiness.refreshkiwi.site). Share that, or connect your own domain when you're ready.",
+      "",
       "Your plan includes:",
       "- Live hosting — we keep your site online, no tech setup",
       "- Unlimited changes — just ask in plain English",
@@ -351,7 +353,8 @@ export async function sendUpgradeSuccessEmail(params: { to: string }) {
     ].join("\n"),
     html: shell(`
       ${heading("Welcome to Kiwi Pro.")}
-      <p>Your website is now online, hosted by us. Here's what your plan includes:</p>
+      <p>Your website is now online, hosted by us. You'll find its live Refresh Kiwi address on your dashboard (<code>yourbusiness.refreshkiwi.site</code>). Share that, or connect your own domain when you're ready.</p>
+      <p>Here's what your plan includes:</p>
       ${card(`
         ${feature("Live hosting", "we keep your site online, no tech setup")}
         ${feature("Unlimited changes", "just ask in plain English")}

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { assertRateLimit, rateLimitKey } from "@/lib/auth/rateLimit";
 import { rateLimitResponse } from "@/lib/auth/rateLimitResponse";
 import { sendContactEnquiryEmail } from "@/lib/email/service";
+import { sitesSlugFromHost } from "@/lib/sites/domain";
 import {
   getWebsiteContactTarget,
   normalizeCustomDomain,
@@ -68,6 +69,7 @@ function hostFromHeader(value: string | null): string | null {
 
 function isAllowedOrigin(params: {
   request: Request;
+  slug: string;
   customDomain: string | null;
   customDomainStatus: string;
 }): boolean {
@@ -80,6 +82,11 @@ function isAllowedOrigin(params: {
   }
 
   if (APP_HOSTS.has(host)) {
+    return true;
+  }
+
+  // Graduated Pro sites on `{slug}.refreshkiwi.site`.
+  if (sitesSlugFromHost(host) === params.slug) {
     return true;
   }
 
@@ -205,6 +212,7 @@ export async function POST(request: Request) {
   if (
     !isAllowedOrigin({
       request,
+      slug: target.slug,
       customDomain: target.customDomain,
       customDomainStatus: target.customDomainStatus,
     })

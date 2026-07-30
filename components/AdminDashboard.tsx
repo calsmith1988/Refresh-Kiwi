@@ -12,6 +12,18 @@ function previewHref(slug: string): string {
   return `${appUrl}/preview/${slug}/index.html`;
 }
 
+function publicWebsiteHref(website: { slug: string; status: string }): string {
+  if (website.status === "live") {
+    const sitesDomain = (
+      process.env.NEXT_PUBLIC_SITES_DOMAIN?.trim() || "refreshkiwi.site"
+    ).replace(/^\.+|\.+$/g, "");
+
+    return `https://${website.slug}.${sitesDomain}/`;
+  }
+
+  return previewHref(website.slug);
+}
+
 type SeriesPoint = { day: string; value: number };
 
 type Stats = {
@@ -750,7 +762,7 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
                           <td className={td}>
                             <a
                               className="underline"
-                              href={previewHref(website.slug)}
+                              href={publicWebsiteHref(website)}
                               target="_blank"
                               rel="noreferrer"
                             >
@@ -863,7 +875,7 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
                       <td className={td}>
                         <a
                           className="underline"
-                          href={previewHref(website.slug)}
+                          href={publicWebsiteHref(website)}
                           target="_blank"
                           rel="noreferrer"
                         >

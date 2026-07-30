@@ -2,6 +2,7 @@ import { and, count, desc, eq, inArray, isNull, ne } from "drizzle-orm";
 
 import { getDb, schema } from "@/lib/db";
 import { deleteRenderCustomDomain } from "@/lib/render/domains";
+import { getSitesDomain } from "@/lib/sites/domain";
 import { deleteSiteDirectoryFromR2 } from "@/lib/storage/r2";
 
 const { editRequests, jobs, users, websites } = schema;
@@ -129,7 +130,14 @@ export function normalizeCustomDomain(input: string): string {
     throw new Error("Enter a valid domain, like www.example.com");
   }
 
-  if (domain === "refresh.kiwi" || domain.endsWith(".refresh.kiwi")) {
+  const sitesDomain = getSitesDomain();
+
+  if (
+    domain === "refresh.kiwi" ||
+    domain.endsWith(".refresh.kiwi") ||
+    domain === sitesDomain ||
+    domain.endsWith(`.${sitesDomain}`)
+  ) {
     throw new Error("Use a domain you own, not a Refresh Kiwi domain.");
   }
 
@@ -619,6 +627,51 @@ export async function getWebsiteAccessBySlug(slug: string) {
     isAllowed: !isExpired && website.status !== "expired" && website.status !== "archived",
     isExpired,
     userIsPro,
+  };
+}
+
+/**
+ * Access check for `{slug}.refreshkiwi.site`. Only live Pro sites graduate
+ * off /preview/ — everything else 404s on the sites domain.
+ */
+export async function getWebsiteAccessBySitesSlug(slug: string) {
+  const [website] = await getDb()
+    .select({
+      id: websites.id,
+      status: websites.status,
+      slug: websites.slug,
+      expiresAt: websites.expiresAt,
+      customDomain: websites.customDomain,
+      customDomainStatus: websites.customDomainStatus,
+      seoSearchConsoleToken: websites.seoSearchConsoleToken,
+      seoAnalyticsId: websites.seoAnalyticsId,
+      user: {
+        plan: users.plan,
+        subscriptionStatus: users.subscriptionStatus,
+      },
+    })
+    .from(websites)
+    .leftJoin(users, eq(websites.userId, users.id))
+    .where(eq(websites.slug, slug))
+    .limit(1);
+
+  if (!website) {
+    return null;
+  }
+
+  const userIsPro = website.user ? isProUser(website.user) : false;
+  const isLive = website.status === "live";
+  const isExpired =
+    !isLive && !userIsPro && website.expiresAt.getTime() < Date.now();
+  const isAllowed =
+    !isExpired && website.status !== "expired" && website.status !== "archived";
+
+  return {
+    ...website,
+    isAllowed,
+    isExpired,
+    userIsPro,
+    isSitesEligible: isAllowed && isLive && userIsPro,
   };
 }
 

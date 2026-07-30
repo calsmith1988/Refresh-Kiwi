@@ -1,3 +1,5 @@
+import { isReservedSitesSubdomain } from "@/lib/sites/domain";
+
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export function slugFromUrl(url: string): string {
@@ -20,7 +22,7 @@ export function normalizeSlug(value: string): string {
 }
 
 export function isValidSlug(slug: string): boolean {
-  return SLUG_PATTERN.test(slug);
+  return SLUG_PATTERN.test(slug) && !isReservedSitesSubdomain(slug);
 }
 
 export async function resolveUniqueSlug(
@@ -28,13 +30,16 @@ export async function resolveUniqueSlug(
   exists: (slug: string) => Promise<boolean>,
 ): Promise<string> {
   const normalized = normalizeSlug(baseSlug) || "site";
-  if (!(await exists(normalized))) {
+  const taken = async (slug: string) =>
+    isReservedSitesSubdomain(slug) || (await exists(slug));
+
+  if (!(await taken(normalized))) {
     return normalized;
   }
 
   for (let index = 2; index < 100; index += 1) {
     const candidate = `${normalized}-${index}`;
-    if (!(await exists(candidate))) {
+    if (!(await taken(candidate))) {
       return candidate;
     }
   }

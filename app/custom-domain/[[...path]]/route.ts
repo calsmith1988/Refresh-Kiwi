@@ -12,13 +12,26 @@ import {
   buildCustomDomainSitemap,
   injectSeoTags,
 } from "@/lib/seo/customDomain";
-import { getWebsiteAccessByCustomDomain } from "@/lib/websites/service";
+import { sitesSlugFromHost } from "@/lib/sites/domain";
+import {
+  getWebsiteAccessByCustomDomain,
+  getWebsiteAccessBySitesSlug,
+} from "@/lib/websites/service";
 
 export const runtime = "nodejs";
 
 interface RouteContext {
   params: Promise<{ path?: string[] }>;
 }
+
+type ServedWebsite = {
+  slug: string;
+  customDomain: string | null;
+  customDomainStatus?: string | null;
+  seoSearchConsoleToken: string | null;
+  seoAnalyticsId: string | null;
+  redirectToCustomDomain: string | null;
+};
 
 function rewriteLocalPreviewOrigins(
   body: Buffer,
@@ -40,6 +53,54 @@ function isHtmlContentType(contentType: string): boolean {
   return contentType.split(";")[0].trim() === "text/html";
 }
 
+function notFound(reason: string, extra: Record<string, string> = {}) {
+  return NextResponse.json(
+    { error: "Website not found", reason, ...extra },
+    { status: 404 },
+  );
+}
+
+async function resolveWebsite(host: string): Promise<ServedWebsite | null> {
+  const sitesSlug = sitesSlugFromHost(host);
+
+  if (sitesSlug) {
+    const access = await getWebsiteAccessBySitesSlug(sitesSlug);
+
+    if (!access?.isSitesEligible) {
+      return null;
+    }
+
+    const redirectToCustomDomain =
+      access.customDomainStatus === "connected" && access.customDomain
+        ? access.customDomain
+        : null;
+
+    return {
+      slug: access.slug,
+      customDomain: access.customDomain,
+      customDomainStatus: access.customDomainStatus,
+      seoSearchConsoleToken: access.seoSearchConsoleToken,
+      seoAnalyticsId: access.seoAnalyticsId,
+      redirectToCustomDomain,
+    };
+  }
+
+  const access = await getWebsiteAccessByCustomDomain(host);
+
+  if (!access?.isAllowed) {
+    return null;
+  }
+
+  return {
+    slug: access.slug,
+    customDomain: access.customDomain,
+    customDomainStatus: access.customDomainStatus,
+    seoSearchConsoleToken: access.seoSearchConsoleToken,
+    seoAnalyticsId: access.seoAnalyticsId,
+    redirectToCustomDomain: null,
+  };
+}
+
 export async function GET(request: Request, context: RouteContext) {
   // Only the middleware-set header is trusted here. The ?host= query param
   // and the raw Host header are client-controlled, so honouring them would
@@ -49,34 +110,46 @@ export async function GET(request: Request, context: RouteContext) {
     null;
 
   if (!host) {
-    return NextResponse.json(
-      { error: "Website not found", reason: "missing_host" },
-      { status: 404 },
-    );
+    return notFound("missing_host");
   }
 
-  const websiteAccess = await getWebsiteAccessByCustomDomain(host);
+  const website = await resolveWebsite(host);
 
-  if (!websiteAccess || !websiteAccess.isAllowed) {
-    return NextResponse.json(
-      { error: "Website not found", reason: "domain_not_connected", host },
-      { status: 404 },
+  if (!website) {
+    return notFound(
+      sitesSlugFromHost(host) ? "sites_not_eligible" : "domain_not_connected",
+      { host },
     );
   }
 
   const { path } = await context.params;
-  const file = await readPreviewFile(websiteAccess.slug, path ?? []);
 
-  // Canonical host: the domain as connected in the dashboard, so www and
-  // bare-domain requests both point search engines at one version.
-  const canonicalHost = websiteAccess.customDomain ?? host;
+  // Once a real custom domain is connected, the sites subdomain is a
+  // permanent redirect so Google only indexes one host.
+  if (website.redirectToCustomDomain) {
+    const targetPath =
+      path && path.length > 0 ? `/${path.join("/")}` : "/";
+    return NextResponse.redirect(
+      `https://${website.redirectToCustomDomain}${targetPath}`,
+      301,
+    );
+  }
+
+  const file = await readPreviewFile(website.slug, path ?? []);
+
+  // Canonical host: prefer a connected custom domain; otherwise the host the
+  // visitor used (sites subdomain or the connected domain itself).
+  const canonicalHost =
+    website.customDomainStatus === "connected" && website.customDomain
+      ? website.customDomain
+      : host;
 
   // Generated sitemap/robots from site.json — only when the site itself
   // doesn't ship those files, so hand-written versions always win.
   if (!file && path?.length === 1) {
     if (path[0] === "sitemap.xml") {
       return new NextResponse(
-        await buildCustomDomainSitemap(websiteAccess.slug, canonicalHost),
+        await buildCustomDomainSitemap(website.slug, canonicalHost),
         {
           headers: {
             "Content-Type": "application/xml; charset=utf-8",
@@ -97,10 +170,7 @@ export async function GET(request: Request, context: RouteContext) {
   }
 
   if (!file) {
-    return NextResponse.json(
-      { error: "Page not found", reason: "file_not_found", slug: websiteAccess.slug },
-      { status: 404 },
-    );
+    return notFound("file_not_found", { slug: website.slug });
   }
 
   let body = rewriteLocalPreviewOrigins(file.body, file.contentType);
@@ -111,8 +181,8 @@ export async function GET(request: Request, context: RouteContext) {
       host: canonicalHost,
       pathSegments: path ?? [],
       settings: {
-        searchConsoleToken: websiteAccess.seoSearchConsoleToken,
-        analyticsId: websiteAccess.seoAnalyticsId,
+        searchConsoleToken: website.seoSearchConsoleToken,
+        analyticsId: website.seoAnalyticsId,
       },
     });
   }

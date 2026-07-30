@@ -469,12 +469,26 @@ function pageHref(slug: string, pagePath: string): string {
   return `/preview/${slug}${normalizedPath}`;
 }
 
-function websiteAddress(website: Website): string {
+function sitesDomain(): string {
+  return (
+    process.env.NEXT_PUBLIC_SITES_DOMAIN?.trim() || "refreshkiwi.site"
+  ).replace(/^\.+|\.+$/g, "");
+}
+
+function publicWebsiteHref(website: Website): string {
   if (website.customDomainStatus === "connected" && website.customDomain) {
     return `https://${website.customDomain}`;
   }
 
+  if (website.status === "live") {
+    return `https://${website.slug}.${sitesDomain()}/`;
+  }
+
   return previewHref(website.slug);
+}
+
+function websiteAddress(website: Website): string {
+  return publicWebsiteHref(website);
 }
 
 function sourceHostname(sourceUrl: string | null): string {
@@ -1955,8 +1969,9 @@ export default function DashboardPage() {
                 You&apos;re on Kiwi Pro! 🥝
               </p>
               <p className="mt-1 text-sm leading-6 text-black/60">
-                Your website is online. You&apos;ve got unlimited changes,
-                extra pages, and you can connect your own web address below.
+                Your website is live on its Refresh Kiwi address. You&apos;ve
+                got unlimited changes, extra pages, and you can connect your
+                own domain below whenever you&apos;re ready.
               </p>
             </div>
             <ModalCloseButton
@@ -2423,7 +2438,7 @@ export default function DashboardPage() {
                           <div className="mt-4 flex flex-wrap gap-2 border-t border-black/10 pt-4">
                             {state.canView ? (
                               <Link
-                                href={previewHref(website.slug)}
+                                href={publicWebsiteHref(website)}
                                 target="_blank"
                                 className="inline-flex items-center gap-2 rounded-2xl bg-[#141811] px-4 py-2 text-xs font-semibold text-white transition hover:bg-black"
                               >

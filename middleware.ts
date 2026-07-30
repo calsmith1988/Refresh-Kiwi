@@ -1,5 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import {
+  getAppMarketingUrl,
+  isSitesApexHost,
+  sitesSlugFromHost,
+} from "@/lib/sites/domain";
 import { CUSTOM_DOMAIN_HOST_HEADER } from "@/lib/security/headers";
 
 const APP_HOSTS = new Set([
@@ -38,6 +43,31 @@ export function middleware(request: NextRequest) {
   // Never forward a client-supplied copy of the internal host header.
   const requestHeaders = new Headers(request.headers);
   requestHeaders.delete(CUSTOM_DOMAIN_HOST_HEADER);
+
+  // Sites domain apex is not a customer site — send people to the app.
+  if (host && isSitesApexHost(host)) {
+    return NextResponse.redirect(`${getAppMarketingUrl()}/`, 308);
+  }
+
+  // `{slug}.refreshkiwi.site` — same serving path as connected custom domains.
+  if (host && sitesSlugFromHost(host)) {
+    if (
+      pathname.startsWith("/api") ||
+      pathname.startsWith("/custom-domain") ||
+      pathname.startsWith("/_next") ||
+      pathname.startsWith("/preview")
+    ) {
+      return NextResponse.next({ request: { headers: requestHeaders } });
+    }
+
+    requestHeaders.set(CUSTOM_DOMAIN_HOST_HEADER, host);
+
+    const url = request.nextUrl.clone();
+    url.pathname = `/custom-domain/${pathname.replace(/^\/+/, "")}`;
+    url.searchParams.delete("host");
+
+    return NextResponse.rewrite(url, { request: { headers: requestHeaders } });
+  }
 
   if (
     !host ||
