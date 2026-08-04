@@ -161,14 +161,14 @@ export default function BuildRewardPanel({
         <button
           type="button"
           onClick={onBack}
-          className="flex min-w-0 items-center gap-2 rounded-full border border-black/10 bg-white px-3.5 py-1.5 text-xs font-semibold transition hover:border-black/25"
+          className="flex min-w-0 items-center gap-2 rounded-full border border-kiwi-green/60 bg-kiwi-green/15 px-4 py-2 text-sm font-semibold transition hover:border-kiwi-green"
         >
           <span
             aria-hidden
-            className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-kiwi-green"
+            className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-kiwi-green"
           />
           <span className="truncate">
-            Building your website —{" "}
+            Still building your website —{" "}
             <span className="tabular-nums">{formatElapsed(buildElapsedMs)}</span>
             <span className="text-black/40"> / ~2 min</span>
           </span>

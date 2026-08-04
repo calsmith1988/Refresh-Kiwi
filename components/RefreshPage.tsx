@@ -2995,15 +2995,21 @@ export default function RefreshPage({
                       🥝 Free month won — saved to this website
                     </div>
                   ) : (
-                    <button
-                      type="button"
-                      onClick={() => setShowRewardGame(true)}
-                      className="reward-cta-pulse mt-6 block w-full rounded-full border bg-white px-5 py-3 text-sm font-bold transition hover:border-black/30"
-                    >
-                      {rewardOutcome === "lost"
-                        ? "🥝 So close — have another go"
-                        : "🥝 Win your first month free — play while we build"}
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setShowRewardGame(true)}
+                        className="reward-cta-pulse mt-6 block w-full rounded-full border bg-white px-5 py-3 text-sm font-bold transition hover:border-black/30"
+                      >
+                        {rewardOutcome === "lost"
+                          ? "🥝 So close — have another go"
+                          : "🥝 Win your first month free — play while we build"}
+                      </button>
+                      <p className="mt-2 text-xs text-black/45">
+                        Your build keeps running while you play — this just
+                        passes the wait.
+                      </p>
+                    </>
                   )
                 ) : null}
                 {job?.id ? (

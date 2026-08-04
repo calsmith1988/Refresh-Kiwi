@@ -44,11 +44,19 @@ const ROTTEN_POINTS = -1;
  */
 const SPAWN_START_MS = 900;
 const SPAWN_END_MS = 520;
-const FALL_MS = 1_900;
-const GOLDEN_FALL_MS = 1_550;
+const FALL_MS = 1_500;
+const GOLDEN_FALL_MS = 1_250;
 const REDUCED_MOTION_FALL_MS = 2_700;
+/**
+ * Falls quicken by this fraction across the round (on top of the spawn-rate
+ * ramp) so the finish feels like a rush instead of the same float throughout.
+ * Playtest feedback: the original constant 1.9s fall read as too slow.
+ */
+const FALL_SPEED_RAMP = 0.15;
 const KEYBOARD_STEP = 26;
 const SCORE_POP_MS = 620;
+/** How long the basket stays red after catching a rotten kiwi. */
+const ROTTEN_FLASH_MS = 500;
 
 const BRAND_GREEN = "#C5E66A";
 const DEEP_GREEN = "#6F9B24";
@@ -88,6 +96,8 @@ interface ScorePop {
   y: number;
   value: number;
   startedAt: number;
+  /** Replaces the plain "+n"/"-n" text, e.g. "Rotten! −1". */
+  label?: string;
 }
 
 interface KiwiCatchGameProps {
@@ -336,6 +346,9 @@ export default function KiwiCatchGame({
     let hudAccumulator = 0;
     let banked = false;
     let finished = false;
+    // Basket flashes red until this timestamp after a rotten catch — the
+    // mistake teaches the rule, since nobody reads the instructions overlay.
+    let rottenFlashUntil = 0;
     let raf: number | null = null;
 
     const startedAt = performance.now();
@@ -360,7 +373,7 @@ export default function KiwiCatchGame({
 
     const catchLineY = height - BASKET_BOTTOM_GAP - BASKET_HEIGHT;
 
-    const spawn = () => {
+    const spawn = (progress: number) => {
       const roll = Math.random();
       const kind: KiwiKind =
         roll < GOLDEN_CHANCE
@@ -376,13 +389,15 @@ export default function KiwiCatchGame({
         : kind === "golden"
           ? GOLDEN_FALL_MS
           : FALL_MS;
+      // Late-round kiwis fall a touch faster (reduced motion stays constant).
+      const speedRamp = reducedMotion ? 1 : 1 + FALL_SPEED_RAMP * progress;
       const half = size / 2;
 
       kiwis.push({
         x: half + Math.random() * Math.max(1, width - size),
         y: -half,
         previousY: -half,
-        speed: (height + size) / fallMs,
+        speed: ((height + size) / fallMs) * speedRamp,
         size,
         rotation: Math.random() * Math.PI * 2,
         spin: (Math.random() - 0.5) * (reducedMotion ? 0.0008 : 0.0035),
@@ -473,8 +488,9 @@ export default function KiwiCatchGame({
         ctx.font = "700 15px system-ui, sans-serif";
         ctx.textAlign = "center";
         ctx.fillText(
-          `${gained ? "+" : ""}${pop.value}`,
-          pop.x,
+          pop.label ?? `${gained ? "+" : ""}${pop.value}`,
+          // Nudge labelled pops away from the stage edges so the text fits.
+          pop.label ? Math.min(width - 40, Math.max(40, pop.x)) : pop.x,
           pop.y - 26 * t,
         );
         ctx.restore();
@@ -501,15 +517,18 @@ export default function KiwiCatchGame({
       // Basket redrawn from drawStage's pieces so play and idle frames match.
       const left = basketX - BASKET_WIDTH / 2;
       const top = height - BASKET_BOTTOM_GAP - BASKET_HEIGHT;
+      const rottenFlash = now < rottenFlashUntil;
 
       ctx.save();
       roundedRectPath(ctx, left, top, BASKET_WIDTH, BASKET_HEIGHT, 9);
-      ctx.fillStyle = BRAND_GREEN;
+      ctx.fillStyle = rottenFlash ? PENALTY_RED : BRAND_GREEN;
       ctx.fill();
       ctx.lineWidth = 2;
       ctx.strokeStyle = INK;
       ctx.stroke();
-      ctx.strokeStyle = "rgba(20, 24, 17, 0.28)";
+      ctx.strokeStyle = rottenFlash
+        ? "rgba(255, 255, 255, 0.4)"
+        : "rgba(20, 24, 17, 0.28)";
       ctx.lineWidth = 1.5;
 
       for (let i = 1; i < 4; i += 1) {
@@ -568,7 +587,7 @@ export default function KiwiCatchGame({
 
         if (spawnAccumulator >= interval) {
           spawnAccumulator = 0;
-          spawn();
+          spawn(progress);
         }
 
         for (let i = kiwis.length - 1; i >= 0; i -= 1) {
@@ -603,11 +622,16 @@ export default function KiwiCatchGame({
               onTargetReachedRef.current();
             }
 
+            if (kiwi.kind === "rotten") {
+              rottenFlashUntil = now + ROTTEN_FLASH_MS;
+            }
+
             scorePops.push({
               x: kiwi.x,
               y: catchLineY,
               value,
               startedAt: now,
+              label: kiwi.kind === "rotten" ? "Rotten! −1" : undefined,
             });
             kiwis.splice(i, 1);
             continue;
@@ -773,6 +797,9 @@ export default function KiwiCatchGame({
             >
               {isStarting ? "Getting the punnet…" : "Play"}
             </button>
+            <p className="mt-3 text-xs text-black/45">
+              Your website keeps building while you play.
+            </p>
           </div>
         ) : null}
 
