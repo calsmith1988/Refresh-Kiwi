@@ -19,9 +19,10 @@ const GUIDED_PROMPTS = [
   "Your business name",
   "A bit about the business",
   "Where you're based",
-  "The services you offer",
+  "The main services you offer",
   "Why you're different",
-  "Opening hours",
+  "How people should contact you",
+  "Opening hours (if you have set times)",
   "About you or your team",
 ];
 
