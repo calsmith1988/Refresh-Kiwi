@@ -99,23 +99,28 @@ function preserveLineBreaks(value: string): string {
 function previewReadyCopy(
   brandName?: string | null,
   generationMode?: "refresh" | "fresh" | null,
+  isPro?: boolean,
 ) {
   const name = brandName?.trim();
   // Fresh builds (from-scratch or Google listing) were never "refreshed".
   const adjective = generationMode === "fresh" ? "new" : "refreshed";
+  // Pro subscribers already pay for publishing, so never pitch them Pro.
+  const nextSteps = isPro
+    ? "You can view it, save it, or ask for changes — publishing is included in your Kiwi Pro plan."
+    : "You can view it, save it, ask for changes, or go Pro when you are ready.";
 
   if (!name) {
     return {
       subject: `Your ${adjective} homepage is ready`,
       headline: `Your ${adjective} homepage is ready.`,
-      text: `Your ${adjective} homepage is ready. You can view it, save it, ask for changes, or go Pro when you are ready.`,
+      text: `Your ${adjective} homepage is ready. ${nextSteps}`,
     };
   }
 
   return {
     subject: `Your ${adjective} ${name} homepage is ready`,
     headline: `Your ${adjective} ${name} homepage is ready.`,
-    text: `Your ${adjective} ${name} homepage is ready. You can view it, save it, ask for changes, or go Pro when you are ready.`,
+    text: `Your ${adjective} ${name} homepage is ready. ${nextSteps}`,
   };
 }
 
@@ -303,12 +308,20 @@ export async function sendPreviewReadyEmail(params: {
   previewUrl: string;
   screenshotUrl?: string | null;
   generationMode?: "refresh" | "fresh" | null;
+  isPro?: boolean;
 }) {
   const url = buildAppUrl(params.previewUrl);
   const screenshotUrl = params.screenshotUrl
     ? buildAppUrl(params.screenshotUrl)
     : null;
-  const copy = previewReadyCopy(params.brandName, params.generationMode);
+  const copy = previewReadyCopy(
+    params.brandName,
+    params.generationMode,
+    params.isPro,
+  );
+  const htmlNextSteps = params.isPro
+    ? "You can save it, ask for changes — publishing is included in your Kiwi Pro plan."
+    : "You can save it, ask for changes, or go Pro when you are ready.";
 
   await sendEmail({
     to: params.to,
@@ -322,7 +335,7 @@ export async function sendPreviewReadyEmail(params: {
           : ""
       }
       <p>${button(url, "View your preview")}</p>
-      <p style="color:#666">You can save it, ask for changes, or go Pro when you are ready.</p>
+      <p style="color:#666">${htmlNextSteps}</p>
     `),
   });
 }

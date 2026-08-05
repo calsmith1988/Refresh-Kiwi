@@ -1883,6 +1883,19 @@ export default function RefreshPage({
     try {
       await claimCurrentWebsite();
       setPendingUpgrade(false);
+
+      // Already-Pro users must never see the payment sheet again — the claim
+      // above already publishes the site under their existing subscription.
+      const alreadyPro =
+        user.plan === "pro" &&
+        (user.subscriptionStatus === "active" ||
+          user.subscriptionStatus === "trialing");
+
+      if (alreadyPro) {
+        window.location.href = "/dashboard";
+        return;
+      }
+
       setShowProSheet(true);
     } catch (error) {
       setErrorMessage(
@@ -2454,6 +2467,13 @@ export default function RefreshPage({
   // Signed-in users only see it if they've never subscribed.
   const rewardOfferVisible =
     !user || (user.plan === "free" && user.subscriptionStatus === "none");
+  // Pro subscribers should never see free-plan copy (expiry dates, edit
+  // quotas) or upgrade pricing on the result screen — their sites publish
+  // straight onto their existing plan.
+  const userIsPro =
+    user?.plan === "pro" &&
+    (user.subscriptionStatus === "active" ||
+      user.subscriptionStatus === "trialing");
   // Prefer the frozen reveal snapshot; fall back to job timestamps when the
   // preview is restored after a reload (no live timer for that session).
   const readyDurationMs =
@@ -3077,21 +3097,26 @@ export default function RefreshPage({
                   {activeMode === "fresh" ? "." : ", refreshed."}
                 </h1>
                 <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-black/55 sm:mt-3 sm:text-base sm:leading-7">
-                  {job?.isClaimed
-                    ? expiryLabel
-                      ? `Saved to your account — yours free until ${expiryLabel}. Add your other pages when you take it online.`
-                      : "Saved to your account. Add your other pages when you take it online."
-                    : expiryLabel
-                      ? `This is your homepage to start with. Take it online to add your other pages and keep making changes — or keep the preview free until ${expiryLabel} while you decide.`
-                      : "This is your homepage to start with. Take it online to add your other pages and keep making changes — or keep the preview free for 7 days while you decide."}
+                  {userIsPro
+                    ? job?.isClaimed
+                      ? "Saved to your account and live on your Kiwi Pro plan. Add your other pages from your dashboard."
+                      : "This is your homepage to start with. It's covered by your Kiwi Pro plan — save it and it goes live straight away."
+                    : job?.isClaimed
+                      ? expiryLabel
+                        ? `Saved to your account — yours free until ${expiryLabel}. Add your other pages when you take it online.`
+                        : "Saved to your account. Add your other pages when you take it online."
+                      : expiryLabel
+                        ? `This is your homepage to start with. Take it online to add your other pages and keep making changes — or keep the preview free until ${expiryLabel} while you decide.`
+                        : "This is your homepage to start with. Take it online to add your other pages and keep making changes — or keep the preview free for 7 days while you decide."}
                 </p>
                 {!job?.isClaimed ? (
                   // Design taste is the #1 silent "no" at this moment — this
                   // line turns "I don't like it" into a free move instead of
                   // a dead end.
                   <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-black/55">
-                    Want different colours, photos or layout? Just ask — you
-                    get 3 free changes from your dashboard.
+                    {userIsPro
+                      ? "Want different colours, photos or layout? Just ask from your dashboard — changes are included in your plan."
+                      : "Want different colours, photos or layout? Just ask — you get 3 free changes from your dashboard."}
                   </p>
                 ) : null}
               </div>
@@ -3121,10 +3146,12 @@ export default function RefreshPage({
                   <div>
                     <div
                       className={`grid gap-3 ${
-                        pricing.checkoutAllowed ? "sm:grid-cols-2" : ""
+                        pricing.checkoutAllowed && !userIsPro
+                          ? "sm:grid-cols-2"
+                          : ""
                       }`}
                     >
-                      {pricing.checkoutAllowed ? (
+                      {userIsPro ? (
                         <button
                           type="button"
                           onClick={() => {
@@ -3133,28 +3160,48 @@ export default function RefreshPage({
                           className="flex min-h-24 flex-col items-center justify-center rounded-3xl bg-kiwi-green px-6 py-4 text-center transition hover:bg-kiwi-green-hover"
                         >
                           <span className="text-sm font-bold">
-                            Make this my website — {pricing.proPriceShort}
+                            Make this my website
                           </span>
                           <span className="mt-1 text-xs leading-5 text-black/60">
-                            Add your other pages, keep making changes, and go live
-                            on your own web address.
+                            Included in your Kiwi Pro plan — it goes live
+                            straight away, no extra charge.
                           </span>
                         </button>
-                      ) : null}
-                      <button
-                        type="button"
-                        onClick={handleOpenAccount}
-                        className="flex min-h-24 flex-col items-center justify-center rounded-3xl border border-black/15 bg-white px-6 py-4 text-center transition hover:border-black/30"
-                      >
-                        <span className="text-sm font-semibold">
-                          Not sure yet? Keep it free for 7 days
-                        </span>
-                        <span className="mt-1 text-xs leading-5 text-black/50">
-                          Free account · 3 free changes · decide anytime
-                        </span>
-                      </button>
+                      ) : (
+                        <>
+                          {pricing.checkoutAllowed ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                void handleUpgrade();
+                              }}
+                              className="flex min-h-24 flex-col items-center justify-center rounded-3xl bg-kiwi-green px-6 py-4 text-center transition hover:bg-kiwi-green-hover"
+                            >
+                              <span className="text-sm font-bold">
+                                Make this my website — {pricing.proPriceShort}
+                              </span>
+                              <span className="mt-1 text-xs leading-5 text-black/60">
+                                Add your other pages, keep making changes, and go live
+                                on your own web address.
+                              </span>
+                            </button>
+                          ) : null}
+                          <button
+                            type="button"
+                            onClick={handleOpenAccount}
+                            className="flex min-h-24 flex-col items-center justify-center rounded-3xl border border-black/15 bg-white px-6 py-4 text-center transition hover:border-black/30"
+                          >
+                            <span className="text-sm font-semibold">
+                              Not sure yet? Keep it free for 7 days
+                            </span>
+                            <span className="mt-1 text-xs leading-5 text-black/50">
+                              Free account · 3 free changes · decide anytime
+                            </span>
+                          </button>
+                        </>
+                      )}
                     </div>
-                    {!pricing.checkoutAllowed ? (
+                    {!pricing.checkoutAllowed && !userIsPro ? (
                       <p className="mt-3 text-center text-xs leading-5 text-black/45">
                         {pricing.checkoutUnavailableMessage}
                       </p>
@@ -3174,9 +3221,11 @@ export default function RefreshPage({
                       <p className="text-sm font-semibold">
                         ✓ Saved —{" "}
                         <span className="font-normal text-black/55">
-                          you have {freeEditsRemaining} free{" "}
-                          {freeEditsRemaining === 1 ? "change" : "changes"}{" "}
-                          left
+                          {userIsPro
+                            ? "live on your Kiwi Pro plan"
+                            : `you have ${freeEditsRemaining} free ${
+                                freeEditsRemaining === 1 ? "change" : "changes"
+                              } left`}
                         </span>
                       </p>
                       <div className="flex flex-wrap gap-2">
@@ -3188,7 +3237,7 @@ export default function RefreshPage({
                         >
                           Open full screen
                         </Link>
-                        {pricing.checkoutAllowed ? (
+                        {pricing.checkoutAllowed && !userIsPro ? (
                           <button
                             type="button"
                             onClick={() => {

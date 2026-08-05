@@ -193,11 +193,13 @@ export async function recoverStaleBackgroundWork(): Promise<void> {
       AND updated_at < now() - make_interval(mins => ${STALE_MINUTES})
   `);
 
+  // This error_message is shown on the dashboard, so it uses customer-facing
+  // copy (same message the pages processor stores on a permanent failure).
   await getDb().execute(sql`
     UPDATE jobs
     SET
       status = 'homepage_ready',
-      error_message = 'Recovered stale page generation job.',
+      error_message = 'We couldn''t finish building your pages this time. Please try again.',
       updated_at = now()
     WHERE status = 'building_pages'
       AND updated_at < now() - make_interval(mins => ${STALE_MINUTES})

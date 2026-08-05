@@ -32,6 +32,58 @@ export class SourceUnreachableError extends Error {
 }
 
 /**
+ * A Cursor run started but finished with status "error" — distinct from
+ * CursorAgentError, which means the run never started. Transient backend
+ * problems (e.g. rate limits) can surface this way, so callers may choose to
+ * requeue on this class.
+ */
+export class CursorRunFailedError extends Error {
+  readonly runId: string;
+
+  constructor(label: string, runId: string, detail: string | null) {
+    super(`${label} (run ${runId})${detail ? `: ${detail}` : ""}`);
+    this.name = "CursorRunFailedError";
+    this.runId = runId;
+  }
+}
+
+/**
+ * Pulls whatever failure detail a failed run exposes (an SDK error field when
+ * present, otherwise the agent's final message) so logs say *why* a run
+ * failed instead of just that it did.
+ */
+function describeRunFailure(result: RunResult): string | null {
+  const rawError = (result as { error?: { message?: string } | string | null })
+    .error;
+  const errorText =
+    typeof rawError === "string"
+      ? rawError
+      : rawError && typeof rawError.message === "string"
+        ? rawError.message
+        : null;
+  const finalMessage = result.result?.replace(/\s+/g, " ").trim() || null;
+
+  if (errorText && finalMessage && errorText !== finalMessage) {
+    return `${errorText} — ${finalMessage}`;
+  }
+
+  return errorText ?? finalMessage;
+}
+
+/** Logs the run's failure detail, then throws a typed run-failure error. */
+function failRun(label: string, slug: string, result: RunResult): never {
+  const detail = describeRunFailure(result);
+
+  console.error(
+    `[refresh-kiwi] ${label} runId=${result.id} slug=${slug}${
+      detail ? `: ${detail.slice(0, 600)}` : " (no error detail from run)"
+    }`,
+  );
+
+  throw new CursorRunFailedError(label, result.id, detail);
+}
+
+/**
  * The agent's closing message says what it actually did (committed, wrote
  * files, hit a blocker). Logging a snippet makes "finished but produced
  * nothing" failures diagnosable from worker logs alone.
@@ -105,7 +157,7 @@ export async function runHomepagePhase(
     logRunSummary("homepage", params.slug, result);
 
     if (result.status === "error") {
-      throw new Error(`Homepage build failed (run ${result.id})`);
+      failRun("Homepage build failed", params.slug, result);
     }
 
     if (result.status === "cancelled") {
@@ -165,7 +217,7 @@ export async function runFreshHomepagePhase(
     logRunSummary("fresh homepage", params.slug, result);
 
     if (result.status === "error") {
-      throw new Error(`Fresh homepage build failed (run ${result.id})`);
+      failRun("Fresh homepage build failed", params.slug, result);
     }
 
     if (result.status === "cancelled") {
@@ -220,7 +272,7 @@ export async function runAdditionalPagesPhase(
     );
 
     if (result.status === "error") {
-      throw new Error(`Additional pages build failed (run ${result.id})`);
+      failRun("Additional pages build failed", params.slug, result);
     }
 
     if (result.status === "cancelled") {
@@ -277,7 +329,7 @@ export async function runCustomPagePhase(
     );
 
     if (result.status === "error") {
-      throw new Error(`Custom page build failed (run ${result.id})`);
+      failRun("Custom page build failed", params.slug, result);
     }
 
     if (result.status === "cancelled") {
@@ -334,7 +386,7 @@ export async function runLegalPagesPhase(
     );
 
     if (result.status === "error") {
-      throw new Error(`Legal pages build failed (run ${result.id})`);
+      failRun("Legal pages build failed", params.slug, result);
     }
 
     if (result.status === "cancelled") {
@@ -410,7 +462,7 @@ export async function runEditPhase(
     );
 
     if (result.status === "error") {
-      throw new Error(`Edit failed (run ${result.id})`);
+      failRun("Edit failed", params.slug, result);
     }
 
     if (result.status === "cancelled") {

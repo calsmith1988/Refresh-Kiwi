@@ -53,6 +53,8 @@ type Website = {
     | "complete"
     | "failed"
     | null;
+  jobErrorMessage: string | null;
+  jobUpdatedAt: string | null;
   status: "preview" | "live" | "expired" | "archived";
   freeEditsUsed: number;
   freeEditsLimit: number;
@@ -488,6 +490,26 @@ function shouldShowEditOutcomeBanner(
   }
 
   const updatedAtMs = new Date(editRequest.updatedAt).getTime();
+  if (Number.isNaN(updatedAtMs)) {
+    return false;
+  }
+
+  return Date.now() - updatedAtMs < EDIT_OUTCOME_VISIBLE_MS;
+}
+
+/**
+ * A failed pages generation resets the job to "homepage_ready" and stores a
+ * friendly error on it; show that for a day (same window as edit failures) so
+ * the failure isn't silent.
+ */
+function shouldShowPagesOutcomeBanner(
+  website: Pick<Website, "jobStatus" | "jobErrorMessage" | "jobUpdatedAt">,
+): boolean {
+  if (website.jobStatus !== "homepage_ready" || !website.jobErrorMessage) {
+    return false;
+  }
+
+  const updatedAtMs = new Date(website.jobUpdatedAt ?? "").getTime();
   if (Number.isNaN(updatedAtMs)) {
     return false;
   }
@@ -2680,6 +2702,13 @@ export default function DashboardPage() {
                           )
                         ) : null}
 
+                        {!isGeneratingPages &&
+                        shouldShowPagesOutcomeBanner(website) ? (
+                          <p className="mt-3 text-xs font-medium text-amber-700">
+                            {website.jobErrorMessage}
+                          </p>
+                        ) : null}
+
                         {isGeneratingPages ? (
                           <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
                             <Image
@@ -2791,6 +2820,13 @@ export default function DashboardPage() {
                               </svg>
                               Back
                             </button>
+                          ) : null}
+
+                          {!activeFlow &&
+                          shouldShowPagesOutcomeBanner(website) ? (
+                            <p className="mt-4 rounded-2xl bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+                              {website.jobErrorMessage}
+                            </p>
                           ) : null}
 
                           {generatedPages.length > 0 && !activeFlow ? (

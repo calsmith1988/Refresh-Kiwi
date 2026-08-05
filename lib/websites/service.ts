@@ -22,7 +22,7 @@ const PRO_SUBSCRIPTION_STATUSES = new Set<
   typeof users.$inferSelect.subscriptionStatus
 >(["active", "trialing"]);
 
-function isProUser(user: ProPlanCandidate) {
+export function isProUser(user: ProPlanCandidate) {
   return (
     user.plan === "pro" &&
     user.subscriptionStatus !== null &&

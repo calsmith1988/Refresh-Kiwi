@@ -1,3 +1,6 @@
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+
 import { eq } from "drizzle-orm";
 
 import { localizeWebsiteImages } from "@/lib/assets/localize";
@@ -18,10 +21,11 @@ import { sendOnce } from "@/lib/email/events";
 import { sendPreviewReadyEmail } from "@/lib/email/service";
 import { ensureSiteRepo } from "@/lib/github/repos";
 import { logMemoryUsage } from "@/lib/observability/memory";
+import { previewDirectory } from "@/lib/preview/paths";
 import { syncPreviewFromAgent } from "@/lib/preview/sync";
 import { tryCaptureHomepageScreenshot } from "@/lib/screenshots/homepage";
 import { homepageScreenshotPath } from "@/lib/screenshots/paths";
-import { createWebsiteFromJob } from "@/lib/websites/service";
+import { createWebsiteFromJob, isProUser } from "@/lib/websites/service";
 import type { JobStatus } from "@/lib/jobs/types";
 
 const { jobs, users } = schema;
@@ -49,6 +53,57 @@ async function updateJob(
     .update(jobs)
     .set({ ...values, updatedAt: new Date() })
     .where(eq(jobs.id, jobId));
+}
+
+/**
+ * The agent writes the business name it worked out into site.json, but only
+ * Google-listing jobs arrive with a brand name in the database. Backfilling it
+ * here means "homepage ready" emails and dashboard cards can name the business
+ * for URL-refresh and from-scratch builds too.
+ */
+async function backfillBrandNameFromSiteJson(
+  jobId: string,
+  slug: string,
+  currentBrandName: string | null,
+): Promise<void> {
+  if (currentBrandName?.trim()) {
+    return;
+  }
+
+  try {
+    const raw = await readFile(
+      path.join(previewDirectory(slug), "site.json"),
+      "utf8",
+    );
+    const parsed = JSON.parse(raw) as { brandName?: unknown };
+    const brandName =
+      typeof parsed.brandName === "string" ? parsed.brandName.trim() : "";
+
+    if (brandName) {
+      await updateJob(jobId, { brandName });
+    }
+  } catch {
+    // Best effort — emails and UI fall back to generic copy without a name.
+  }
+}
+
+/**
+ * Rehosts hotlinked images before the preview is revealed, so anonymous
+ * visitors never see hotlink-protection placeholders (previously this only
+ * ran for signed-in owners, and only after the reveal). A failure degrades to
+ * the old hotlinked behaviour instead of failing the whole job — claiming the
+ * site enqueues another localize pass anyway.
+ */
+async function tryLocalizeImages(jobId: string, slug: string): Promise<void> {
+  try {
+    await localizeWebsiteImages(slug);
+  } catch (error) {
+    console.warn(
+      `[refresh-kiwi] job ${jobId} image localisation failed slug=${slug}: ${
+        error instanceof Error ? error.message : error
+      }`,
+    );
+  }
 }
 
 async function isJobStillActive(jobId: string): Promise<boolean> {
@@ -145,6 +200,11 @@ export async function processRefreshJob(
       return;
     }
 
+    logMemoryUsage("refresh:before-image-localize", memoryContext);
+    await tryLocalizeImages(jobId, job.slug);
+    logMemoryUsage("refresh:after-image-localize", memoryContext);
+    await backfillBrandNameFromSiteJson(jobId, job.slug, job.brandName);
+
     await updateJob(jobId, {
       status: "homepage_ready",
     });
@@ -172,21 +232,13 @@ export async function processRefreshJob(
       `[refresh-kiwi] job ${jobId} homepage ready in ${elapsedSeconds(jobStartedAt)}s slug=${job.slug}`,
     );
 
-    // Signed-in users own their website immediately (no claim step), so
-    // bring hotlinked images in-house now. Anonymous previews are localised
-    // later, when the visitor signs up and claims the site.
     if (website.userId) {
-      logMemoryUsage("refresh:before-image-localize", {
-        ...memoryContext,
-        websiteId: website.id,
-      });
-      await localizeWebsiteImages(job.slug);
-      logMemoryUsage("refresh:after-image-localize", {
-        ...memoryContext,
-        websiteId: website.id,
-      });
       const [user] = await db
-        .select({ email: users.email })
+        .select({
+          email: users.email,
+          plan: users.plan,
+          subscriptionStatus: users.subscriptionStatus,
+        })
         .from(users)
         .where(eq(users.id, website.userId))
         .limit(1);
@@ -205,6 +257,7 @@ export async function processRefreshJob(
               previewUrl: `/preview/${website.slug}/index.html`,
               screenshotUrl: homepageScreenshotPath(website.slug, Date.now()),
               generationMode: "refresh",
+              isPro: isProUser(user),
             }),
         );
       }
@@ -358,6 +411,11 @@ export async function processFreshJob(
       return;
     }
 
+    logMemoryUsage("fresh:before-image-localize", memoryContext);
+    await tryLocalizeImages(jobId, job.slug);
+    logMemoryUsage("fresh:after-image-localize", memoryContext);
+    await backfillBrandNameFromSiteJson(jobId, job.slug, job.brandName);
+
     await updateJob(jobId, {
       status: "homepage_ready",
     });
@@ -386,17 +444,12 @@ export async function processFreshJob(
     );
 
     if (website.userId) {
-      logMemoryUsage("fresh:before-image-localize", {
-        ...memoryContext,
-        websiteId: website.id,
-      });
-      await localizeWebsiteImages(job.slug);
-      logMemoryUsage("fresh:after-image-localize", {
-        ...memoryContext,
-        websiteId: website.id,
-      });
       const [user] = await db
-        .select({ email: users.email })
+        .select({
+          email: users.email,
+          plan: users.plan,
+          subscriptionStatus: users.subscriptionStatus,
+        })
         .from(users)
         .where(eq(users.id, website.userId))
         .limit(1);
@@ -415,6 +468,7 @@ export async function processFreshJob(
               previewUrl: `/preview/${website.slug}/index.html`,
               screenshotUrl: homepageScreenshotPath(website.slug, Date.now()),
               generationMode: "fresh",
+              isPro: isProUser(user),
             }),
         );
       }

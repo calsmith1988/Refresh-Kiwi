@@ -244,6 +244,14 @@ export async function createProCheckoutSession(params?: {
     throw new Error("Sign in before upgrading to Pro");
   }
 
+  // Never sell a second subscription to someone who already has one — a
+  // duplicate checkout would double-charge them every month.
+  if (user.plan === "pro" && isProStatus(user.subscriptionStatus)) {
+    throw new Error(
+      "You're already on Kiwi Pro — manage your plan from the billing page instead.",
+    );
+  }
+
   const stripe = getStripeClient();
   let customerId = user.stripeCustomerId;
   const countryCode = resolveCountryCodeFromRequest(params?.request);

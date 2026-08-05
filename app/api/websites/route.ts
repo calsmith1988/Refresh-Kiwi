@@ -56,12 +56,17 @@ export async function GET() {
     Promise.all(
       websites.map(async (website) => {
         const [job] = await getDb()
-          .select({ id: jobs.id, status: jobs.status })
+          .select({
+            id: jobs.id,
+            status: jobs.status,
+            errorMessage: jobs.errorMessage,
+            updatedAt: jobs.updatedAt,
+          })
           .from(jobs)
           .where(eq(jobs.id, website.jobId))
           .limit(1);
 
-        return [website.jobId, job?.status ?? null] as const;
+        return [website.jobId, job ?? null] as const;
       }),
     ),
     getDb()
@@ -81,7 +86,7 @@ export async function GET() {
       .where(eq(jobs.userId, user.id)),
   ]);
   const pagesByJob = new Map(pagesEntries);
-  const statusByJob = new Map(jobEntries);
+  const jobByJobId = new Map(jobEntries);
   const domainDnsRecords = buildDomainDnsRecords();
   const providerEntries = await Promise.all(
     websites.map(async (website) => [
@@ -113,10 +118,13 @@ export async function GET() {
     websites: websites.map((website) => {
       const latestEditRequest = latestEditRequests.get(website.id);
       const pages = pagesByJob.get(website.jobId) ?? [];
+      const job = jobByJobId.get(website.jobId) ?? null;
 
       return {
         ...toWebsiteResponse(website),
-        jobStatus: statusByJob.get(website.jobId),
+        jobStatus: job?.status ?? null,
+        jobErrorMessage: job?.errorMessage ?? null,
+        jobUpdatedAt: job?.updatedAt ? job.updatedAt.toISOString() : null,
         homepageScreenshotUrl: homepageScreenshotPath(
           website.slug,
           website.updatedAt,

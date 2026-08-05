@@ -1,6 +1,9 @@
 import { localizeWebsiteImages } from "@/lib/assets/localize";
 import { generateStarterSeedAssets } from "@/lib/assets/starter";
-import { isRetryableCursorStartupError } from "@/lib/cursor/agent";
+import {
+  CursorRunFailedError,
+  isRetryableCursorStartupError,
+} from "@/lib/cursor/agent";
 import { closeDb, getDb, schema } from "@/lib/db";
 import { processEditRequest } from "@/lib/edits/processor";
 import { processRefreshJob, processFreshJob } from "@/lib/jobs/processor";
@@ -175,7 +178,10 @@ async function runWorker(): Promise<void> {
       );
       await failBackgroundTask(task.id, error);
 
-      if (isRetryableCursorStartupError(error)) {
+      if (
+        isRetryableCursorStartupError(error) ||
+        error instanceof CursorRunFailedError
+      ) {
         await sleep(CURSOR_RETRY_BACKOFF_MS);
       }
     }
