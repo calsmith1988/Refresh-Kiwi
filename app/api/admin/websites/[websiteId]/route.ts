@@ -5,6 +5,11 @@ import { recordAdminAction } from "@/lib/admin/audit";
 import { requireAdmin } from "@/lib/admin/guard";
 import { getAdminWebsite } from "@/lib/admin/service";
 import { getDb, schema } from "@/lib/db";
+import {
+  archiveWebsiteAsAdmin,
+  assignWebsiteToUser,
+  setWebsiteComplimentary,
+} from "@/lib/websites/service";
 
 export const runtime = "nodejs";
 
@@ -17,7 +22,21 @@ interface RouteContext {
 type AdminWebsitePatchBody =
   | { action: "rename"; name?: string }
   | { action: "extend-expiry"; days?: number }
-  | { action: "reset-edits" };
+  | { action: "reset-edits" }
+  | { action: "archive" }
+  | { action: "assign"; email?: string; complimentary?: boolean }
+  | { action: "set-complimentary"; enabled?: boolean };
+
+function errorStatus(message: string): number {
+  if (
+    message === "Website not found" ||
+    message === "No account for that email"
+  ) {
+    return 404;
+  }
+
+  return 400;
+}
 
 export async function PATCH(request: Request, context: RouteContext) {
   const auth = await requireAdmin();
@@ -126,6 +145,106 @@ export async function PATCH(request: Request, context: RouteContext) {
       });
 
       return NextResponse.json({ ok: true, website: updated });
+    }
+
+    case "archive": {
+      try {
+        const updated = await archiveWebsiteAsAdmin(website.id);
+
+        await recordAdminAction({
+          adminUserId: auth.user.id,
+          adminEmail: auth.user.email,
+          action: "archive_website",
+          targetType: "website",
+          targetId: website.id,
+          details: {
+            slug: website.slug,
+            previousStatus: website.status,
+            ownerUserId: website.userId,
+          },
+        });
+
+        return NextResponse.json({ ok: true, website: updated });
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to archive website";
+        return NextResponse.json(
+          { error: message },
+          { status: errorStatus(message) },
+        );
+      }
+    }
+
+    case "assign": {
+      try {
+        const result = await assignWebsiteToUser({
+          websiteId: website.id,
+          email: body.email ?? "",
+          complimentary: Boolean(body.complimentary),
+        });
+
+        await recordAdminAction({
+          adminUserId: auth.user.id,
+          adminEmail: auth.user.email,
+          action: "assign_website",
+          targetType: "website",
+          targetId: website.id,
+          details: {
+            slug: website.slug,
+            fromUserId: result.fromUserId,
+            toUserId: result.toUserId,
+            toEmail: result.toEmail,
+            complimentary: result.complimentary,
+          },
+        });
+
+        return NextResponse.json({ ok: true, website: result.website });
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to assign website";
+        return NextResponse.json(
+          { error: message },
+          { status: errorStatus(message) },
+        );
+      }
+    }
+
+    case "set-complimentary": {
+      if (typeof body.enabled !== "boolean") {
+        return NextResponse.json(
+          { error: "enabled must be a boolean" },
+          { status: 400 },
+        );
+      }
+
+      try {
+        const updated = await setWebsiteComplimentary({
+          websiteId: website.id,
+          enabled: body.enabled,
+        });
+
+        await recordAdminAction({
+          adminUserId: auth.user.id,
+          adminEmail: auth.user.email,
+          action: body.enabled
+            ? "enable_complimentary_website"
+            : "disable_complimentary_website",
+          targetType: "website",
+          targetId: website.id,
+          details: { slug: website.slug, enabled: body.enabled },
+        });
+
+        return NextResponse.json({ ok: true, website: updated });
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Failed to update complimentary status";
+        return NextResponse.json(
+          { error: message },
+          { status: errorStatus(message) },
+        );
+      }
     }
 
     default:

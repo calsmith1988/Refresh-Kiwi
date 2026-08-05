@@ -282,6 +282,8 @@ export const websites = pgTable(
     /** Optional override for where contact-form enquiries are sent. Falls back
      * to the owner's account email when null. */
     contactEmail: text("contact_email"),
+    /** Admin-gifted site: full Pro features for this website without Stripe. */
+    isComplimentary: boolean("is_complimentary").notNull().default(false),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     publishedAt: timestamp("published_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })

@@ -15,6 +15,7 @@ import {
 import {
   connectOwnedWebsiteDomain,
   getOwnedWebsite,
+  hasWebsiteProFeatures,
   removeOwnedWebsiteDomain,
   setOwnedWebsiteOnline,
   toWebsiteResponse,
@@ -28,7 +29,7 @@ interface RouteContext {
   params: Promise<{ websiteId: string }>;
 }
 
-async function requireProUser() {
+async function requireDomainAccess(websiteId: string) {
   const user = await getCurrentUser();
 
   if (!user) {
@@ -40,7 +41,23 @@ async function requireProUser() {
     };
   }
 
-  if (!(await userHasProPlan(user.id))) {
+  const website = await getOwnedWebsite({ websiteId, userId: user.id });
+
+  if (!website) {
+    return {
+      response: NextResponse.json(
+        { error: "Website not found" },
+        { status: 404 },
+      ),
+    };
+  }
+
+  const hasPro = hasWebsiteProFeatures({
+    isComplimentary: website.isComplimentary,
+    userIsPro: await userHasProPlan(user.id),
+  });
+
+  if (!hasPro) {
     return {
       response: NextResponse.json(
         { error: "Upgrade to Pro to connect a custom domain." },
@@ -49,7 +66,7 @@ async function requireProUser() {
     };
   }
 
-  return { user };
+  return { user, website };
 }
 
 async function domainResponseMetadata(websiteId: string, domain: string) {
@@ -64,14 +81,14 @@ async function domainResponseMetadata(websiteId: string, domain: string) {
 }
 
 export async function POST(request: Request, context: RouteContext) {
-  const auth = await requireProUser();
+  const { websiteId } = await context.params;
+  const auth = await requireDomainAccess(websiteId);
 
   if ("response" in auth) {
     return auth.response;
   }
 
   try {
-    const { websiteId } = await context.params;
     const body = (await request.json()) as { domain?: string };
 
     if (!body.domain) {
@@ -111,17 +128,17 @@ export async function POST(request: Request, context: RouteContext) {
 }
 
 export async function PATCH(_request: Request, context: RouteContext) {
-  const auth = await requireProUser();
+  const { websiteId } = await context.params;
+  const auth = await requireDomainAccess(websiteId);
 
   if ("response" in auth) {
     return auth.response;
   }
 
   try {
-    const { websiteId } = await context.params;
-    const website = await getOwnedWebsite({ websiteId, userId: auth.user.id });
+    const website = auth.website;
 
-    if (!website?.customDomain) {
+    if (!website.customDomain) {
       return NextResponse.json(
         { error: "No custom domain is connected yet" },
         { status: 400 },
@@ -147,7 +164,6 @@ export async function PATCH(_request: Request, context: RouteContext) {
     });
   } catch (error) {
     if (error instanceof RenderApiError && error.status === 404) {
-      const { websiteId } = await context.params;
       const website = await updateOwnedWebsiteDomainStatus({
         websiteId,
         userId: auth.user.id,
@@ -174,17 +190,17 @@ export async function PATCH(_request: Request, context: RouteContext) {
 }
 
 export async function DELETE(_request: Request, context: RouteContext) {
-  const auth = await requireProUser();
+  const { websiteId } = await context.params;
+  const auth = await requireDomainAccess(websiteId);
 
   if ("response" in auth) {
     return auth.response;
   }
 
   try {
-    const { websiteId } = await context.params;
-    const website = await getOwnedWebsite({ websiteId, userId: auth.user.id });
+    const website = auth.website;
 
-    if (website?.customDomain) {
+    if (website.customDomain) {
       await deleteRenderCustomDomain(website.customDomain);
     }
 

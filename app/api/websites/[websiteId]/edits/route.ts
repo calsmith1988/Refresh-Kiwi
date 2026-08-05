@@ -14,7 +14,12 @@ import {
   MIN_EDIT_PROMPT_LENGTH,
 } from "@/lib/edits/quota";
 import { enqueueBackgroundTask } from "@/lib/worker/queue";
-import { getOwnedWebsite, toWebsiteResponse, userHasProPlan } from "@/lib/websites/service";
+import {
+  getOwnedWebsite,
+  hasWebsiteProFeatures,
+  toWebsiteResponse,
+  userHasProPlan,
+} from "@/lib/websites/service";
 import { and, eq, inArray } from "drizzle-orm";
 
 export const runtime = "nodejs";
@@ -76,7 +81,10 @@ export async function POST(request: Request, context: RouteContext) {
     return NextResponse.json({ error: NEW_PAGE_EDIT_MESSAGE }, { status: 400 });
   }
 
-  const hasPro = await userHasProPlan(user.id);
+  const hasPro = hasWebsiteProFeatures({
+    isComplimentary: website.isComplimentary,
+    userIsPro: await userHasProPlan(user.id),
+  });
   const isExpiredPreview =
     website.status === "expired" ||
     (!hasPro &&

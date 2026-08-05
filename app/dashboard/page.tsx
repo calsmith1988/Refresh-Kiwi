@@ -79,6 +79,7 @@ type Website = {
   seoAnalyticsId: string | null;
   contactEmail: string | null;
   homepageScreenshotUrl: string;
+  isComplimentary: boolean;
   expiresAt: string;
   publishedAt: string | null;
   updatedAt: string;
@@ -573,6 +574,11 @@ function daysUntil(value: string): number {
 
 function pluralise(count: number, singular: string, plural = `${singular}s`) {
   return count === 1 ? singular : plural;
+}
+
+/** Account Pro, or this specific website was gifted complimentary Pro features. */
+function hasSiteProFeatures(website: Website, accountIsPro: boolean): boolean {
+  return accountIsPro || website.isComplimentary;
 }
 
 function websiteState(website: Website, isPro: boolean) {
@@ -2361,7 +2367,8 @@ export default function DashboardPage() {
                 </article>
               ))}
               {websites.map((website) => {
-                const state = websiteState(website, isPro);
+                const sitePro = hasSiteProFeatures(website, isPro);
+                const state = websiteState(website, sitePro);
                 const screenshotUrl = website.homepageScreenshotUrl;
                 const generatedPages = website.pages.filter(
                   (page) => page.path !== "/",
@@ -2500,7 +2507,9 @@ export default function DashboardPage() {
                                 {pluralise(generatedPages.length, "page")}
                               </span>
                             ) : null}
-                            {!isPro && website.status !== "live" && state.canEdit ? (
+                            {!sitePro &&
+                            website.status !== "live" &&
+                            state.canEdit ? (
                               <span className="inline-flex items-center gap-1.5">
                                 <DashboardIcon
                                   name="calendar"
@@ -2518,7 +2527,7 @@ export default function DashboardPage() {
                                 Online since {formatDate(website.publishedAt)}
                               </span>
                             ) : null}
-                            {!isPro && state.canEdit ? (
+                            {!sitePro && state.canEdit ? (
                               <span className="inline-flex items-center gap-1.5">
                                 <DashboardIcon
                                   name="changes"
@@ -2541,7 +2550,7 @@ export default function DashboardPage() {
                                 View
                               </Link>
                             ) : null}
-                            {!isPro && state.showUpgrade ? (
+                            {!sitePro && state.showUpgrade ? (
                               <button
                                 type="button"
                                 onClick={openProSheet}
@@ -2735,7 +2744,7 @@ export default function DashboardPage() {
                               return;
                             }
 
-                            if (!isPro) {
+                            if (!sitePro) {
                               openProSheet();
                               return;
                             }
@@ -2898,7 +2907,7 @@ export default function DashboardPage() {
                                 })}
                               </div>
 
-                              {activeFlow === "business" && isPro ? (
+                              {activeFlow === "business" && sitePro ? (
                                 <div className="mt-5 rounded-2xl bg-[#faf8f1] p-4 sm:p-5">
                                   <p className="text-sm font-semibold text-black">
                                     Extra pages from your old site
@@ -2957,7 +2966,7 @@ export default function DashboardPage() {
                                 </div>
                               ) : null}
 
-                              {activeFlow === "legal" && isPro ? (
+                              {activeFlow === "legal" && sitePro ? (
                                 <div className="mt-5 rounded-2xl bg-[#faf8f1] p-4 sm:p-5">
                                   <p className="text-sm font-semibold text-black">
                                     Starter legal page details
@@ -3100,7 +3109,7 @@ export default function DashboardPage() {
                                 </div>
                               ) : null}
 
-                              {activeFlow === "custom" && isPro ? (
+                              {activeFlow === "custom" && sitePro ? (
                                 <div className="mt-5 rounded-2xl bg-[#faf8f1] p-4 sm:p-5">
                                   <label className="block text-xs font-semibold text-black/55">
                                     Page name
@@ -3318,7 +3327,7 @@ export default function DashboardPage() {
                             <p className="mt-1 text-sm leading-6 text-black/55">
                               Describe the image you want and we&apos;ll create
                               it for you.
-                              {!isPro ? (
+                              {!sitePro ? (
                                 <span className="text-black/40">
                                   {" "}
                                   Uses 1 free change.
@@ -3579,7 +3588,7 @@ export default function DashboardPage() {
                                                 >
                                                   {remixingImageId === image.id
                                                     ? "Remixing — takes up to a minute…"
-                                                    : isPro
+                                                    : sitePro
                                                       ? "Remix this image"
                                                       : "Remix this image (uses 1 free change)"}
                                                 </button>

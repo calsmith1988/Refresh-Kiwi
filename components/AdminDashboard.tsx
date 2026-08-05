@@ -86,6 +86,7 @@ type AdminUserDetail = {
     customDomainStatus: string;
     freeEditsUsed: number;
     freeEditsLimit: number;
+    isComplimentary: boolean;
     expiresAt: string;
     createdAt: string;
   }>;
@@ -119,6 +120,7 @@ type AdminWebsiteRow = {
   freeEditsLimit: number;
   customDomain: string | null;
   customDomainStatus: string;
+  isComplimentary: boolean;
   expiresAt: string;
   createdAt: string;
 };
@@ -208,6 +210,17 @@ function formatDate(iso: string | null): string {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function formatExpiresAt(website: {
+  isComplimentary: boolean;
+  expiresAt: string;
+}): string {
+  if (website.isComplimentary) {
+    return "never";
+  }
+
+  return formatDate(website.expiresAt);
 }
 
 const th = "border-b border-black px-2 py-1.5 text-left font-semibold whitespace-nowrap";
@@ -387,9 +400,55 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
       setNotice(`Verification email resent to ${user.email}.`);
     });
 
+  const deleteUser = (user: { id: string; email: string }) => {
+    const typed = window.prompt(
+      `Permanently delete ${user.email}?\n\nThis archives their websites, removes preview files, and deletes the account. The email becomes reusable.\n\nType the email to confirm:`,
+    );
+
+    if (typed === null) {
+      return;
+    }
+
+    if (typed.trim().toLowerCase() !== user.email.trim().toLowerCase()) {
+      setError("Email did not match — user not deleted.");
+      return;
+    }
+
+    void run(async () => {
+      await api(`/api/admin/users/${user.id}`, { method: "DELETE" });
+      setNotice(`Deleted ${user.email}.`);
+
+      if (userDetail?.user.id === user.id) {
+        setUserDetail(null);
+      }
+
+      const payload = await api<{ users: AdminUserRow[] }>(
+        `/api/admin/users?search=${encodeURIComponent(userSearch)}`,
+      );
+      setUserRows(payload.users);
+    });
+  };
+
+  const refreshAfterWebsiteMutation = async () => {
+    if (tab === "websites") {
+      const payload = await api<{ websites: AdminWebsiteRow[] }>(
+        `/api/admin/websites?search=${encodeURIComponent(websiteSearch)}`,
+      );
+      setWebsiteRows(payload.websites);
+    } else {
+      setWebsiteRows(null);
+    }
+
+    if (userDetail) {
+      setUserDetail(
+        await api<AdminUserDetail>(`/api/admin/users/${userDetail.user.id}`),
+      );
+    }
+  };
+
   const websiteAction = (
     website: AdminWebsiteRow | AdminUserDetail["websites"][number],
-    action: "rename" | "extend-expiry" | "reset-edits",
+    action: "rename" | "extend-expiry" | "reset-edits" | "archive",
   ) => {
     let body: Record<string, unknown> = { action };
 
@@ -420,17 +479,115 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
       return;
     }
 
+    if (action === "archive") {
+      if (website.status === "archived") {
+        return;
+      }
+
+      const label = website.brandName || website.slug;
+
+      if (
+        !window.confirm(
+          `Archive "${label}"? This soft-deletes the site (clears domain + R2 files).`,
+        )
+      ) {
+        return;
+      }
+
+      body = { action };
+    }
+
     void run(async () => {
       await api(`/api/admin/websites/${website.id}`, {
         method: "PATCH",
         body: JSON.stringify(body),
       });
       setNotice(`Done: ${action} on ${website.slug}.`);
-      setWebsiteRows(null);
+      await refreshAfterWebsiteMutation();
+    });
+  };
 
-      if (tab === "websites") {
-        await loadWebsites(websiteSearch);
-      }
+  const assignWebsite = (
+    website: AdminWebsiteRow | AdminUserDetail["websites"][number],
+  ) => {
+    if (website.status === "archived") {
+      setError("Cannot assign an archived website.");
+      return;
+    }
+
+    const email = window.prompt(
+      `Assign "${website.slug}" to which existing account email?`,
+      "ownerEmail" in website ? (website.ownerEmail ?? "") : "",
+    );
+
+    if (!email?.trim()) {
+      return;
+    }
+
+    const ownerLabel =
+      "ownerEmail" in website && website.ownerEmail
+        ? website.ownerEmail
+        : "(unclaimed)";
+    const complimentary = window.confirm(
+      `Also mark "${website.slug}" as complimentary (full Pro features for free: live hosting, unlimited edits, custom domain)?\n\nOK = yes, Cancel = assign only.`,
+    );
+
+    if (
+      !window.confirm(
+        `Assign "${website.slug}" from ${ownerLabel} to ${email.trim()}?${
+          complimentary ? "\n\nComplimentary: yes" : ""
+        }`,
+      )
+    ) {
+      return;
+    }
+
+    void run(async () => {
+      await api(`/api/admin/websites/${website.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          action: "assign",
+          email: email.trim(),
+          complimentary,
+        }),
+      });
+      setNotice(
+        `Assigned ${website.slug} to ${email.trim()}${
+          complimentary ? " (complimentary)" : ""
+        }.`,
+      );
+      await refreshAfterWebsiteMutation();
+    });
+  };
+
+  const toggleComplimentary = (
+    website: AdminWebsiteRow | AdminUserDetail["websites"][number],
+  ) => {
+    if (website.status === "archived") {
+      setError("Cannot change complimentary status on an archived website.");
+      return;
+    }
+
+    const enabled = !website.isComplimentary;
+    const label = enabled
+      ? `Mark "${website.slug}" complimentary (full Pro features for free: live hosting, unlimited edits, custom domain)?`
+      : `Remove complimentary from "${website.slug}"? It keeps its current status but loses gifted Pro features.`;
+
+    if (!window.confirm(label)) {
+      return;
+    }
+
+    void run(async () => {
+      await api(`/api/admin/websites/${website.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ action: "set-complimentary", enabled }),
+      });
+      setNotice(
+        enabled
+          ? `${website.slug} is now complimentary.`
+          : `${website.slug} is no longer complimentary.`,
+      );
+      await refreshAfterWebsiteMutation();
     });
   };
 
@@ -717,6 +874,13 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
                             Cancel sub
                           </button>
                         ) : null}
+                        <button
+                          type="button"
+                          className={btn}
+                          onClick={() => deleteUser(user)}
+                        >
+                          Delete
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -731,9 +895,18 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
                     {userDetail.user.email}
                     {userDetail.user.name ? ` — ${userDetail.user.name}` : ""}
                   </div>
-                  <button type="button" className={btn} onClick={() => setUserDetail(null)}>
-                    Close
-                  </button>
+                  <div className="space-x-1">
+                    <button
+                      type="button"
+                      className={btn}
+                      onClick={() => deleteUser(userDetail.user)}
+                    >
+                      Delete user
+                    </button>
+                    <button type="button" className={btn} onClick={() => setUserDetail(null)}>
+                      Close
+                    </button>
+                  </div>
                 </div>
                 <div className="mb-3 grid grid-cols-2 gap-x-6 gap-y-1 text-xs sm:grid-cols-4">
                   <div>Plan: {userDetail.user.plan}</div>
@@ -786,7 +959,7 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
                             {website.freeEditsUsed}/{website.freeEditsLimit}
                           </td>
                           <td className={`${td} whitespace-nowrap`}>
-                            {formatDate(website.expiresAt)}
+                            {formatExpiresAt(website)}
                           </td>
                           <td className={`${td} space-x-1 whitespace-nowrap`}>
                             <button type="button" className={btn} onClick={() => websiteAction(website, "rename")}>
@@ -800,6 +973,30 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
                             </button>
                             <button type="button" className={btn} onClick={() => applyEdit(website)}>
                               Apply edit
+                            </button>
+                            <button
+                              type="button"
+                              className={btn}
+                              onClick={() => assignWebsite(website)}
+                              disabled={website.status === "archived"}
+                            >
+                              Assign
+                            </button>
+                            <button
+                              type="button"
+                              className={btn}
+                              onClick={() => toggleComplimentary(website)}
+                              disabled={website.status === "archived"}
+                            >
+                              {website.isComplimentary ? "Uncomp" : "Comp"}
+                            </button>
+                            <button
+                              type="button"
+                              className={btn}
+                              onClick={() => websiteAction(website, "archive")}
+                              disabled={website.status === "archived"}
+                            >
+                              Archive
                             </button>
                           </td>
                         </tr>
@@ -900,7 +1097,7 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
                         {website.freeEditsUsed}/{website.freeEditsLimit}
                       </td>
                       <td className={`${td} whitespace-nowrap`}>
-                        {formatDate(website.expiresAt)}
+                        {formatExpiresAt(website)}
                       </td>
                       <td className={`${td} space-x-1 whitespace-nowrap`}>
                         <button type="button" className={btn} onClick={() => websiteAction(website, "rename")}>
@@ -914,6 +1111,30 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
                         </button>
                         <button type="button" className={btn} onClick={() => applyEdit(website)}>
                           Apply edit
+                        </button>
+                        <button
+                          type="button"
+                          className={btn}
+                          onClick={() => assignWebsite(website)}
+                          disabled={website.status === "archived"}
+                        >
+                          Assign
+                        </button>
+                        <button
+                          type="button"
+                          className={btn}
+                          onClick={() => toggleComplimentary(website)}
+                          disabled={website.status === "archived"}
+                        >
+                          {website.isComplimentary ? "Uncomp" : "Comp"}
+                        </button>
+                        <button
+                          type="button"
+                          className={btn}
+                          onClick={() => websiteAction(website, "archive")}
+                          disabled={website.status === "archived"}
+                        >
+                          Archive
                         </button>
                       </td>
                     </tr>

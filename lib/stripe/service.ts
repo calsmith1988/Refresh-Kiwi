@@ -119,6 +119,8 @@ async function updateUserSubscription(params: {
       if (updatedUser) {
         // Never resurrect soft-deleted sites: archived rows have had their R2
         // files removed, so flipping them back to "live" creates zombie sites.
+        // Complimentary sites are excluded too: their "live" status is gifted
+        // by an admin and must survive the owner's Stripe plan changes.
         await tx
           .update(websites)
           .set(websiteStatusValues)
@@ -126,6 +128,7 @@ async function updateUserSubscription(params: {
             and(
               eq(websites.userId, updatedUser.id),
               ne(websites.status, "archived"),
+              eq(websites.isComplimentary, false),
             ),
           );
       }

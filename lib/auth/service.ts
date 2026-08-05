@@ -35,6 +35,7 @@ import {
   sendVerificationEmail,
   sendWelcomeEmail,
 } from "@/lib/email/service";
+import { deleteRenderCustomDomain } from "@/lib/render/domains";
 import { deleteSiteDirectoryFromR2 } from "@/lib/storage/r2";
 
 const { emailChangeTokens, users, websites } = schema;
@@ -472,13 +473,31 @@ export async function deleteAccount(params: { userId: string }) {
   }
 
   const ownedWebsites = await db
-    .select({ slug: websites.slug })
+    .select({ slug: websites.slug, customDomain: websites.customDomain })
     .from(websites)
     .where(eq(websites.userId, user.id));
 
   await Promise.all(
     ownedWebsites.map((website) => deleteSiteDirectoryFromR2(website.slug)),
   );
+
+  // Detach custom domains from the Render service before clearing them in the
+  // DB; otherwise they linger as orphans that the admin domains page has to
+  // reconcile. Non-fatal: the DB stays authoritative either way.
+  for (const website of ownedWebsites) {
+    if (!website.customDomain) {
+      continue;
+    }
+
+    try {
+      await deleteRenderCustomDomain(website.customDomain);
+    } catch (error) {
+      console.error(
+        `[refresh-kiwi] deleted account ${user.id} but failed to remove Render domain ${website.customDomain}`,
+        error,
+      );
+    }
+  }
 
   await db
     .update(websites)

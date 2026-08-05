@@ -357,6 +357,7 @@ export async function getAdminUserDetail(userId: string) {
       customDomainStatus: website.customDomainStatus,
       freeEditsUsed: website.freeEditsUsed,
       freeEditsLimit: website.freeEditsLimit,
+      isComplimentary: website.isComplimentary,
       expiresAt: website.expiresAt.toISOString(),
       createdAt: website.createdAt.toISOString(),
     })),
@@ -404,6 +405,7 @@ export async function listAdminWebsites(params: {
       freeEditsLimit: websites.freeEditsLimit,
       customDomain: websites.customDomain,
       customDomainStatus: websites.customDomainStatus,
+      isComplimentary: websites.isComplimentary,
       expiresAt: websites.expiresAt,
       createdAt: websites.createdAt,
     })

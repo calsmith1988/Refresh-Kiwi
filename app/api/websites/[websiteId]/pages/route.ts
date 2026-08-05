@@ -6,6 +6,7 @@ import { type LegalAnswers, validateLegalAnswers } from "@/lib/legal/draft";
 import { enqueueBackgroundTask } from "@/lib/worker/queue";
 import {
   getOwnedWebsite,
+  hasWebsiteProFeatures,
   listPagesForJob,
   toPageResponse,
   userHasProPlan,
@@ -62,7 +63,17 @@ export async function POST(request: Request, context: RouteContext) {
     );
   }
 
-  const hasPro = await userHasProPlan(user.id);
+  const { websiteId } = await context.params;
+  const website = await getOwnedWebsite({ websiteId, userId: user.id });
+
+  if (!website) {
+    return NextResponse.json({ error: "Website not found" }, { status: 404 });
+  }
+
+  const hasPro = hasWebsiteProFeatures({
+    isComplimentary: website.isComplimentary,
+    userIsPro: await userHasProPlan(user.id),
+  });
 
   if (!hasPro) {
     return NextResponse.json(
@@ -71,8 +82,6 @@ export async function POST(request: Request, context: RouteContext) {
     );
   }
 
-  const { websiteId } = await context.params;
-  const website = await getOwnedWebsite({ websiteId, userId: user.id });
   const rawBody = await request.json().catch(() => ({}));
   const body =
     rawBody && typeof rawBody === "object"
@@ -111,10 +120,6 @@ export async function POST(request: Request, context: RouteContext) {
       },
       { status: 400 },
     );
-  }
-
-  if (!website) {
-    return NextResponse.json({ error: "Website not found" }, { status: 404 });
   }
 
   if (website.status === "archived") {

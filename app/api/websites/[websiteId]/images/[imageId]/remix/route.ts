@@ -13,6 +13,7 @@ import { readPreviewFile } from "@/lib/preview/serve";
 import { enqueueHomepageScreenshotRefresh } from "@/lib/screenshots/queue";
 import {
   getOwnedWebsite,
+  hasWebsiteProFeatures,
   toWebsiteResponse,
   userHasProPlan,
 } from "@/lib/websites/service";
@@ -43,7 +44,10 @@ export async function POST(request: Request, context: RouteContext) {
 
   // Remixes cost real AI usage, so they count as a change for free accounts
   // — Pro subscribers get unlimited remixes, same as edits.
-  const hasPro = await userHasProPlan(user.id);
+  const hasPro = hasWebsiteProFeatures({
+    isComplimentary: website.isComplimentary,
+    userIsPro: await userHasProPlan(user.id),
+  });
   const isExpiredPreview =
     website.status === "expired" ||
     (!hasPro &&

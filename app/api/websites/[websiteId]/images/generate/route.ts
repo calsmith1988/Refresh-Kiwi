@@ -10,6 +10,7 @@ import { getDb, schema } from "@/lib/db";
 import { enqueueBackgroundTask } from "@/lib/worker/queue";
 import {
   getOwnedWebsite,
+  hasWebsiteProFeatures,
   toWebsiteResponse,
   userHasProPlan,
 } from "@/lib/websites/service";
@@ -83,10 +84,15 @@ export async function POST(request: Request, context: RouteContext) {
     );
   }
 
-  const hasPro = await userHasProPlan(user.id);
+  const hasPro = hasWebsiteProFeatures({
+    isComplimentary: website.isComplimentary,
+    userIsPro: await userHasProPlan(user.id),
+  });
   const isExpiredPreview =
     website.status === "expired" ||
-    (!hasPro && website.status !== "live" && website.expiresAt.getTime() <= Date.now());
+    (!hasPro &&
+      website.status !== "live" &&
+      website.expiresAt.getTime() <= Date.now());
 
   if (website.status === "archived") {
     return NextResponse.json(

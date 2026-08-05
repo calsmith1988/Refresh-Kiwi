@@ -4,7 +4,10 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getDb, schema } from "@/lib/db";
 import { toUserFacingEditError } from "@/lib/edits/errors";
-import { userHasProPlan } from "@/lib/websites/service";
+import {
+  hasWebsiteProFeatures,
+  userHasProPlan,
+} from "@/lib/websites/service";
 
 export const runtime = "nodejs";
 
@@ -107,7 +110,10 @@ export async function DELETE(_request: Request, context: RouteContext) {
     .where(eq(editRequests.id, editRequest.id))
     .returning();
 
-  const hasPro = await userHasProPlan(user.id);
+  const hasPro = hasWebsiteProFeatures({
+    isComplimentary: editRequest.website.isComplimentary,
+    userIsPro: await userHasProPlan(user.id),
+  });
   if (!hasPro && editRequest.website.freeEditsUsed > 0) {
     await db
       .update(websites)

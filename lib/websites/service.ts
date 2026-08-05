@@ -1,5 +1,6 @@
 import { and, count, desc, eq, inArray, isNull, ne, or } from "drizzle-orm";
 
+import { normalizeEmail } from "@/lib/auth/service";
 import { getDb, schema } from "@/lib/db";
 import { deleteRenderCustomDomain } from "@/lib/render/domains";
 import { getSitesDomain, isReservedSitesSubdomain } from "@/lib/sites/domain";
@@ -27,6 +28,37 @@ function isProUser(user: ProPlanCandidate) {
     user.subscriptionStatus !== null &&
     PRO_SUBSCRIPTION_STATUSES.has(user.subscriptionStatus)
   );
+}
+
+/** Free previews expire after 7 days; live, Pro, and complimentary sites do not. */
+export function isFreePreviewExpired(params: {
+  status: string;
+  expiresAt: Date;
+  isComplimentary?: boolean | null;
+  userIsPro: boolean;
+}): boolean {
+  if (params.isComplimentary) {
+    return false;
+  }
+
+  if (params.status === "live" || params.userIsPro) {
+    return false;
+  }
+
+  return params.expiresAt.getTime() <= Date.now();
+}
+
+/**
+ * Complimentary sites are gifted full Pro capabilities for that website
+ * (unlimited edits, pages, images, custom domain, public hosting) without a
+ * Stripe subscription. Account-level limits (e.g. how many sites you can own)
+ * still follow the user's plan.
+ */
+export function hasWebsiteProFeatures(params: {
+  isComplimentary?: boolean | null;
+  userIsPro: boolean;
+}): boolean {
+  return params.userIsPro || Boolean(params.isComplimentary);
 }
 
 export function previewExpiresAt(): Date {
@@ -115,6 +147,7 @@ export function toWebsiteResponse(website: typeof websites.$inferSelect) {
     seoSearchConsoleToken: website.seoSearchConsoleToken,
     seoAnalyticsId: website.seoAnalyticsId,
     contactEmail: website.contactEmail,
+    isComplimentary: website.isComplimentary,
     expiresAt: website.expiresAt.toISOString(),
     publishedAt: website.publishedAt?.toISOString() ?? null,
     createdAt: website.createdAt.toISOString(),
@@ -583,23 +616,7 @@ export async function updateOwnedWebsiteSeoSettings(params: {
   return updated;
 }
 
-export async function archiveOwnedWebsite(params: {
-  websiteId: string;
-  userId: string;
-  confirmation: string;
-}) {
-  const website = await getOwnedWebsite(params);
-
-  if (!website) {
-    throw new Error("Website not found");
-  }
-
-  const expectedConfirmation = website.brandName || website.slug;
-
-  if (params.confirmation.trim() !== expectedConfirmation) {
-    throw new Error(`Type "${expectedConfirmation}" to delete this website.`);
-  }
-
+async function archiveWebsiteRecord(website: typeof websites.$inferSelect) {
   // Commit the archive in the database first, then delete the R2 files. If we
   // deleted R2 first and the DB write failed, the site would still show as
   // active but serve nothing. This order makes the DB authoritative; an R2
@@ -647,6 +664,157 @@ export async function archiveOwnedWebsite(params: {
   return updated;
 }
 
+export async function archiveOwnedWebsite(params: {
+  websiteId: string;
+  userId: string;
+  confirmation: string;
+}) {
+  const website = await getOwnedWebsite(params);
+
+  if (!website) {
+    throw new Error("Website not found");
+  }
+
+  const expectedConfirmation = website.brandName || website.slug;
+
+  if (params.confirmation.trim() !== expectedConfirmation) {
+    throw new Error(`Type "${expectedConfirmation}" to delete this website.`);
+  }
+
+  return archiveWebsiteRecord(website);
+}
+
+export async function archiveWebsiteAsAdmin(websiteId: string) {
+  const [website] = await getDb()
+    .select()
+    .from(websites)
+    .where(eq(websites.id, websiteId))
+    .limit(1);
+
+  if (!website) {
+    throw new Error("Website not found");
+  }
+
+  if (website.status === "archived") {
+    throw new Error("Website is already archived");
+  }
+
+  return archiveWebsiteRecord(website);
+}
+
+export async function assignWebsiteToUser(params: {
+  websiteId: string;
+  email: string;
+  complimentary?: boolean;
+}) {
+  const email = normalizeEmail(params.email);
+
+  if (!email) {
+    throw new Error("Email is required");
+  }
+
+  const db = getDb();
+  const [website] = await db
+    .select()
+    .from(websites)
+    .where(eq(websites.id, params.websiteId))
+    .limit(1);
+
+  if (!website) {
+    throw new Error("Website not found");
+  }
+
+  if (website.status === "archived") {
+    throw new Error("Cannot assign an archived website");
+  }
+
+  const [user] = await db
+    .select({ id: users.id, email: users.email })
+    .from(users)
+    .where(eq(users.email, email))
+    .limit(1);
+
+  if (!user) {
+    throw new Error("No account for that email");
+  }
+
+  const now = new Date();
+  const makeComplimentary = Boolean(params.complimentary);
+
+  const updated = await db.transaction(async (tx) => {
+    const [assignedWebsite] = await tx
+      .update(websites)
+      .set({
+        userId: user.id,
+        ...(makeComplimentary
+          ? {
+              isComplimentary: true,
+              status: "live" as const,
+              publishedAt: website.publishedAt ?? now,
+            }
+          : {}),
+        updatedAt: now,
+      })
+      .where(eq(websites.id, website.id))
+      .returning();
+
+    await tx
+      .update(jobs)
+      .set({ userId: user.id, updatedAt: now })
+      .where(eq(jobs.id, website.jobId));
+
+    return assignedWebsite;
+  });
+
+  return {
+    website: updated,
+    fromUserId: website.userId,
+    toUserId: user.id,
+    toEmail: user.email,
+    complimentary: makeComplimentary || updated.isComplimentary,
+  };
+}
+
+export async function setWebsiteComplimentary(params: {
+  websiteId: string;
+  enabled: boolean;
+}) {
+  const [website] = await getDb()
+    .select()
+    .from(websites)
+    .where(eq(websites.id, params.websiteId))
+    .limit(1);
+
+  if (!website) {
+    throw new Error("Website not found");
+  }
+
+  if (website.status === "archived") {
+    throw new Error("Cannot change complimentary status on an archived website");
+  }
+
+  const now = new Date();
+  const [updated] = await getDb()
+    .update(websites)
+    .set(
+      params.enabled
+        ? {
+            isComplimentary: true,
+            status: "live",
+            publishedAt: website.publishedAt ?? now,
+            updatedAt: now,
+          }
+        : {
+            isComplimentary: false,
+            updatedAt: now,
+          },
+    )
+    .where(eq(websites.id, website.id))
+    .returning();
+
+  return updated;
+}
+
 export async function setOwnedWebsiteOnline(params: {
   websiteId: string;
   userId: string;
@@ -677,6 +845,7 @@ export async function getWebsiteAccessBySlug(slug: string) {
       status: websites.status,
       slug: websites.slug,
       expiresAt: websites.expiresAt,
+      isComplimentary: websites.isComplimentary,
       user: {
         plan: users.plan,
         subscriptionStatus: users.subscriptionStatus,
@@ -692,9 +861,12 @@ export async function getWebsiteAccessBySlug(slug: string) {
   }
 
   const userIsPro = website.user ? isProUser(website.user) : false;
-  const isLive = website.status === "live";
-  const isExpired =
-    !isLive && !userIsPro && website.expiresAt.getTime() < Date.now();
+  const isExpired = isFreePreviewExpired({
+    status: website.status,
+    expiresAt: website.expiresAt,
+    isComplimentary: website.isComplimentary,
+    userIsPro,
+  });
 
   return {
     ...website,
@@ -720,6 +892,7 @@ export async function getWebsiteAccessBySitesLabel(label: string) {
     slug: websites.slug,
     subdomain: websites.subdomain,
     expiresAt: websites.expiresAt,
+    isComplimentary: websites.isComplimentary,
     customDomain: websites.customDomain,
     customDomainStatus: websites.customDomainStatus,
     seoSearchConsoleToken: websites.seoSearchConsoleToken,
@@ -756,8 +929,12 @@ export async function getWebsiteAccessBySitesLabel(label: string) {
 
   const userIsPro = website.user ? isProUser(website.user) : false;
   const isLive = website.status === "live";
-  const isExpired =
-    !isLive && !userIsPro && website.expiresAt.getTime() < Date.now();
+  const isExpired = isFreePreviewExpired({
+    status: website.status,
+    expiresAt: website.expiresAt,
+    isComplimentary: website.isComplimentary,
+    userIsPro,
+  });
   const isAllowed =
     !isExpired && website.status !== "expired" && website.status !== "archived";
 
@@ -766,7 +943,7 @@ export async function getWebsiteAccessBySitesLabel(label: string) {
     isAllowed,
     isExpired,
     userIsPro,
-    isSitesEligible: isAllowed && isLive && userIsPro,
+    isSitesEligible: isAllowed && isLive && (userIsPro || website.isComplimentary),
     sitesLabel: website.subdomain ?? website.slug,
   };
 }
@@ -780,6 +957,7 @@ export async function getWebsiteAccessByCustomDomain(hostname: string) {
         status: websites.status,
         slug: websites.slug,
         expiresAt: websites.expiresAt,
+        isComplimentary: websites.isComplimentary,
         customDomain: websites.customDomain,
         customDomainStatus: websites.customDomainStatus,
         seoSearchConsoleToken: websites.seoSearchConsoleToken,
@@ -805,9 +983,12 @@ export async function getWebsiteAccessByCustomDomain(hostname: string) {
   }
 
   const userIsPro = website.user ? isProUser(website.user) : false;
-  const isLive = website.status === "live";
-  const isExpired =
-    !isLive && !userIsPro && website.expiresAt.getTime() < Date.now();
+  const isExpired = isFreePreviewExpired({
+    status: website.status,
+    expiresAt: website.expiresAt,
+    isComplimentary: website.isComplimentary,
+    userIsPro,
+  });
 
   return {
     ...website,
@@ -826,6 +1007,7 @@ export async function getWebsiteContactTarget(slug: string) {
       subdomain: websites.subdomain,
       brandName: websites.brandName,
       status: websites.status,
+      isComplimentary: websites.isComplimentary,
       customDomain: websites.customDomain,
       customDomainStatus: websites.customDomainStatus,
       contactEmail: websites.contactEmail,
@@ -844,19 +1026,23 @@ export async function getWebsiteContactTarget(slug: string) {
     return null;
   }
 
+  const ownerIsPro = website.user ? isProUser(website.user) : false;
+
   return {
     websiteId: website.id,
     slug: website.slug,
     sitesLabel: website.subdomain ?? website.slug,
     brandName: website.brandName,
     status: website.status,
+    isComplimentary: website.isComplimentary,
     customDomain: website.customDomain,
     customDomainStatus: website.customDomainStatus,
     enquiryEmail: website.contactEmail ?? website.user?.email ?? null,
     ownerEmail: website.user?.email ?? null,
     ownerPlan: website.user?.plan ?? null,
     subscriptionStatus: website.user?.subscriptionStatus ?? null,
-    ownerIsPro: website.user ? isProUser(website.user) : false,
+    ownerIsPro,
+    acceptsContact: ownerIsPro || website.isComplimentary,
   };
 }
 
