@@ -107,8 +107,10 @@ export const DESIGN_DIRECTIONS: readonly DesignDirection[] = [
 
 /**
  * Hero recipes are an independent axis from the overall direction: the hero
- * is most of a site's perceived uniqueness, so crossing ~8 hero patterns with
- * the directions above multiplies the distinct looks without extra build time.
+ * is most of a site's perceived uniqueness, so crossing these hero patterns
+ * with the directions above multiplies the distinct looks without extra
+ * build time. Keep this pool large (14+): with too few patterns, a user
+ * making several builds in a row is very likely to see the same hero twice.
  * For the hero section itself the recipe wins over the direction; the
  * direction governs the rest of the page.
  */
@@ -173,6 +175,48 @@ export const HERO_RECIPES: readonly HeroRecipe[] = [
     prompt: [
       "- Hero copy and CTA up top, with a 'ledge' tucked into the hero's bottom edge: a row of 2-4 compact proof tiles (review score, key services, guarantee, service area) that overlaps into the next section.",
       "- The ledge should feel like part of the hero composition, not a separate stats band.",
+    ].join("\n"),
+  },
+  {
+    name: "framed-portal",
+    prompt: [
+      "- One strong image inside a dramatic mask — an arch, oval, circle, or heavily rounded portal shape — with the copy composed beside it; echo the mask shape once as a thin decorative outline or ring elsewhere in the hero.",
+      "- Exactly one image, one mask. If no photo is strong enough for the portal, fill it with a bold brand-colour composition or an oversized icon/monogram instead.",
+    ].join("\n"),
+  },
+  {
+    name: "split-horizon",
+    prompt: [
+      "- Split the hero horizontally: a solid band (brand colour or deep neutral) carrying the headline and CTAs on top, with a full-width image band below — and one element (the headline's last line, a CTA cluster, or a small card) deliberately straddling the seam between the two.",
+      "- The seam is the design: keep it a crisp straight line, and let the straddling element be the only thing that crosses it.",
+    ].join("\n"),
+  },
+  {
+    name: "vertical-rail",
+    prompt: [
+      "- Pin a tall, narrow image rail to one viewport edge (roughly 25-35% of the width, full hero height); the headline, supporting line, and CTAs occupy the remaining width with confident whitespace.",
+      "- Add one quiet detail along the rail's inner edge: a rotated micro-label, a thin brand-colour rule, or a small caption. On mobile the rail becomes a wide banner above or below the copy — never a squeezed sliver.",
+    ].join("\n"),
+  },
+  {
+    name: "type-interlock",
+    prompt: [
+      "- Typography-led hero where an oversized display headline and a single image physically interlock: the image tucks into an indent in the text block, or slightly overlaps/underlaps one headline line.",
+      "- Keep every word fully legible — overlap decorative edges of the image, never the text itself. With no usable photo, interlock the headline with a bold brand-colour shape instead.",
+    ].join("\n"),
+  },
+  {
+    name: "ticker-tape",
+    prompt: [
+      "- A big, confident statement headline with CTAs, and a horizontally scrolling marquee strip along the hero's bottom edge — repeating real items only (services, areas served, credentials) separated by a small motif or dot.",
+      "- The marquee must pause under prefers-reduced-motion (show it as a static strip) and loop seamlessly with duplicated content in plain CSS/JS — no libraries.",
+    ].join("\n"),
+  },
+  {
+    name: "poster-frame",
+    prompt: [
+      "- Compose the entire hero inside a thin border frame inset from the viewport edges (like a poster margin) — headline, supporting line, CTAs, and imagery all live within the frame, art-directed like a print cover.",
+      "- Let exactly one element (an image corner, a badge, or one word of the headline) break out of the frame to keep it lively; the frame colour comes from the brand palette.",
     ].join("\n"),
   },
 ];
