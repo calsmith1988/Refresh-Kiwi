@@ -34,7 +34,9 @@ export default function ChangeEmailPage() {
         }
 
         setStatus("success");
-        setMessage("Your Refresh Kiwi email address has been changed.");
+        setMessage(
+          "Your Refresh Kiwi email address has been changed. For security you've been signed out everywhere — log in again with your new email.",
+        );
       })
       .catch((caught) => {
         setStatus("error");
@@ -59,10 +61,10 @@ export default function ChangeEmailPage() {
           {message}
         </p>
         <Link
-          href={status === "success" ? "/account" : "/"}
+          href="/"
           className="mt-6 inline-flex rounded-full bg-kiwi-green px-5 py-3 text-sm font-semibold text-black transition hover:bg-kiwi-green-hover"
         >
-          {status === "success" ? "Back to account" : "Back to Refresh Kiwi"}
+          {status === "success" ? "Log in with your new email" : "Back to Refresh Kiwi"}
         </Link>
       </div>
     </main>

@@ -54,7 +54,74 @@ function isHtmlContentType(contentType: string): boolean {
   return contentType.split(";")[0].trim() === "text/html";
 }
 
-function notFound(reason: string, extra: Record<string, string> = {}) {
+function wantsHtml(request: Request): boolean {
+  return (request.headers.get("accept") ?? "").includes("text/html");
+}
+
+/**
+ * Branded 404 for visitors who land on a deleted site or a missing page —
+ * a raw JSON error at someone's old bookmark looks broken. Non-HTML requests
+ * (assets, API-ish callers) still get the JSON payload.
+ */
+function notFoundPage(params: { title: string; body: string; ctaHref: string; ctaLabel: string }) {
+  const html = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>${params.title}</title>
+<style>
+  body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #faf8f1; color: #141811; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .card { max-width: 26rem; margin: 1.25rem; padding: 2.5rem 2rem; background: #fff; border: 1px solid rgba(0,0,0,.1); border-radius: 2rem; box-shadow: 0 20px 40px rgba(0,0,0,.08); text-align: center; }
+  h1 { font-size: 1.5rem; margin: 0 0 .75rem; letter-spacing: -.02em; }
+  p { margin: 0 0 1.5rem; font-size: .9rem; line-height: 1.6; color: rgba(20,24,17,.6); }
+  a { display: inline-block; padding: .75rem 1.5rem; border-radius: 999px; background: #c5e66a; color: #141811; font-size: .875rem; font-weight: 600; text-decoration: none; }
+</style>
+</head>
+<body>
+<main class="card">
+<h1>${params.title}</h1>
+<p>${params.body}</p>
+<a href="${params.ctaHref}">${params.ctaLabel}</a>
+</main>
+</body>
+</html>`;
+
+  return new NextResponse(html, {
+    status: 404,
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-store",
+    },
+  });
+}
+
+function notFound(
+  request: Request,
+  reason: string,
+  extra: Record<string, string> = {},
+) {
+  if (wantsHtml(request)) {
+    // A missing page on a live site links back to that site's homepage; a
+    // missing site altogether links to Refresh Kiwi.
+    if (reason === "file_not_found") {
+      return notFoundPage({
+        title: "Page not found",
+        body: "This page doesn't exist — it may have been renamed or removed.",
+        ctaHref: "/",
+        ctaLabel: "Go to the homepage",
+      });
+    }
+
+    return notFoundPage({
+      title: "This website isn't here any more",
+      body: "The website you're looking for has been taken offline or moved. If it's yours, you can manage or rebuild it at Refresh Kiwi.",
+      ctaHref: "https://refresh.kiwi",
+      ctaLabel: "Visit Refresh Kiwi",
+    });
+  }
+
   return NextResponse.json(
     { error: "Website not found", reason, ...extra },
     { status: 404 },
@@ -115,13 +182,14 @@ export async function GET(request: Request, context: RouteContext) {
     null;
 
   if (!host) {
-    return notFound("missing_host");
+    return notFound(request, "missing_host");
   }
 
   const website = await resolveWebsite(host);
 
   if (!website) {
     return notFound(
+      request,
       sitesSlugFromHost(host) ? "sites_not_eligible" : "domain_not_connected",
       { host },
     );
@@ -173,7 +241,7 @@ export async function GET(request: Request, context: RouteContext) {
   }
 
   if (!file) {
-    return notFound("file_not_found", { slug: website.slug });
+    return notFound(request, "file_not_found", { slug: website.slug });
   }
 
   let body = rewriteLocalPreviewOrigins(file.body, file.contentType);

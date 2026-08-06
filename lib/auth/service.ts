@@ -412,6 +412,10 @@ export async function verifyEmailChange(token: string) {
     .where(eq(users.id, currentUser.id))
     .returning();
 
+  // The login identifier just changed, so treat it like a password reset:
+  // sign out every session so a hijacked session can't ride along under the
+  // new address.
+  await clearUserSessions(currentUser.id);
   await sendEmailChangedEmail({ to: previousEmail });
 
   return updated;
