@@ -74,7 +74,7 @@ export async function DELETE(_request: Request, context: RouteContext) {
     .where(eq(websites.userId, target.id));
 
   try {
-    await deleteAccount({ userId: target.id });
+    await deleteAccount({ userId: target.id, skipPasswordCheck: true });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to delete user";

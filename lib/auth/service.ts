@@ -455,7 +455,15 @@ export async function changePassword(params: {
   return updated;
 }
 
-export async function deleteAccount(params: { userId: string }) {
+export async function deleteAccount(params: {
+  userId: string;
+  /**
+   * Required for self-serve deletion. Admin deletes pass `skipPasswordCheck`
+   * instead — never expose that flag from a user-facing route.
+   */
+  currentPassword?: string;
+  skipPasswordCheck?: boolean;
+}) {
   const db = getDb();
   const [user] = await db
     .select()
@@ -465,6 +473,15 @@ export async function deleteAccount(params: { userId: string }) {
 
   if (!user) {
     throw new Error("User not found");
+  }
+
+  if (!params.skipPasswordCheck) {
+    if (
+      !params.currentPassword ||
+      !(await verifyPassword(params.currentPassword, user.passwordHash))
+    ) {
+      throw new Error("Current password is incorrect");
+    }
   }
 
   if (
@@ -530,6 +547,14 @@ export async function createTwoFactorSetup(userId: string) {
 
   if (!user) {
     throw new Error("User not found");
+  }
+
+  // Never let a stolen session turn 2FA off by "restarting setup". To replace
+  // an enabled authenticator, the user must disable first (password required).
+  if (user.twoFactorEnabled) {
+    throw new Error(
+      "Two-factor authentication is already enabled. Disable it first to set up a new authenticator.",
+    );
   }
 
   const secret = createTwoFactorSecret();

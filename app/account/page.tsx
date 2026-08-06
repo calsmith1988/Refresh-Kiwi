@@ -99,6 +99,7 @@ export default function AccountPage() {
   const [emailChangePassword, setEmailChangePassword] = useState("");
   const [isRequestingEmailChange, setIsRequestingEmailChange] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
   const [deleteHoldActive, setDeleteHoldActive] = useState(false);
   const [deleteHoldProgress, setDeleteHoldProgress] = useState(0);
   const deleteHoldFrameRef = useRef<number | null>(null);
@@ -184,6 +185,7 @@ export default function AccountPage() {
     setNewPassword("");
     setNewEmail("");
     setEmailChangePassword("");
+    setDeletePassword("");
     setName(user?.name ?? "");
   };
 
@@ -352,6 +354,8 @@ export default function AccountPage() {
     try {
       const response = await fetch("/api/account", {
         method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword: deletePassword }),
       });
       const payload = await response.json();
 
@@ -370,7 +374,7 @@ export default function AccountPage() {
   };
 
   const startDeleteHold = () => {
-    if (isDeletingAccount || deleteHoldActive) {
+    if (isDeletingAccount || deleteHoldActive || !deletePassword) {
       return;
     }
 
@@ -1319,9 +1323,24 @@ export default function AccountPage() {
               </div>
               <ModalCloseButton onClick={closeModal} />
             </div>
-            <div className="mt-6 rounded-2xl border border-red-100 bg-red-50/50 p-4">
+            <div className="mt-6 space-y-4">
+              <label className="block">
+                <span className="text-sm font-semibold text-black">
+                  Confirm your password
+                </span>
+                <input
+                  type="password"
+                  value={deletePassword}
+                  onChange={(event) => setDeletePassword(event.target.value)}
+                  autoComplete="current-password"
+                  placeholder="Current password"
+                  className="mt-2 h-12 w-full rounded-full border border-black/10 bg-white px-5 text-sm outline-none placeholder:text-black/30 focus:border-black/30"
+                />
+              </label>
+              <div className="rounded-2xl border border-red-100 bg-red-50/50 p-4">
               <p className="text-sm leading-6 text-black/60">
-                Keep holding until the button fills. This can&apos;t be undone.
+                Enter your password, then keep holding until the button fills.
+                This can&apos;t be undone.
               </p>
               {modalError ? (
                 <p
@@ -1355,7 +1374,7 @@ export default function AccountPage() {
                     cancelDeleteHold();
                   }
                 }}
-                disabled={isDeletingAccount}
+                disabled={isDeletingAccount || !deletePassword}
                 aria-label="Press and hold to delete your account"
                 draggable={false}
                 style={{
@@ -1379,9 +1398,12 @@ export default function AccountPage() {
                     ? "Deleting..."
                     : deleteHoldActive
                       ? "Keep holding..."
-                      : "Hold to delete account"}
+                      : deletePassword
+                        ? "Hold to delete account"
+                        : "Enter password to continue"}
                 </span>
               </button>
+              </div>
             </div>
           </div>
         </div>
