@@ -18,6 +18,9 @@ const { websites } = schema;
 
 const VIEWPORT = { width: 1440, height: 1100 };
 const CAPTURE_TIMEOUT_MS = 45_000;
+// Generated designs often fade or slide the hero in after load; capturing at
+// the load event catches them mid-animation. Let the page settle first.
+const SETTLE_AFTER_LOAD_MS = 2_500;
 const BLOCKED_SCREENSHOT_EXTENSIONS = /\.(gif|m3u8|m4v|mov|mp4|webm)(?:[?#]|$)/i;
 
 let screenshotQueue: Promise<void> = Promise.resolve();
@@ -45,6 +48,7 @@ type PlaywrightChromium = {
         waitUntil: "load";
         timeout: number;
       }): Promise<unknown>;
+      waitForTimeout(timeout: number): Promise<void>;
       screenshot(options: {
         type: "jpeg";
         quality: number;
@@ -67,7 +71,10 @@ function shouldBlockScreenshotRequest(params: {
   const resourceType = params.resourceType.toLowerCase();
   const url = params.url.toLowerCase();
 
-  if (resourceType === "media" || resourceType === "font") {
+  // Fonts are deliberately allowed: blocking them made every screenshot
+  // render in fallback system fonts, which misrepresents typography-led
+  // designs in the dashboard and emails.
+  if (resourceType === "media") {
     return true;
   }
 
@@ -140,6 +147,8 @@ async function captureHomepageScreenshot(slug: string): Promise<Buffer> {
       timeout: CAPTURE_TIMEOUT_MS,
     });
     logMemoryUsage("screenshot:after-page-load", { slug });
+
+    await page.waitForTimeout(SETTLE_AFTER_LOAD_MS);
 
     const screenshot = Buffer.from(
       await page.screenshot({
