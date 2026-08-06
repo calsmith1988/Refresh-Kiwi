@@ -359,7 +359,7 @@ export const COLOR_RECIPES: readonly ColorRecipe[] = [
     name: "dark-canvas",
     prompt: [
       "- Dark canvas: near-black or a very dark shade mixed from the brand colour; light high-contrast text; the brand colour becomes the glow — CTAs, icon accents, highlighted words, thin rules.",
-      "- Keep photography vivid against the dark ground and verify WCAG AA contrast everywhere. If the brand palette is genuinely too pastel or pale to read on dark, fall back to light-airy instead of forcing it.",
+      "- Keep photography vivid against the dark ground and verify WCAG AA contrast everywhere. If the brand palette is genuinely too pastel or pale to read on dark, or the business logo is dark artwork that would be illegible in a dark header, fall back to light-airy instead of forcing it.",
     ].join("\n"),
   },
   {

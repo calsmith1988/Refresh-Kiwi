@@ -99,5 +99,6 @@ Before you finish, re-open every HTML file you wrote or changed and verify:
 6. Below-the-fold images have `loading="lazy"` (leave the hero and other above-the-fold images eager).
 7. The page starts with a skip link (`<a class="skip-link" href="#main">Skip to content</a>` or equivalent) that is visually hidden until focused, and the target id exists.
 8. Any `og:image` is a full absolute `https://` URL — never a root-relative path.
+9. The header background contrasts with the logo artwork itself — a logo drawn for a light background (dark text or dark marks) never sits on a dark header, and light/white artwork never sits on a light one. You cannot edit the logo file, so when they clash the logo wins: lighten the header, put a contrasting chip/panel behind the logo, or use a styled-text wordmark instead. Never apply CSS invert/brightness filters to a multi-colour logo.
 
 This check should take under a minute. Do not skip it, and do not add build tooling to perform it — read the files directly.

@@ -151,6 +151,8 @@ ${GIT_RULES}
 - Reuse the source website's actual images by referencing their absolute URLs directly in <img> tags (or CSS backgrounds where it suits the design). Do not download or save image files — hotlinking is fast and the platform localises images later.
 - Always put the business logo in the header if the source site has one. Look for header/nav logo images first; apple-touch-icon or favicon are fallbacks only if they are high enough quality.
 - If the source site has no usable logo, render the brand name as styled text in the header (typography treated as a wordmark) — never substitute a generic icon, emoji, or unrelated clipart image as the logo.
+- Logo legibility is non-negotiable. You cannot edit the logo file, so the header must adapt to it: before finalising the header, work out whether the logo artwork is dark or light (read the SVG's fill colours, or judge from the background it sits on in the original site — a logo that lived on a white header is almost always dark artwork). The header background must contrast with the logo artwork itself, not just the nav text. Never place dark logo artwork on a dark header, or light/white artwork on a light one.
+- If the logo clashes with the colour treatment you planned, the logo wins. Fix it with one of: a light header (fine even on an otherwise dark page), a small contrasting chip/panel behind the logo, or a styled-text wordmark in the header with the logo image moved to a section where it is legible. Never "fix" it with CSS invert/brightness filters on a multi-colour logo — only consider filters for genuinely single-colour marks, and prefer the other options.
 - Use the strongest photos for the hero and supporting sections. Skip tiny icons, badges, stock-photo watermarks, and tracking pixels.
 - If the homepage has a gallery, portfolio, case studies, or team photos, you may rebuild those sections with as many source images as the design deserves — do not artificially limit image count.
 - Only use https image URLs; http-only images will be blocked in the preview.
@@ -187,6 +189,7 @@ ${GIT_RULES}
 
 - Identify the brand colours from the original site before designing: the logo first, then header/nav background, buttons, and accent colours.
 - If the site has clear branding, keep it. Build a refined, modern palette around those brand colours — the business should still feel like itself, just executed beautifully. Ensure WCAG AA contrast.
+- The brand's light/dark character is part of its identity too. If the original site is clearly light (light header, dark text, a logo drawn for a light background), keep the refresh light-first — do not flip it to a dark theme unless the logo and imagery genuinely work on dark. This overrides the assigned colour recipe when they conflict.
 - If there is no clear branding, or the colours are genuinely poor, choose your own tasteful modern palette instead.
 - Either way, make the wow factor come from layout, typography, spacing, and motion — not from swapping the brand's identity.
 
@@ -261,6 +264,7 @@ ${GIT_RULES}
 ## Images and logo
 
 - Use the provided logo in the header if a logo asset is listed above.
+- Match the header background to the logo artwork — you cannot edit the logo file, so the header adapts to it. Dark logo artwork needs a light header (or a light chip/panel behind the logo); light/white artwork needs a dark or brand-coloured header. Never let the logo dissolve into the background: if it clashes with your planned colour treatment, change the header, and never apply CSS invert/brightness filters to a multi-colour logo.
 - If no logo asset is provided, render the brand name as styled text in the header (typography treated as a wordmark) — never substitute a generic icon, emoji, or clipart image as the logo.
 - Use provided image assets as real site imagery where they fit: hero, services, gallery, team, product, or proof sections. If the brief says these are selected photos from a business listing, treat them as preferred real business photos and use several of them prominently instead of abstract/generated-looking imagery.
 - If multiple generated image assets are listed, use them as separate focused images in different sections. Do not visually combine them into one collage or describe them as one image.
