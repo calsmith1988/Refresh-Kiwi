@@ -27,3 +27,35 @@ export function logMemoryUsage(
       .join(" "),
   );
 }
+
+const startedHeartbeats = new Set<string>();
+
+/**
+ * Periodically log RSS/heap so Render logs show when memory steps up
+ * (after deploys, image work, traffic spikes) without waiting for an OOM.
+ */
+export function startMemoryHeartbeat(service: string): void {
+  if (startedHeartbeats.has(service)) {
+    return;
+  }
+
+  startedHeartbeats.add(service);
+
+  const intervalMs = Number(process.env.MEMORY_HEARTBEAT_MS ?? 180_000);
+
+  if (!Number.isFinite(intervalMs) || intervalMs <= 0) {
+    return;
+  }
+
+  const tick = () => {
+    logMemoryUsage("heartbeat", {
+      service,
+      uptimeSec: Math.floor(process.uptime()),
+    });
+  };
+
+  tick();
+  const timer = setInterval(tick, intervalMs);
+  // Don't keep the process alive solely for heartbeats (esp. worker shutdown).
+  timer.unref?.();
+}

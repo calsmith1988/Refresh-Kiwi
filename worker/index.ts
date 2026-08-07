@@ -1,4 +1,5 @@
 import { localizeWebsiteImages } from "@/lib/assets/localize";
+import { configureSharpForLongRunningServer } from "@/lib/assets/sharp-config";
 import { generateStarterSeedAssets } from "@/lib/assets/starter";
 import {
   CursorRunFailedError,
@@ -8,6 +9,7 @@ import { closeDb, getDb, schema } from "@/lib/db";
 import { processEditRequest } from "@/lib/edits/processor";
 import { processRefreshJob, processFreshJob } from "@/lib/jobs/processor";
 import type { LegalAnswers } from "@/lib/legal/draft";
+import { startMemoryHeartbeat } from "@/lib/observability/memory";
 import { processAdditionalPages } from "@/lib/pages/processor";
 import { tryCaptureHomepageScreenshot } from "@/lib/screenshots/homepage";
 import {
@@ -157,6 +159,8 @@ async function recoverIfDue(): Promise<void> {
 }
 
 async function runWorker(): Promise<void> {
+  configureSharpForLongRunningServer();
+  startMemoryHeartbeat("worker");
   console.info("[refresh-kiwi-worker] worker started");
 
   while (!shouldStop) {

@@ -1,5 +1,8 @@
 import sharp from "sharp";
 
+import { configureSharpForLongRunningServer } from "@/lib/assets/sharp-config";
+import { logMemoryUsage } from "@/lib/observability/memory";
+
 /**
  * Web-optimises raster images before they're stored as site assets: resizes
  * anything larger than a desktop hero needs, converts PNG/JPEG to WebP
@@ -22,6 +25,8 @@ export type OptimizedImage = {
   contentType: string;
 };
 
+configureSharpForLongRunningServer();
+
 export async function optimizeImage(
   buffer: Buffer,
   contentType: string,
@@ -31,6 +36,13 @@ export async function optimizeImage(
   if (!OPTIMIZABLE_TYPES.has(contentType)) {
     return original;
   }
+
+  const rssBefore = process.memoryUsage().rss;
+
+  logMemoryUsage("image-optimise:before", {
+    contentType,
+    bytesIn: buffer.byteLength,
+  });
 
   try {
     const optimized = await sharp(buffer, {
@@ -47,13 +59,43 @@ export async function optimizeImage(
       .webp({ quality: WEBP_QUALITY })
       .toBuffer();
 
+    const rssDeltaMb = (
+      (process.memoryUsage().rss - rssBefore) /
+      1024 /
+      1024
+    ).toFixed(1);
+
     // Tiny graphics occasionally encode larger as WebP — keep the original.
     if (optimized.byteLength >= buffer.byteLength) {
+      logMemoryUsage("image-optimise:after", {
+        contentType,
+        bytesIn: buffer.byteLength,
+        bytesOut: buffer.byteLength,
+        keptOriginal: true,
+        rssDeltaMb,
+      });
       return original;
     }
 
+    logMemoryUsage("image-optimise:after", {
+      contentType: "image/webp",
+      bytesIn: buffer.byteLength,
+      bytesOut: optimized.byteLength,
+      keptOriginal: false,
+      rssDeltaMb,
+    });
+
     return { buffer: optimized, contentType: "image/webp" };
   } catch (error) {
+    logMemoryUsage("image-optimise:failed", {
+      contentType,
+      bytesIn: buffer.byteLength,
+      rssDeltaMb: (
+        (process.memoryUsage().rss - rssBefore) /
+        1024 /
+        1024
+      ).toFixed(1),
+    });
     console.warn(
       `[refresh-kiwi] optimise: falling back to original image:`,
       error,
