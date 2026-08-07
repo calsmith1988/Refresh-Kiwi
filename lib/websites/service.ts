@@ -949,7 +949,17 @@ export async function getWebsiteAccessBySitesLabel(label: string) {
 }
 
 export async function getWebsiteAccessByCustomDomain(hostname: string) {
-  const domain = normalizeCustomDomain(hostname);
+  // Bots and scanners routinely hit hosts that can never be a connected
+  // domain (reserved subdomains like mail.refreshkiwi.site, nested labels,
+  // malformed hosts). Those are a 404, not an unhandled 500.
+  let domain: string;
+
+  try {
+    domain = normalizeCustomDomain(hostname);
+  } catch {
+    return null;
+  }
+
   const findWebsite = async (customDomain: string) => {
     const [website] = await getDb()
       .select({

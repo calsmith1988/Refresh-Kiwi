@@ -1,17 +1,17 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth/session";
-import { homepageScreenshotPath } from "@/lib/screenshots/paths";
-import { captureAndSaveHomepageScreenshot } from "@/lib/screenshots/homepage";
+import { enqueueHomepageScreenshotRefresh } from "@/lib/screenshots/queue";
 import { getOwnedWebsite } from "@/lib/websites/service";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
 
 interface RouteContext {
   params: Promise<{ websiteId: string }>;
 }
 
+// Screenshot capture launches a full Chromium; on the 512MB web instance that
+// alone can trip the memory limit, so the capture always runs on the worker.
 export async function POST(_request: Request, context: RouteContext) {
   const user = await getCurrentUser();
 
@@ -29,18 +29,10 @@ export async function POST(_request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Website not found" }, { status: 404 });
   }
 
-  try {
-    await captureAndSaveHomepageScreenshot(website.slug, {
-      websiteId: website.id,
-    });
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to refresh screenshot";
-
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
-
-  return NextResponse.json({
-    screenshotUrl: homepageScreenshotPath(website.slug, Date.now()),
+  await enqueueHomepageScreenshotRefresh({
+    slug: website.slug,
+    websiteId: website.id,
   });
+
+  return NextResponse.json({ queued: true }, { status: 202 });
 }
