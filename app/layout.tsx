@@ -3,12 +3,15 @@ import type { Metadata } from "next";
 import CookieConsentBanner from "@/components/CookieConsentBanner";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import MetaPixel from "@/components/MetaPixel";
+import MicrosoftClarity from "@/components/MicrosoftClarity";
 import "./globals.css";
 
 const gaMeasurementId =
   process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim() || "G-0J6KNZCKDF";
 const metaPixelId =
   process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim() || "1474982430622665";
+const clarityProjectId =
+  process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID?.trim() || "";
 
 export const metadata: Metadata = {
   metadataBase: new URL(
@@ -63,6 +66,7 @@ export default function RootLayout({
       <body className="antialiased">
         <GoogleAnalytics measurementId={gaMeasurementId} />
         <MetaPixel pixelId={metaPixelId} />
+        <MicrosoftClarity projectId={clarityProjectId} />
         {children}
         <CookieConsentBanner />
       </body>

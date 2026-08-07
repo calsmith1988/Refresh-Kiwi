@@ -53,7 +53,7 @@ export const legalPages = {
           "Usage and technical information, such as IP address, browser and device information, approximate location derived from technical data, log data, error information, and interactions with our website.",
           "Payment and billing information processed by Stripe, such as customer identifiers, subscription identifiers, checkout status, and payment events. We do not store full card numbers.",
           "Communications you send to us, including support requests, feedback, and legal or privacy enquiries.",
-          "Analytics and campaign measurement information collected through Google Analytics and Meta Pixel, subject to your browser settings and any consent controls we make available.",
+          "Analytics and campaign measurement information collected through Google Analytics, Microsoft Clarity, and Meta Pixel, subject to your browser settings and any consent controls we make available.",
         ],
       },
       {
@@ -88,7 +88,7 @@ export const legalPages = {
       {
         heading: "Third-party processors",
         paragraphs: [
-          "We use trusted third-party providers to run Refresh Kiwi. These may include Cursor / Anysphere for AI agent generation, Stripe for payments, Render for hosting, database, and custom domain infrastructure, GitHub for generated site repository storage, OpenAI for image remixing where enabled, Google Analytics for analytics, and Meta for campaign measurement.",
+          "We use trusted third-party providers to run Refresh Kiwi. These may include Cursor / Anysphere for AI agent generation, Stripe for payments, Render for hosting, database, and custom domain infrastructure, GitHub for generated site repository storage, OpenAI for image remixing where enabled, Google Analytics and Microsoft Clarity for analytics, and Meta for campaign measurement.",
           "These providers may process personal information in the United Kingdom, the European Economic Area, the United States, or other countries. Where required, we rely on appropriate safeguards such as contractual protections or approved transfer mechanisms.",
         ],
       },
@@ -257,21 +257,22 @@ export const legalPages = {
           "Essential cookies to keep you signed in, protect sessions, remember security-related information, and operate the website.",
           "Functional storage to support product features, such as remembering an active refresh job in your browser.",
           "Payment-related cookies or redirects used by Stripe when you subscribe, manage billing, or complete checkout.",
-          "Analytics and campaign measurement cookies or similar technologies from Google Analytics and Meta Pixel to understand how visitors use Refresh Kiwi, improve the service, and measure campaigns.",
+          "Analytics and campaign measurement cookies or similar technologies from Google Analytics, Microsoft Clarity, and Meta Pixel to understand how visitors use Refresh Kiwi, improve the service, and measure campaigns.",
         ],
       },
       {
-        heading: "Google Analytics and Meta",
+        heading: "Google Analytics, Microsoft Clarity, and Meta",
         paragraphs: [
           "We use Google Analytics to collect information such as pages visited, approximate location, device and browser information, referrers, and interactions with the site. Google may set cookies or use similar identifiers to provide analytics reports.",
+          "We use Microsoft Clarity to understand how visitors interact with the site, including session recordings and heatmaps. Clarity may set cookies or use similar identifiers to provide these insights.",
           "We may also use Meta Pixel and Meta Conversions API to measure visits and product events such as viewing content, starting a website refresh, starting checkout, or subscribing. Meta may process this information according to its own terms and policies.",
-          "Google's handling of analytics data is governed by Google's own terms and policies. You can learn more at https://policies.google.com/technologies/partner-sites.",
+          "Google's and Microsoft's handling of analytics data is governed by their own terms and policies. You can learn more at https://policies.google.com/technologies/partner-sites and https://clarity.microsoft.com/terms.",
         ],
       },
       {
         heading: "Managing cookies",
         paragraphs: [
-          "You can accept, reject, or update analytics and campaign measurement preferences using the cookie banner or the Cookie settings link in the site footer. Analytics and Meta browser scripts are only loaded or activated after you agree to analytics cookies.",
+          "You can accept, reject, or update analytics and campaign measurement preferences using the cookie banner or the Cookie settings link in the site footer. Analytics, Clarity, and Meta browser scripts are only loaded or activated after you agree to analytics cookies.",
           "You can also control cookies through your browser settings. You may be able to use browser extensions or device settings to limit analytics tracking. Blocking essential cookies may stop parts of Refresh Kiwi from working, including account login and checkout.",
         ],
       },
