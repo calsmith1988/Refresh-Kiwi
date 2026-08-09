@@ -1271,13 +1271,37 @@ export default function RefreshPage({
     [showVerification],
   );
 
+  const scrollHeroIntoView = useCallback(() => {
+    const hero = heroSectionRef.current;
+
+    if (!hero) {
+      return;
+    }
+
+    const header = document.querySelector("header");
+    const headerOffset =
+      header instanceof HTMLElement ? header.getBoundingClientRect().height : 64;
+    const top =
+      window.scrollY + hero.getBoundingClientRect().top - headerOffset - 8;
+
+    window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+  }, []);
+
   const chooseHeroMode = useCallback(
-    (mode: FlowMode, entry: FreshEntry = "describe") => {
+    (
+      mode: FlowMode,
+      entry: FreshEntry = "describe",
+      options?: {
+        /** Skip the talk/type chooser so CTAs land on a real input. */
+        openComposer?: "choose" | "talk" | "type";
+      },
+    ) => {
       setFlowMode(mode);
       setGenerationSource(mode);
       setHasChosenHeroMode(true);
       setErrorMessage(null);
-      setFreshComposer("choose");
+
+      setFreshComposer(options?.openComposer ?? "choose");
 
       if (mode === "fresh") {
         setFreshEntry(entry);
@@ -1293,21 +1317,35 @@ export default function RefreshPage({
         setSelectedGbpPhotoNames([]);
       }
 
+      // Wait for React to paint the chosen form (e.g. #fresh-input only exists
+      // after leaving the talk/type chooser) before scrolling and focusing.
       window.setTimeout(() => {
-        const target = document.getElementById(
+        scrollHeroIntoView();
+
+        const targetId =
           mode === "fresh"
             ? entry === "google"
               ? "fresh-google-input"
               : "fresh-input"
-            : "refresh-input",
-        );
+            : "refresh-input";
+        const target = document.getElementById(targetId);
 
         if (target instanceof HTMLElement) {
-          target.focus();
+          target.focus({ preventScroll: true });
+          return;
         }
-      }, 0);
+
+        // Fresh describe still on the talk/type chooser — nudge into typing.
+        if (mode === "fresh" && entry === "describe") {
+          const typeDoor = document.getElementById("fresh-composer-type");
+
+          if (typeDoor instanceof HTMLElement) {
+            typeDoor.focus({ preventScroll: true });
+          }
+        }
+      }, 80);
     },
-    [],
+    [scrollHeroIntoView],
   );
 
   useEffect(() => {
@@ -2715,8 +2753,17 @@ export default function RefreshPage({
               </button>
             ) : !user ? (
               <a
-                href={flowMode === "fresh" ? "#fresh-input" : "#refresh-input"}
-                onClick={() => chooseHeroMode(flowMode)}
+                href="#hero"
+                onClick={(event) => {
+                  event.preventDefault();
+                  chooseHeroMode(
+                    flowMode,
+                    flowMode === "fresh" && freshEntry === "google"
+                      ? "google"
+                      : "describe",
+                    { openComposer: "type" },
+                  );
+                }}
                 className="rounded-full bg-[#141811] px-4 py-2 text-sm font-semibold text-white transition hover:bg-black sm:px-5"
               >
                 Try it free
@@ -2810,8 +2857,9 @@ export default function RefreshPage({
 
       {/* ───────────────────────── Hero / Theatre / Reveal ───────────────────────── */}
       <section
+        id="hero"
         ref={heroSectionRef}
-        className="relative z-30 px-5 pb-8 pt-14 sm:px-8 sm:pb-10 sm:pt-20"
+        className="relative z-30 scroll-mt-20 px-5 pb-8 pt-14 sm:px-8 sm:pb-10 sm:pt-20"
       >
         {!showReveal && !isRefreshing ? (
           <div
@@ -3635,6 +3683,7 @@ export default function RefreshPage({
                               </span>
                             </button>
                             <button
+                              id="fresh-composer-type"
                               type="button"
                               onClick={() => {
                                 setFreshComposer("type");
@@ -4113,15 +4162,15 @@ export default function RefreshPage({
                     ? "Want to start from scratch? Tell us about your business and "
                     : "The best small business website redesign example is your own website — "}
                 <a
-                  href={
-                    pageStory === "refresh" ? "#refresh-input" : "#fresh-input"
-                  }
-                  onClick={() =>
+                  href="#hero"
+                  onClick={(event) => {
+                    event.preventDefault();
                     chooseHeroMode(
                       pageStory === "refresh" ? "refresh" : "fresh",
                       pageStory === "google" ? "google" : "describe",
-                    )
-                  }
+                      { openComposer: "type" },
+                    );
+                  }}
                   className="font-semibold text-kiwi-green underline underline-offset-4"
                 >
                   try it free
@@ -4173,8 +4222,17 @@ export default function RefreshPage({
                     <li>✓ 3 free changes included</li>
                   </ul>
                   <a
-                    href={flowMode === "fresh" ? "#fresh-input" : "#refresh-input"}
-                    onClick={() => chooseHeroMode(flowMode)}
+                    href="#hero"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      chooseHeroMode(
+                        flowMode,
+                        flowMode === "fresh" && freshEntry === "google"
+                          ? "google"
+                          : "describe",
+                        { openComposer: "type" },
+                      );
+                    }}
                     className="mt-7 inline-flex h-12 items-center rounded-full border border-black/15 bg-white px-6 text-sm font-semibold transition hover:border-black/30"
                   >
                     Try it free
@@ -4205,8 +4263,17 @@ export default function RefreshPage({
                     <li>✓ Cancel anytime — no contracts</li>
                   </ul>
                   <a
-                    href={flowMode === "fresh" ? "#fresh-input" : "#refresh-input"}
-                    onClick={() => chooseHeroMode(flowMode)}
+                    href="#hero"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      chooseHeroMode(
+                        flowMode,
+                        flowMode === "fresh" && freshEntry === "google"
+                          ? "google"
+                          : "describe",
+                        { openComposer: "type" },
+                      );
+                    }}
                     className="mt-7 inline-flex h-12 items-center rounded-full bg-kiwi-green px-6 text-sm font-bold text-black transition hover:bg-kiwi-green-hover"
                   >
                     {flowMode === "fresh"
@@ -4378,15 +4445,15 @@ export default function RefreshPage({
                       : "Revamping website design? Try it for free. It takes about 2 minutes, and nothing changes until you say so."}
                 </p>
                 <a
-                  href={
-                    pageStory === "refresh" ? "#refresh-input" : "#fresh-input"
-                  }
-                  onClick={() =>
+                  href="#hero"
+                  onClick={(event) => {
+                    event.preventDefault();
                     chooseHeroMode(
                       pageStory === "refresh" ? "refresh" : "fresh",
                       pageStory === "google" ? "google" : "describe",
-                    )
-                  }
+                      { openComposer: "type" },
+                    );
+                  }}
                   className="relative mt-8 inline-flex items-center rounded-full bg-[#141811] px-8 py-4 text-sm font-bold text-white shadow-xl shadow-black/15 ring-1 ring-white/20 transition hover:bg-black"
                 >
                   {pageStory === "google"
