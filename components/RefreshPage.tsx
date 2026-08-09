@@ -833,7 +833,7 @@ function PromptStarterCarousel({
         className={`prompt-starter-scroll w-full max-w-full cursor-grab overflow-x-auto overscroll-x-contain rounded-2xl border border-black/10 bg-[#faf8f1] py-2 active:cursor-grabbing [mask-image:linear-gradient(to_right,transparent,black_9%,black_91%,transparent)] ${
           isDraggingRef.current ? "select-none" : ""
         }`}
-        aria-label="Business type prompt starters"
+        aria-label="Business type starter ideas"
         onFocus={pause}
         onBlur={resumeSoon}
         onMouseEnter={pause}
@@ -3369,10 +3369,10 @@ export default function RefreshPage({
 
                 <div className="min-w-0">
                 <h1 className="font-fraunces text-5xl font-semibold leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl">
-                  {flowMode === "fresh" ? "New website." : "Same website."}
+                  2 minutes.
                   <br />
                   <span className="relative inline-block">
-                    {flowMode === "fresh" ? "Fresh start." : "Fresher skin."}
+                    {flowMode === "fresh" ? "A fresh new site." : "One new website."}
                     <span
                       aria-hidden
                       className="absolute inset-x-0 bottom-1 -z-10 h-4 rounded-sm bg-kiwi-green/70 sm:h-5"
@@ -3381,10 +3381,8 @@ export default function RefreshPage({
                 </h1>
                 <p className="mt-6 max-w-md text-lg leading-8 text-black/55">
                   {flowMode === "fresh"
-                    ? "Describe your business, add a logo or photos if you have them, and get a polished website from a website creation company built for small businesses."
-                    : googleBusinessImportEnabled
-                      ? "Input your web address. In about 2 minutes, we rebuild your business online with a fresh, modern design."
-                      : "Input your web address. In about 2 minutes, our website redesign service rebuilds your site with a fresh, modern design — your words, your photos, your business."}
+                    ? "No coding. No complicated builder. Tell us a little about your business and see the website we\u2019d make for you."
+                    : "No coding. No complicated builder. Pop in your web address and see a fresh, modern version of your website \u2014 your words, your photos, your business."}
                 </p>
 
                 <div className="mt-8 max-w-lg">
@@ -3738,7 +3736,7 @@ export default function RefreshPage({
                           placeholder={
                             freshComposerView === "talk"
                               ? "Your words will land here — tidy them up or add more."
-                              : "Tell us the business name, what you sell, who it is for, and any must-have sections..."
+                              : "Your business name and what you do — that's plenty to start..."
                           }
                           className="mt-4 w-full resize-none rounded-3xl bg-[#faf8f1] px-5 py-4 text-base leading-7 outline-none placeholder:text-black/30"
                         />
@@ -3905,7 +3903,7 @@ export default function RefreshPage({
                           I&apos;m starting from scratch
                         </span>
                         <span className="mt-1.5 block text-sm leading-6 text-black/55 sm:mt-2">
-                          Tell us about your business — talk or type.
+                          A few words about your business — talk or type.
                         </span>
                         <span className="mt-3 inline-flex text-sm font-bold text-black transition group-hover:translate-x-1 sm:mt-4">
                           Create my site →
@@ -3963,8 +3961,8 @@ export default function RefreshPage({
                 {pageStory === "google"
                   ? "If you're already on Google Business, we can turn that listing into a proper website in about 2 minutes."
                   : pageStory === "fresh"
-                    ? "Our web design services for small business help you go from a simple description to a professional website in about 2 minutes."
-                    : "If you can copy and paste, you can start a small business website redesign."}
+                    ? "From a few sentences to a proper website in about 2 minutes. We do the building."
+                    : "If you can copy and paste, you can do this. We do the rest."}
               </p>
 
               <div className="mt-10 grid gap-4 md:grid-cols-3 md:gap-10">
@@ -3994,7 +3992,7 @@ export default function RefreshPage({
                         {
                           n: "01",
                           title: "Describe your business",
-                          body: "Tell us what you do, who you help, and what style you like. Talk it through or type it — add a logo or photos if you have them.",
+                          body: "Say what you do and who it's for — talk it through or type a few sentences. Add a logo or photos if you have them.",
                           vignette: "brief" as const,
                         },
                         {
@@ -4019,7 +4017,7 @@ export default function RefreshPage({
                         },
                         {
                           n: "02",
-                          title: "Watch the site redesign happen",
+                          title: "Watch the redesign happen",
                           body: "In about 2 minutes we rebuild it with a clean, modern design. Your words and photos stay.",
                           vignette: "building" as const,
                         },
@@ -4073,15 +4071,15 @@ export default function RefreshPage({
                 {pageStory === "google"
                   ? "From a Google listing to a real website."
                   : pageStory === "fresh"
-                    ? "Local business web design, without the usual wait."
-                    : "Old website in, fresh website redesign out."}
+                    ? "See what we make."
+                    : "Old website in. Fresh website out."}
               </h2>
               <p className="mt-3 max-w-md text-base leading-7 text-white/55">
                 {pageStory === "google"
                   ? "Sites like these, built for local businesses — clear services, trust, and an easy way to get in touch."
                   : pageStory === "fresh"
-                    ? "Sites like these, built from a short brief — modern websites local businesses can edit by asking for changes."
-                    : "Real site redesign examples — same business, cleaner homepage."}
+                    ? "Sites like these, made from a few sentences about the business — then changed by simply asking."
+                    : "Real redesign examples — same business, same details, much fresher look."}
               </p>
 
               <div
@@ -4159,8 +4157,8 @@ export default function RefreshPage({
                 {pageStory === "google"
                   ? "Got a Google Business listing? "
                   : pageStory === "fresh"
-                    ? "Want to start from scratch? Tell us about your business and "
-                    : "The best small business website redesign example is your own website — "}
+                    ? "Curious what yours would look like? "
+                    : "The best example is your own website — "}
                 <a
                   href="#hero"
                   onClick={(event) => {
@@ -4186,14 +4184,12 @@ export default function RefreshPage({
           <section id="pricing" className="scroll-mt-20 px-5 py-20 sm:px-8">
             <div className="mx-auto w-full max-w-4xl">
               <h2 className="text-center font-fraunces text-3xl font-semibold tracking-tight sm:text-4xl">
-                {flowMode === "fresh"
-                  ? "Simple website design costs for small business."
-                  : "One simple website redesign cost."}
+                Simple pricing. Free to try.
               </h2>
               <p className="mx-auto mt-3 max-w-md text-center text-base leading-7 text-black/55">
                 {flowMode === "fresh"
                   ? "See your website for free. Only pay when you want to put it online and keep making changes."
-                  : "No credits, no tokens, no surprises. An affordable website redesign starts free, and you only pay when you want your new website online."}
+                  : "See your website redesigned for free. You only pay when you want your new website online — no surprises."}
               </p>
 
               <div className="mt-5 flex justify-center">
@@ -4299,6 +4295,10 @@ export default function RefreshPage({
                 {(pageStory === "google"
                   ? [
                       {
+                        q: "Does it really take 2 minutes?",
+                        a: "About that, yes. Pick your listing, press one button, and your new website is usually ready to look at in around 2 minutes.",
+                      },
+                      {
                         q: "Do I need an old website?",
                         a: "No. If you're on Google Business, search for your listing and we'll build a new website from those details and photos.",
                       },
@@ -4334,6 +4334,10 @@ export default function RefreshPage({
                   : pageStory === "fresh"
                     ? [
                         {
+                          q: "Does it really take 2 minutes?",
+                          a: "About that, yes. Once you've said a little about your business, your new website is usually ready to look at in around 2 minutes.",
+                        },
+                        {
                           q: "Do I need an old website?",
                           a: "No. Describe your business — talk it through or type it — add a logo or photos if you have them, and we create a new website for you.",
                         },
@@ -4367,6 +4371,10 @@ export default function RefreshPage({
                         },
                       ]
                   : [
+                      {
+                        q: "Does it really take 2 minutes?",
+                        a: "About that, yes. Paste your web address, press one button, and your redesigned website is usually ready to look at in around 2 minutes.",
+                      },
                       {
                         q: "Will this change my real website?",
                         a: "No. We make a separate redesigned version. Your current website stays exactly as it is until you decide to switch.",
@@ -4434,15 +4442,15 @@ export default function RefreshPage({
                   {pageStory === "google"
                     ? "Your Google listing, turned into a website."
                     : pageStory === "fresh"
-                      ? "Start your website in about 2 minutes."
+                      ? "Two minutes from now, you could be looking at it."
                       : "Your website called. It wants a redesign."}
                 </h2>
                 <p className="relative mx-auto mt-4 max-w-md text-base font-medium leading-7 text-[#11150f]/65">
                   {pageStory === "google"
                     ? "Find your business on Google and get a proper website you can save, change, and take online when you're ready."
                     : pageStory === "fresh"
-                      ? "Tell us about your business and get a fresh website you can save, change, and take online when you're ready."
-                      : "Revamping website design? Try it for free. It takes about 2 minutes, and nothing changes until you say so."}
+                      ? "See the website we'd make for your business. Save it, change it, and take it online when you're ready."
+                      : "Free to try. It takes about 2 minutes, and nothing changes until you say so."}
                 </p>
                 <a
                   href="#hero"

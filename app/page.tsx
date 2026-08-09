@@ -3,19 +3,19 @@ import type { Metadata } from "next";
 import RefreshPage from "@/components/RefreshPage";
 
 export const metadata: Metadata = {
-  title: "Affordable AI Website Redesign Service | Refresh Kiwi",
+  title: "2 Minutes. One New Website. | Refresh Kiwi",
   description:
-    "Try an affordable AI website redesign for your small business. Paste your current site and get a modern website redesign preview in about 2 minutes.",
+    "Give us a couple of minutes and see a brand-new website for your business. No coding, no complicated builder. Free to try — no signup needed.",
   openGraph: {
-    title: "Affordable AI Website Redesign Service | Refresh Kiwi",
+    title: "2 Minutes. One New Website. | Refresh Kiwi",
     description:
-      "Refresh Kiwi is a web redesign service for small businesses that want a fast, affordable website redesign without starting from scratch.",
+      "Refresh your old website or start fresh. See your new site in about 2 minutes — free to try, and nothing changes until you say so.",
     url: "/",
   },
   twitter: {
-    title: "Affordable AI Website Redesign Service | Refresh Kiwi",
+    title: "2 Minutes. One New Website. | Refresh Kiwi",
     description:
-      "Paste your current site and get a modern small business website redesign preview in about 2 minutes.",
+      "See your new website in about 2 minutes. No coding, no complicated builder. Free to try.",
   },
 };
 
