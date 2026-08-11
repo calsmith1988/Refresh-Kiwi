@@ -725,12 +725,6 @@ function PromptStarterCarousel({
     };
   }, []);
 
-  // UTM params / external referrer only exist on the first page view, so
-  // capture them immediately for attribution on later generation requests.
-  useEffect(() => {
-    captureAttribution();
-  }, []);
-
   useEffect(() => {
     const scroller = scrollRef.current;
 
@@ -1138,17 +1132,17 @@ export default function RefreshPage({
   >(EXAMPLE_SHOWCASES[0].id);
   const [generationSource, setGenerationSource] =
     useState<GenerationSource>("refresh");
-  const [hasChosenHeroMode, setHasChosenHeroMode] = useState(false);
   const [url, setUrl] = useState("");
   const [freshEntry, setFreshEntry] = useState<FreshEntry>("describe");
-  // The describe card asks "talk or type?" before showing any tools, so
-  // first-time visitors only ever see the inputs for the path they chose.
-  const [freshComposer, setFreshComposer] = useState<"choose" | "talk" | "type">(
-    "choose",
-  );
-  // Without voice (no OpenAI key), typing is the only composer — no doors.
-  const freshComposerView = voiceInputEnabled ? freshComposer : "type";
-  // The three hero doors each need their own story below the fold — "fresh"
+  // The hero composer is one shared textarea across the three tabs. Its text
+  // is mirrored into url / gbpQuery / freshPrompt so the existing submit
+  // handlers, search effects, and retry logic all keep reading the state they
+  // always have.
+  const [composerText, setComposerText] = useState("");
+  // Once a visitor explicitly taps a tab, typed text stops auto-switching
+  // tabs — their choice wins until they pick another tab.
+  const [heroTabPinned, setHeroTabPinned] = useState(false);
+  // The three hero tabs each need their own story below the fold — "fresh"
   // copy that still talks about describing a business confuses a Google path.
   const pageStory: "refresh" | "fresh" | "google" =
     flowMode === "refresh"
@@ -1287,66 +1281,40 @@ export default function RefreshPage({
     window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
   }, []);
 
+  // Explicitly picking a tab (in the composer or via a CTA below the fold) —
+  // sets the mode, pins the tab against auto-detection, and lands focus on
+  // the shared composer textarea.
   const chooseHeroMode = useCallback(
-    (
-      mode: FlowMode,
-      entry: FreshEntry = "describe",
-      options?: {
-        /** Skip the talk/type chooser so CTAs land on a real input. */
-        openComposer?: "choose" | "talk" | "type";
-      },
-    ) => {
+    (mode: FlowMode, entry: FreshEntry = "describe") => {
       setFlowMode(mode);
       setGenerationSource(mode);
-      setHasChosenHeroMode(true);
+      setFreshEntry(mode === "fresh" ? entry : "describe");
+      setHeroTabPinned(true);
       setErrorMessage(null);
+      setPlaceSuggestions([]);
+      setSelectedGbpPlace(null);
+      setSelectedGbpPhotoNames([]);
+      setForceUrlRefresh(false);
 
-      setFreshComposer(options?.openComposer ?? "choose");
-
-      if (mode === "fresh") {
-        setFreshEntry(entry);
-        setPlaceSuggestions([]);
-        setSelectedGbpPlace(null);
-        setSelectedGbpPhotoNames([]);
-        setForceUrlRefresh(false);
-      } else {
-        setFreshEntry("describe");
-        setGbpQuery("");
-        setPlaceSuggestions([]);
-        setSelectedGbpPlace(null);
-        setSelectedGbpPhotoNames([]);
-      }
-
-      // Wait for React to paint the chosen form (e.g. #fresh-input only exists
-      // after leaving the talk/type chooser) before scrolling and focusing.
+      // Wait for React to paint (the textarea is hidden while a Google
+      // listing is selected) before scrolling and focusing.
       window.setTimeout(() => {
         scrollHeroIntoView();
-
-        const targetId =
-          mode === "fresh"
-            ? entry === "google"
-              ? "fresh-google-input"
-              : "fresh-input"
-            : "refresh-input";
-        const target = document.getElementById(targetId);
+        const target = document.getElementById("hero-composer-input");
 
         if (target instanceof HTMLElement) {
           target.focus({ preventScroll: true });
-          return;
-        }
-
-        // Fresh describe still on the talk/type chooser — nudge into typing.
-        if (mode === "fresh" && entry === "describe") {
-          const typeDoor = document.getElementById("fresh-composer-type");
-
-          if (typeDoor instanceof HTMLElement) {
-            typeDoor.focus({ preventScroll: true });
-          }
         }
       }, 80);
     },
     [scrollHeroIntoView],
   );
+
+  // UTM params / external referrer only exist on the first page view, so
+  // capture them immediately for attribution on later generation requests.
+  useEffect(() => {
+    captureAttribution();
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -1605,6 +1573,12 @@ export default function RefreshPage({
       setFlowMode(stored.mode);
       setUrl((current) => current || stored.url);
       setFreshPrompt((current) => current || stored.prompt);
+      // Keep the composer textarea in step so a dismissed failure card leaves
+      // the restored input visible rather than an empty box with a live arrow.
+      setComposerText(
+        (current) =>
+          current || (stored.mode === "fresh" ? stored.prompt : stored.url),
+      );
 
       if (stored.token) {
         jobTokenRef.current = stored.token;
@@ -2030,6 +2004,8 @@ export default function RefreshPage({
     setUrl("");
     setFreshEntry("describe");
     setGbpQuery("");
+    setComposerText("");
+    setHeroTabPinned(false);
     setGenerationSource("refresh");
     setPlaceSuggestions([]);
     setSelectedGbpPlace(null);
@@ -2061,24 +2037,29 @@ export default function RefreshPage({
     startFresh();
   };
 
+  // The composer textarea is one piece of text shared by all three tabs.
+  // Mirroring it into url / gbpQuery / freshPrompt keeps every existing
+  // consumer (submit handlers, the places-search effect, retry, job labels)
+  // reading the state it always has.
+  const syncComposerText = (value: string) => {
+    setComposerText(value);
+    setUrl(value);
+    setGbpQuery(value);
+    setFreshPrompt(value);
+  };
+
   const handleSelectPromptStarter = (starter: PromptStarter) => {
     const prompt = promptFromStarter(starter);
 
     setFlowMode("fresh");
     setGenerationSource("fresh");
     setFreshEntry("describe");
-    // A starter is a typing aid, so land them in the typing view.
-    setFreshComposer("type");
     setErrorMessage(null);
-    setFreshPrompt((current) => {
-      const trimmed = current.trim();
 
-      if (!trimmed || isPromptStarter(trimmed)) {
-        return prompt;
-      }
-
-      return `${trimmed}\n\n${prompt}`;
-    });
+    const trimmed = composerText.trim();
+    syncComposerText(
+      !trimmed || isPromptStarter(trimmed) ? prompt : `${trimmed}\n\n${prompt}`,
+    );
 
     window.requestAnimationFrame(() => {
       freshInputRef.current?.focus();
@@ -2088,11 +2069,8 @@ export default function RefreshPage({
   const handleVoiceTranscript = (text: string) => {
     usedVoiceInputRef.current = true;
     // Append rather than replace — people talk, read it back, and talk again.
-    setFreshPrompt((current) => {
-      const trimmed = current.trim();
-
-      return trimmed ? `${trimmed}\n\n${text}` : text;
-    });
+    const trimmed = composerText.trim();
+    syncComposerText(trimmed ? `${trimmed}\n\n${text}` : text);
 
     // Focus so editing the transcript is zero taps away.
     window.requestAnimationFrame(() => {
@@ -2122,11 +2100,9 @@ export default function RefreshPage({
       setSelectedGbpPlace(payload.place);
       setSelectedGbpPhotoNames(payload.place.photos.map((photo) => photo.name));
       setPlaceSuggestions([]);
-      setUrl(payload.place.name);
-      setGbpQuery(payload.place.name);
+      syncComposerText(payload.place.name);
       setFlowMode("fresh");
       setFreshEntry("google");
-      setHasChosenHeroMode(true);
       setGenerationSource("gbp");
     } catch (error) {
       setErrorMessage(
@@ -2565,6 +2541,99 @@ export default function RefreshPage({
       !refreshInputLooksLikeUrl &&
       !selectedGbpPlace &&
       !forceUrlRefresh);
+  // The active composer tab is a view over flowMode/freshEntry, so pageStory,
+  // analytics, and every existing submit handler stay wired exactly as before.
+  const heroTab: "refresh" | "google" | "scratch" =
+    flowMode === "refresh"
+      ? "refresh"
+      : freshEntry === "google"
+        ? "google"
+        : "scratch";
+  const composerPlaceholder =
+    heroTab === "google"
+      ? "Your business name and town or postcode…"
+      : heroTab === "scratch"
+        ? "Describe your business — your name and what you do is plenty…"
+        : googleBusinessImportEnabled
+          ? "Paste your website, type your business name, or describe your business…"
+          : "Paste your website, or describe your business…";
+  const composerSubmitDisabled =
+    isRefreshing ||
+    isLoadingPlaceDetails ||
+    (heroTab === "scratch"
+      ? !freshPrompt.trim()
+      : heroTab === "refresh"
+        ? refreshSubmitDisabled
+        : // Google tab submits by picking a listing from the suggestions.
+          true);
+
+  const handleComposerChange = (value: string) => {
+    syncComposerText(value);
+    setForceUrlRefresh(false);
+    setSelectedGbpPlace(null);
+    setSelectedGbpPhotoNames([]);
+    setPlacesSearchError(null);
+
+    // Smart detection: nudge the highlighted tab to match what they're
+    // typing — but only until they explicitly pick a tab, and never away
+    // from Start from scratch mid-description.
+    if (heroTabPinned) {
+      return;
+    }
+
+    const trimmed = value.trim();
+
+    if (!trimmed) {
+      return;
+    }
+
+    if (looksLikeWebAddress(trimmed)) {
+      if (flowMode !== "refresh") {
+        setFlowMode("refresh");
+        setFreshEntry("describe");
+        setGenerationSource("refresh");
+      }
+      return;
+    }
+
+    if (heroTab === "scratch") {
+      return;
+    }
+
+    const readsLikeBusinessName =
+      googleBusinessImportEnabled &&
+      trimmed.length <= 80 &&
+      !trimmed.includes("\n");
+
+    if (readsLikeBusinessName) {
+      if (heroTab !== "google") {
+        setFlowMode("fresh");
+        setFreshEntry("google");
+        setGenerationSource("fresh");
+      }
+      return;
+    }
+
+    setFlowMode("fresh");
+    setFreshEntry("describe");
+    setGenerationSource("fresh");
+  };
+
+  const handleComposerSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    if (heroTab === "scratch") {
+      void handleFresh(event);
+      return;
+    }
+
+    if (heroTab === "refresh" && !refreshSubmitDisabled) {
+      void handleRefresh(event);
+      return;
+    }
+
+    // Google tab (or a business-name search on the refresh tab) needs a
+    // listing picked from the dropdown first.
+    event.preventDefault();
+  };
   const heroSpotlightStyle: CSSProperties = {
     background: `radial-gradient(420px circle at ${heroPointer.x * 100}% ${
       heroPointer.y * 100
@@ -2761,7 +2830,6 @@ export default function RefreshPage({
                     flowMode === "fresh" && freshEntry === "google"
                       ? "google"
                       : "describe",
-                    { openComposer: "type" },
                   );
                 }}
                 className="rounded-full bg-[#141811] px-4 py-2 text-sm font-semibold text-white transition hover:bg-black sm:px-5"
@@ -2945,17 +3013,12 @@ export default function RefreshPage({
                 className="absolute inset-0 transition-opacity duration-500"
                 style={heroSpotlightStyle}
               />
-              <div className="absolute inset-0 bg-[linear-gradient(90deg,#faf8f1_0%,rgba(250,248,241,0.96)_28%,rgba(250,248,241,0.72)_44%,rgba(250,248,241,0.18)_58%,transparent_72%)]" />
-              <div className="absolute inset-0 bg-[radial-gradient(ellipse_42%_58%_at_25%_43%,rgba(250,248,241,0.92)_0%,rgba(250,248,241,0.62)_46%,transparent_76%)]" />
+              {/* Centre-biased veils keep the headline and composer legible
+                  over the drifting kiwi marks in the new one-column layout. */}
+              <div className="absolute inset-0 bg-[rgba(250,248,241,0.42)]" />
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_56%_62%_at_50%_44%,rgba(250,248,241,0.94)_0%,rgba(250,248,241,0.66)_48%,transparent_80%)]" />
             </div>
           </div>
-        ) : null}
-
-        {!hasChosenHeroMode && !showReveal && !isRefreshing ? (
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 z-20 bg-[#faf8f1]/45 backdrop-blur-[1px]"
-          />
         ) : null}
 
         <div className="relative z-30 mx-auto w-full max-w-6xl">
@@ -3329,210 +3392,100 @@ export default function RefreshPage({
               </div>
             </div>
           ) : (
-            <div
-              className={`relative ${
-                hasChosenHeroMode ? "min-h-0" : "min-h-[585px]"
-              } sm:min-h-[585px]`}
-            >
-              <div
-                className={`relative z-10 min-w-0 items-center gap-14 transition duration-300 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] ${
-                  hasChosenHeroMode
-                    ? "grid"
-                    : "hidden pointer-events-none select-none opacity-40 blur-[3px] sm:grid"
-                }`}
-                inert={!hasChosenHeroMode}
-                aria-hidden={!hasChosenHeroMode}
-              >
-                <div className="col-span-full flex justify-center lg:justify-start">
-                  <div className="inline-flex rounded-full border border-black/10 bg-white p-1 shadow-sm">
-                    {(["refresh", "fresh"] as const).map((mode) => (
+            <div className="mx-auto flex w-full max-w-2xl flex-col items-center text-center">
+              <h1 className="font-fraunces text-5xl font-semibold leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl">
+                2 minutes.
+                <br />
+                <span className="relative inline-block">
+                  One new website.
+                  <span
+                    aria-hidden
+                    className="absolute inset-x-0 bottom-1 -z-10 h-4 rounded-sm bg-kiwi-green/70 sm:h-5"
+                  />
+                </span>
+              </h1>
+              <p className="mt-5 max-w-md text-lg leading-8 text-black/55">
+                Paste your website, type your business name, or tell us what
+                you do. We&apos;ll turn it into a fresh, modern site in about 2
+                minutes.
+              </p>
+
+              <div className="relative mt-8 w-full">
+                <div className="pointer-events-none absolute -inset-8 rounded-full bg-[radial-gradient(circle_at_50%_32%,rgba(191,226,98,0.32),transparent_58%)] blur-2xl" />
+                <div className="relative min-w-0 overflow-visible rounded-[1.75rem] border-2 border-black/15 bg-white p-2.5 text-left shadow-2xl shadow-black/10 transition focus-within:border-black/35 sm:rounded-[2rem] sm:p-3">
+                  <div
+                    className="flex items-stretch gap-1 border-b border-black/[0.07] px-0.5 pb-2"
+                    role="tablist"
+                    aria-label="How do you want to start?"
+                  >
+                    {[
+                      { id: "refresh" as const, label: "Refresh from URL" },
+                      ...(googleBusinessImportEnabled
+                        ? [{ id: "google" as const, label: "Find on Google" }]
+                        : []),
+                      { id: "scratch" as const, label: "Start from scratch" },
+                    ].map((tab) => (
                       <button
-                        key={mode}
+                        key={tab.id}
                         type="button"
+                        role="tab"
+                        aria-selected={heroTab === tab.id}
                         onClick={() => {
-                          chooseHeroMode(mode);
-                          setErrorMessage(null);
+                          if (tab.id === "refresh") {
+                            chooseHeroMode("refresh");
+                          } else if (tab.id === "google") {
+                            chooseHeroMode("fresh", "google");
+                          } else {
+                            chooseHeroMode("fresh", "describe");
+                          }
                         }}
-                        className={`rounded-full px-4 py-2 text-sm font-semibold transition sm:px-5 ${
-                          flowMode === mode
-                            ? "bg-[#141811] text-white"
+                        className={`flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-1 py-2.5 text-[11px] font-semibold transition min-[400px]:text-xs sm:text-sm ${
+                          heroTab === tab.id
+                            ? "bg-kiwi-green/20 text-black ring-1 ring-inset ring-kiwi-green"
                             : "text-black/50 hover:text-black"
                         }`}
                       >
-                        {mode === "refresh"
-                          ? "Refresh my old website"
-                          : "Create a fresh website"}
+                        {tab.id === "refresh" ? (
+                          <svg
+                            viewBox="0 0 24 24"
+                            className="hidden h-4 w-4 shrink-0 min-[480px]:block"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            aria-hidden
+                          >
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                          </svg>
+                        ) : tab.id === "google" ? (
+                          <GoogleMark className="hidden h-4 w-4 shrink-0 min-[480px]:block" />
+                        ) : (
+                          <svg
+                            viewBox="0 0 24 24"
+                            className="hidden h-4 w-4 shrink-0 min-[480px]:block"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            aria-hidden
+                          >
+                            <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9Z" />
+                            <path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9Z" />
+                          </svg>
+                        )}
+                        <span className="truncate">{tab.label}</span>
                       </button>
                     ))}
                   </div>
-                </div>
 
-                <div className="min-w-0">
-                <h1 className="font-fraunces text-5xl font-semibold leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl">
-                  2 minutes.
-                  <br />
-                  <span className="relative inline-block">
-                    {flowMode === "fresh" ? "A fresh new site." : "One new website."}
-                    <span
-                      aria-hidden
-                      className="absolute inset-x-0 bottom-1 -z-10 h-4 rounded-sm bg-kiwi-green/70 sm:h-5"
-                    />
-                  </span>
-                </h1>
-                <p className="mt-6 max-w-md text-lg leading-8 text-black/55">
-                  {flowMode === "fresh"
-                    ? "No coding. No complicated builder. Tell us a little about your business and see the website we\u2019d make for you."
-                    : "No coding. No complicated builder. Pop in your web address and see a fresh, modern version of your website \u2014 your words, your photos, your business."}
-                </p>
-
-                <div className="mt-8 max-w-lg">
-                  {flowMode === "refresh" ? (
-                    <div className="mt-3">
-                      <div className="relative">
-                          <form
-                            onSubmit={handleRefresh}
-                            className="flex flex-col gap-2 rounded-[1.75rem] border-2 border-black/20 bg-white p-2 shadow-xl shadow-black/10 transition focus-within:border-black/40 sm:flex-row sm:items-center sm:rounded-full"
-                          >
-                            <label htmlFor="refresh-input" className="sr-only">
-                              Your website address or business name
-                            </label>
-                            <input
-                              id="refresh-input"
-                              type="text"
-                              inputMode="text"
-                              autoCapitalize="none"
-                              autoCorrect="off"
-                              spellCheck={false}
-                              placeholder={
-                                googleBusinessImportEnabled
-                                  ? "yourwebsite.co.uk — or type your business name"
-                                  : "yourwebsite.co.uk"
-                              }
-                              value={url}
-                              onChange={(event) => {
-                                setUrl(event.target.value);
-                                setForceUrlRefresh(false);
-                                setSelectedGbpPlace(null);
-                                setSelectedGbpPhotoNames([]);
-                                setPlacesSearchError(null);
-                              }}
-                              className="h-12 w-full rounded-full bg-transparent px-5 text-base outline-none placeholder:text-black/30 sm:flex-1"
-                            />
-                            <button
-                              type="submit"
-                              disabled={refreshSubmitDisabled}
-                              className="h-12 shrink-0 rounded-full bg-kiwi-green px-6 text-sm font-bold transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              {isBusinessSearchInput
-                                ? "Choose listing"
-                                : "Refresh it →"}
-                            </button>
-                          </form>
-
-                          {isBusinessSearchInput ? (
-                            renderPlaceSuggestions(true)
-                          ) : null}
-                        </div>
-                      {googleBusinessImportEnabled && !selectedGbpPlace ? (
-                        <p className="mt-3 text-xs leading-5 text-black/40">
-                          No website? Type your business name and town — we&apos;ll
-                          find your Google listing and start a fresh website.
-                        </p>
-                      ) : null}
-                      {isLoadingPlaceDetails ? (
-                        <p className="mt-3 text-xs font-medium text-black/45">
-                          Loading that Google listing…
-                        </p>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </div>
-
-                {errorMessage ? (
-                  <div
-                    className="mt-5 max-w-lg rounded-2xl border border-black/10 bg-white p-4"
-                    role="alert"
-                  >
-                    <p className="text-sm font-semibold">
-                      That didn&apos;t work this time
-                    </p>
-                    <p className="mt-1 text-sm leading-6 text-black/55">
-                      {errorMessage}
-                    </p>
-                  </div>
-                ) : null}
-
-                <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-medium text-black/50">
-                  {[
-                    "Free to try",
-                    "No signup needed",
-                    "No changes to your current site",
-                  ].map((item) => (
-                    <span key={item} className="inline-flex items-center gap-1.5">
-                      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#C5E66A] text-[10px] font-black leading-none text-black">
-                        ✓
-                      </span>
-                      {item}
-                    </span>
-                  ))}
-                </div>
-                </div>
-
-                {flowMode === "fresh" ? (
-                  <div
-                    key="fresh-hero-form"
-                    className="relative mx-auto w-full max-w-xl min-w-0 lg:max-w-none"
-                  >
-                  <div className="pointer-events-none absolute -inset-8 rounded-full bg-[radial-gradient(circle_at_58%_30%,rgba(191,226,98,0.32),transparent_58%)] blur-2xl" />
-                  <div className="relative min-w-0 overflow-visible rounded-[2rem] border-2 border-black/20 bg-white p-4 shadow-2xl shadow-black/10 transition focus-within:border-black/40 sm:p-5">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div>
-                        <h2 className="font-fraunces text-2xl font-semibold tracking-tight">
-                          {freshEntry === "google"
-                            ? "Find your business on Google"
-                            : "Describe the website you want"}
-                        </h2>
-                        <p className="mt-1 text-sm leading-6 text-black/45">
-                          {freshEntry === "google"
-                            ? "Use your Google listing details and photos to create a new website."
-                            : freshComposer === "talk"
-                              ? "Talk naturally — you can tidy the words up after."
-                              : freshComposer === "type"
-                                ? "A few sentences is plenty."
-                                : "Two ways to do it — pick whichever feels easier."}
-                        </p>
-                      </div>
-                      {googleBusinessImportEnabled ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const entry =
-                              freshEntry === "google" ? "describe" : "google";
-
-                            setFreshEntry(entry);
-                            setPlaceSuggestions([]);
-                            setPlacesSearchError(null);
-                            // Keep any Google listing selection when the user
-                            // switches to describe and back — only clear it when
-                            // they explicitly hit Back on the listing.
-                            setGenerationSource(
-                              entry === "google" && selectedGbpPlace
-                                ? "gbp"
-                                : "fresh",
-                            );
-                          }}
-                          className="shrink-0 self-start text-xs font-semibold text-black/45 underline decoration-black/20 underline-offset-4 transition hover:text-black"
+                    {selectedGbpPlace ? (
+                        <form
+                          onSubmit={handleGbpSubmit}
+                          className="px-1.5 pb-1.5 pt-4 sm:px-2"
                         >
-                          {freshEntry === "google"
-                            ? "Describe it instead"
-                            : "Use my Google listing instead"}
-                        </button>
-                      ) : null}
-                    </div>
-
-                    {freshEntry === "google" && googleBusinessImportEnabled ? (
-                      selectedGbpPlace ? (
-                        <form onSubmit={handleGbpSubmit} className="mt-5">
                           <div className="flex items-start justify-between gap-3">
                             <div>
                               <p className="text-xs font-bold uppercase tracking-[0.16em] text-black/35">
@@ -3617,302 +3570,202 @@ export default function RefreshPage({
                             Build my website →
                           </button>
                         </form>
-                      ) : (
-                        <div className="relative mt-5">
-                          <label htmlFor="fresh-google-input" className="sr-only">
-                            Your business name
-                          </label>
-                          <input
-                            id="fresh-google-input"
-                            type="text"
-                            value={gbpQuery}
-                            onChange={(event) => {
-                              setGbpQuery(event.target.value);
-                              setPlacesSearchError(null);
-                            }}
-                            placeholder="Business name and town or postcode"
-                            className="h-14 w-full rounded-full bg-[#faf8f1] px-5 text-base outline-none placeholder:text-black/30"
-                          />
-                          {isFreshGoogleSearchInput && gbpQuery.trim().length >= 3
-                            ? renderPlaceSuggestions()
-                            : null}
-                          {isLoadingPlaceDetails ? (
-                            <p className="mt-3 text-xs font-medium text-black/45">
-                              Loading that Google listing…
-                            </p>
-                          ) : null}
-                        </div>
-                      )
                     ) : (
-                      <form onSubmit={handleFresh} className="mt-4">
-                        <label htmlFor="fresh-input" className="sr-only">
-                          Describe the website you want
+                      <form onSubmit={handleComposerSubmit} className="mt-1">
+                        {heroTab === "scratch" ? (
+                          <PromptStarterCarousel
+                            onSelect={handleSelectPromptStarter}
+                          />
+                        ) : null}
+                        <label
+                          htmlFor="hero-composer-input"
+                          className="sr-only"
+                        >
+                          Your website address, business name, or a few words
+                          about your business
                         </label>
-                        {freshComposerView === "choose" ? (
-                          <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                        <div className="relative">
+                          <textarea
+                            ref={freshInputRef}
+                            id="hero-composer-input"
+                            rows={3}
+                            value={composerText}
+                            onChange={(event) =>
+                              handleComposerChange(event.target.value)
+                            }
+                            onKeyDown={(event) => {
+                              // Web addresses and Google searches are
+                              // single-line by nature, so Enter submits
+                              // there; descriptions keep Enter as a newline.
+                              if (
+                                event.key === "Enter" &&
+                                !event.shiftKey &&
+                                heroTab !== "scratch"
+                              ) {
+                                event.preventDefault();
+                                event.currentTarget.form?.requestSubmit();
+                              }
+                            }}
+                            autoCapitalize={
+                              heroTab === "refresh" ? "none" : "sentences"
+                            }
+                            autoCorrect={
+                              heroTab === "refresh" ? "off" : "on"
+                            }
+                            spellCheck={heroTab === "scratch"}
+                            placeholder={composerPlaceholder}
+                            className="w-full resize-none bg-transparent px-2.5 py-2.5 text-base leading-7 outline-none placeholder:text-black/30 sm:px-3"
+                          />
+                          {isBusinessSearchInput
+                            ? renderPlaceSuggestions(true)
+                            : isFreshGoogleSearchInput &&
+                                composerText.trim().length >= 3
+                              ? renderPlaceSuggestions()
+                              : null}
+                        </div>
+                        {isLoadingPlaceDetails ? (
+                          <p className="px-2.5 pb-1 text-xs font-medium text-black/45 sm:px-3">
+                            Loading that Google listing…
+                          </p>
+                        ) : null}
+                        <div className="flex items-center justify-between gap-2 px-1 pb-0.5 pt-1">
+                          <div className="flex min-w-0 items-center gap-1.5">
+                            {heroTab === "scratch" ? (
+                              <>
+                                <label className="flex min-w-0 cursor-pointer items-center gap-1.5 rounded-full border border-black/10 bg-white px-3 py-2 text-xs font-semibold text-black/70 transition hover:border-black/25 hover:text-black">
+                                  <svg
+                                    viewBox="0 0 24 24"
+                                    className="h-3.5 w-3.5 shrink-0"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    aria-hidden
+                                  >
+                                    <rect x="3" y="3" width="18" height="18" rx="4" />
+                                    <circle cx="9" cy="9" r="1.6" />
+                                    <path d="m21 15-4.35-4.35a1.6 1.6 0 0 0-2.3 0L6 19" />
+                                  </svg>
+                                  <span className="truncate">
+                                    {freshLogo ? "Logo added" : "Add logo"}
+                                  </span>
+                                  <input
+                                    type="file"
+                                    accept="image/png,image/jpeg,image/webp,image/gif,image/avif,image/svg+xml"
+                                    className="hidden"
+                                    onChange={(event) => {
+                                      setFreshLogo(
+                                        event.target.files?.[0] ?? null,
+                                      );
+                                    }}
+                                  />
+                                </label>
+                                <label className="flex min-w-0 cursor-pointer items-center gap-1.5 rounded-full border border-black/10 bg-white px-3 py-2 text-xs font-semibold text-black/70 transition hover:border-black/25 hover:text-black">
+                                  <svg
+                                    viewBox="0 0 24 24"
+                                    className="h-3.5 w-3.5 shrink-0"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    aria-hidden
+                                  >
+                                    <rect x="3" y="7" width="14" height="12" rx="3" />
+                                    <path d="M7 7V6a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3h-1" />
+                                    <circle cx="8" cy="12" r="1.4" />
+                                    <path d="m17 19-3.6-3.6a1.4 1.4 0 0 0-2 0L5 21" />
+                                  </svg>
+                                  <span className="truncate">
+                                    {freshImages.length > 0
+                                      ? `${freshImages.length} photo${
+                                          freshImages.length === 1 ? "" : "s"
+                                        }`
+                                      : "Add photos"}
+                                  </span>
+                                  <input
+                                    type="file"
+                                    accept="image/png,image/jpeg,image/webp,image/gif,image/avif,image/svg+xml"
+                                    multiple
+                                    className="hidden"
+                                    onChange={(event) => {
+                                      setFreshImages(
+                                        Array.from(
+                                          event.target.files ?? [],
+                                        ).slice(0, 8),
+                                      );
+                                    }}
+                                  />
+                                </label>
+                              </>
+                            ) : null}
+                          </div>
+                          <div className="flex shrink-0 items-center gap-1.5">
+                            {heroTab === "scratch" && voiceInputEnabled ? (
+                              <VoiceDictation
+                                variant="icon"
+                                onTranscript={handleVoiceTranscript}
+                                disabled={isRefreshing}
+                              />
+                            ) : null}
                             <button
-                              type="button"
-                              onClick={() => setFreshComposer("talk")}
-                              className="group rounded-3xl border-2 border-black/10 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-black/30 hover:shadow-xl hover:shadow-black/10"
+                              type="submit"
+                              disabled={composerSubmitDisabled}
+                              aria-label={
+                                heroTab === "refresh"
+                                  ? "Refresh my website"
+                                  : heroTab === "google"
+                                    ? "Pick a Google listing from the suggestions first"
+                                    : "Create my website"
+                              }
+                              className="grid h-10 w-10 place-items-center rounded-full bg-kiwi-green text-black transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-50"
                             >
-                              <span
-                                className="grid h-11 w-11 place-items-center rounded-full bg-kiwi-green text-black"
+                              <svg
+                                viewBox="0 0 24 24"
+                                className="h-[18px] w-[18px]"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
                                 aria-hidden
                               >
-                                <svg
-                                  viewBox="0 0 24 24"
-                                  className="h-5 w-5"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                >
-                                  <rect x="9" y="2" width="6" height="12" rx="3" />
-                                  <path d="M5 10v1a7 7 0 0 0 14 0v-1" />
-                                  <path d="M12 18v4" />
-                                </svg>
-                              </span>
-                              <span className="mt-3 block font-fraunces text-xl font-semibold tracking-tight">
-                                Tell us about it
-                              </span>
-                              <span className="mt-1 block text-sm leading-6 text-black/55">
-                                Talk for 30 seconds — we&apos;ll do the typing.
-                              </span>
-                            </button>
-                            <button
-                              id="fresh-composer-type"
-                              type="button"
-                              onClick={() => {
-                                setFreshComposer("type");
-                                window.requestAnimationFrame(() => {
-                                  freshInputRef.current?.focus();
-                                });
-                              }}
-                              className="group rounded-3xl border-2 border-black/10 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-black/30 hover:shadow-xl hover:shadow-black/10"
-                            >
-                              <span
-                                className="grid h-11 w-11 place-items-center rounded-full bg-[#141811] text-white"
-                                aria-hidden
-                              >
-                                <svg
-                                  viewBox="0 0 24 24"
-                                  className="h-5 w-5"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                >
-                                  <path d="M12 20h9" />
-                                  <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                                </svg>
-                              </span>
-                              <span className="mt-3 block font-fraunces text-xl font-semibold tracking-tight">
-                                Type it yourself
-                              </span>
-                              <span className="mt-1 block text-sm leading-6 text-black/55">
-                                Write a few sentences about your business.
-                              </span>
+                                <path d="M5 12h14" />
+                                <path d="m13 6 6 6-6 6" />
+                              </svg>
                             </button>
                           </div>
-                        ) : (
-                          <>
-                        {freshComposerView === "talk" ? (
-                          <VoiceDictation
-                            autoStart
-                            onTranscript={handleVoiceTranscript}
-                            disabled={isRefreshing}
-                          />
-                        ) : (
-                          <PromptStarterCarousel onSelect={handleSelectPromptStarter} />
-                        )}
-                        <textarea
-                          ref={freshInputRef}
-                          id="fresh-input"
-                          rows={3}
-                          value={freshPrompt}
-                          onChange={(event) => setFreshPrompt(event.target.value)}
-                          placeholder={
-                            freshComposerView === "talk"
-                              ? "Your words will land here — tidy them up or add more."
-                              : "Your business name and what you do — that's plenty to start..."
-                          }
-                          className="mt-4 w-full resize-none rounded-3xl bg-[#faf8f1] px-5 py-4 text-base leading-7 outline-none placeholder:text-black/30"
-                        />
-                        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                          <label className="flex cursor-pointer flex-col rounded-2xl border border-black/10 px-4 py-3 text-sm font-semibold transition hover:border-black/25">
-                            <span>Add logo</span>
-                            <span className="mt-1 truncate text-xs font-normal text-black/45">
-                              {freshLogo?.name ?? "Optional PNG, JPG, SVG..."}
-                            </span>
-                            <input
-                              type="file"
-                              accept="image/png,image/jpeg,image/webp,image/gif,image/avif,image/svg+xml"
-                              className="hidden"
-                              onChange={(event) => {
-                                setFreshLogo(event.target.files?.[0] ?? null);
-                              }}
-                            />
-                          </label>
-                          <label className="flex cursor-pointer flex-col rounded-2xl border border-black/10 px-4 py-3 text-sm font-semibold transition hover:border-black/25">
-                            <span>Add photos</span>
-                            <span className="mt-1 truncate text-xs font-normal text-black/45">
-                              {freshImages.length > 0
-                                ? `${freshImages.length} selected`
-                                : "Optional, up to 8 images"}
-                            </span>
-                            <input
-                              type="file"
-                              accept="image/png,image/jpeg,image/webp,image/gif,image/avif,image/svg+xml"
-                              multiple
-                              className="hidden"
-                              onChange={(event) => {
-                                setFreshImages(
-                                  Array.from(event.target.files ?? []).slice(0, 8),
-                                );
-                              }}
-                            />
-                          </label>
                         </div>
-                        <button
-                          type="submit"
-                          disabled={!freshPrompt.trim()}
-                          className="mt-3 h-12 w-full rounded-full bg-kiwi-green px-6 text-sm font-bold transition hover:bg-kiwi-green-hover disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          Create it →
-                        </button>
-                        {voiceInputEnabled ? (
-                          <button
-                            type="button"
-                            onClick={() => setFreshComposer("choose")}
-                            className="mt-3 w-full text-center text-xs font-semibold text-black/40 underline decoration-black/20 underline-offset-4 transition hover:text-black"
-                          >
-                            ← Back
-                          </button>
-                        ) : null}
-                          </>
-                        )}
                       </form>
                     )}
-                  </div>
-                  </div>
-                ) : (
-                  <div
-                    key="refresh-hero-background-space"
-                    className="pointer-events-none hidden min-h-[360px] sm:block lg:min-h-[470px]"
-                    aria-hidden
-                  />
-                )}
+                </div>
               </div>
 
-              {!hasChosenHeroMode ? (
-                <div className="absolute inset-0 z-30 flex items-start justify-center px-3 pb-8 pt-6 sm:items-center sm:px-6 sm:py-8">
-                  <div
-                    className={`relative w-full overflow-hidden rounded-[1.75rem] border border-black/10 bg-white/85 p-3 shadow-2xl shadow-black/15 backdrop-blur-xl sm:rounded-[2rem] sm:p-6 ${
-                      googleBusinessImportEnabled ? "max-w-3xl" : "max-w-2xl"
-                    }`}
-                  >
-                    <Image
-                      src={kiwiGroupBackground}
-                      alt=""
-                      aria-hidden
-                      fill
-                      priority
-                      sizes="720px"
-                      className="object-cover opacity-42 mix-blend-multiply"
-                    />
-                    <div className="absolute inset-0 bg-[#C5E66A]/80" />
-                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_48%_54%_at_50%_47%,rgba(255,255,255,0.74)_0%,rgba(255,255,255,0.48)_36%,rgba(255,255,255,0)_72%)]" />
-                    <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.22),transparent_28%,transparent_72%,rgba(20,24,17,0.06))]" />
-                    <div className="relative text-center">
-                      <h2 className="font-fraunces text-[1.7rem] font-semibold leading-none tracking-tight sm:text-4xl">
-                        Which sounds like you?
-                      </h2>
-                    </div>
-
-                    <div
-                      className={`relative mt-4 grid gap-2.5 sm:mt-6 sm:gap-3 ${
-                        googleBusinessImportEnabled
-                          ? "sm:grid-cols-3"
-                          : "sm:grid-cols-2"
-                      }`}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => chooseHeroMode("refresh")}
-                        className="group rounded-[1.35rem] border-2 border-black/10 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-black/30 hover:shadow-xl hover:shadow-black/10 sm:rounded-[1.5rem] sm:p-5"
-                      >
-                        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-kiwi-green text-base font-black text-black sm:h-10 sm:w-10 sm:text-lg">
-                          ↻
-                        </span>
-                        <span
-                          className={`mt-3 block font-fraunces font-semibold leading-tight tracking-tight sm:mt-4 ${
-                            googleBusinessImportEnabled
-                              ? "text-[1.3rem] sm:text-xl"
-                              : "text-[1.55rem] sm:text-2xl"
-                          }`}
-                        >
-                          I already have a website
-                        </span>
-                        <span className="mt-1.5 block text-sm leading-6 text-black/55 sm:mt-2">
-                          We&apos;ll turn it into a fresh, modern version.
-                        </span>
-                        <span className="mt-3 inline-flex text-sm font-bold text-black transition group-hover:translate-x-1 sm:mt-4">
-                          Refresh my site →
-                        </span>
-                      </button>
-
-                      {googleBusinessImportEnabled ? (
-                        <button
-                          type="button"
-                          onClick={() => chooseHeroMode("fresh", "google")}
-                          className="group rounded-[1.35rem] border-2 border-black/10 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-black/30 hover:shadow-xl hover:shadow-black/10 sm:rounded-[1.5rem] sm:p-5"
-                        >
-                          <span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-black/10 bg-white text-black sm:h-10 sm:w-10">
-                            <GoogleMark className="h-[1.15rem] w-[1.15rem] sm:h-5 sm:w-5" />
-                          </span>
-                          <span className="mt-3 block font-fraunces text-[1.3rem] font-semibold leading-tight tracking-tight sm:mt-4 sm:text-xl">
-                            I&apos;m on Google, no website
-                          </span>
-                          <span className="mt-1.5 block text-sm leading-6 text-black/55 sm:mt-2">
-                            We&apos;ll build one from your Google Business
-                            listing.
-                          </span>
-                          <span className="mt-3 inline-flex text-sm font-bold text-black transition group-hover:translate-x-1 sm:mt-4">
-                            Use my listing →
-                          </span>
-                        </button>
-                      ) : null}
-
-                      <button
-                        type="button"
-                        onClick={() => chooseHeroMode("fresh")}
-                        className="group rounded-[1.35rem] border-2 border-black/10 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-black/30 hover:shadow-xl hover:shadow-black/10 sm:rounded-[1.5rem] sm:p-5"
-                      >
-                        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#141811] text-base font-black text-white sm:h-10 sm:w-10 sm:text-lg">
-                          +
-                        </span>
-                        <span
-                          className={`mt-3 block font-fraunces font-semibold leading-tight tracking-tight sm:mt-4 ${
-                            googleBusinessImportEnabled
-                              ? "text-[1.3rem] sm:text-xl"
-                              : "text-[1.55rem] sm:text-2xl"
-                          }`}
-                        >
-                          I&apos;m starting from scratch
-                        </span>
-                        <span className="mt-1.5 block text-sm leading-6 text-black/55 sm:mt-2">
-                          A few words about your business — talk or type.
-                        </span>
-                        <span className="mt-3 inline-flex text-sm font-bold text-black transition group-hover:translate-x-1 sm:mt-4">
-                          Create my site →
-                        </span>
-                      </button>
-                    </div>
-                  </div>
+              {errorMessage ? (
+                <div
+                  className="mt-5 w-full max-w-lg rounded-2xl border border-black/10 bg-white p-4 text-left"
+                  role="alert"
+                >
+                  <p className="text-sm font-semibold">
+                    That didn&apos;t work this time
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-black/55">
+                    {errorMessage}
+                  </p>
                 </div>
               ) : null}
+
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs font-medium text-black/50">
+                {["Free to try", "No signup needed"].map((item) => (
+                  <span key={item} className="inline-flex items-center gap-1.5">
+                    <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#C5E66A] text-[10px] font-black leading-none text-black">
+                      ✓
+                    </span>
+                    {item}
+                  </span>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -3923,16 +3776,7 @@ export default function RefreshPage({
           {!showReveal ? (
             <>
           {/* ───────────────────────── Social strip ───────────────────────── */}
-          <section
-            className={`relative z-10 border-y border-black/5 bg-white px-5 py-6 transition sm:px-8 ${
-              // On mobile the hero chooser sits over this strip — hide the text
-              // so only the popup reads. Desktop has enough room that it never
-              // peeks through, so leave it alone there.
-              !hasChosenHeroMode
-                ? "max-sm:pointer-events-none max-sm:select-none max-sm:opacity-0"
-                : ""
-            }`}
-          >
+          <section className="relative z-10 border-y border-black/5 bg-white px-5 py-6 sm:px-8">
             <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-center gap-x-5 gap-y-3 text-sm font-medium text-black/40 sm:gap-x-8">
               <span className="font-semibold text-black/55">
                 Built for:
@@ -4166,7 +4010,6 @@ export default function RefreshPage({
                     chooseHeroMode(
                       pageStory === "refresh" ? "refresh" : "fresh",
                       pageStory === "google" ? "google" : "describe",
-                      { openComposer: "type" },
                     );
                   }}
                   className="font-semibold text-kiwi-green underline underline-offset-4"
@@ -4226,7 +4069,6 @@ export default function RefreshPage({
                         flowMode === "fresh" && freshEntry === "google"
                           ? "google"
                           : "describe",
-                        { openComposer: "type" },
                       );
                     }}
                     className="mt-7 inline-flex h-12 items-center rounded-full border border-black/15 bg-white px-6 text-sm font-semibold transition hover:border-black/30"
@@ -4267,7 +4109,6 @@ export default function RefreshPage({
                         flowMode === "fresh" && freshEntry === "google"
                           ? "google"
                           : "describe",
-                        { openComposer: "type" },
                       );
                     }}
                     className="mt-7 inline-flex h-12 items-center rounded-full bg-kiwi-green px-6 text-sm font-bold text-black transition hover:bg-kiwi-green-hover"
@@ -4459,7 +4300,6 @@ export default function RefreshPage({
                     chooseHeroMode(
                       pageStory === "refresh" ? "refresh" : "fresh",
                       pageStory === "google" ? "google" : "describe",
-                      { openComposer: "type" },
                     );
                   }}
                   className="relative mt-8 inline-flex items-center rounded-full bg-[#141811] px-8 py-4 text-sm font-bold text-white shadow-xl shadow-black/15 ring-1 ring-white/20 transition hover:bg-black"

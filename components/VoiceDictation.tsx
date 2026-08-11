@@ -48,8 +48,10 @@ interface VoiceDictationProps {
    * "full" is the home-page brief recorder (big card, guided prompts).
    * "compact" is a one-line mic row for short commands like edit requests —
    * no prompts, no card, and it hides entirely in unsupported browsers.
+   * "icon" is a round mic button for composer toolbars — recording state is
+   * shown on the button itself, and it also hides in unsupported browsers.
    */
-  variant?: "full" | "compact";
+  variant?: "full" | "compact" | "icon";
   /** Tagged onto every GA voice event so funnels can be split by surface. */
   context?: string;
 }
@@ -422,7 +424,7 @@ export default function VoiceDictation({
   // blank space. The compact variant is an extra next to a textarea, so it
   // simply disappears.
   if (!supported) {
-    if (variant === "compact") {
+    if (variant === "compact" || variant === "icon") {
       return null;
     }
 
@@ -437,6 +439,67 @@ export default function VoiceDictation({
   const isRecording = phase === "recording";
   const isTranscribing = phase === "transcribing";
   const isRequesting = phase === "requesting";
+
+  if (variant === "icon") {
+    return (
+      <div className="relative flex items-center gap-2">
+        {isRecording ? (
+          <span className="text-[11px] font-semibold tabular-nums text-[#B4451F]">
+            {formatClock(elapsedMs)}
+          </span>
+        ) : null}
+        <button
+          type="button"
+          onClick={isRecording ? stopRecording : () => void startRecording()}
+          disabled={disabled || isTranscribing || isRequesting}
+          aria-label={
+            isRecording
+              ? "Stop recording"
+              : "Talk instead of typing — tap the mic and say it"
+          }
+          title={
+            isRecording
+              ? "Stop recording"
+              : "Talk instead of typing — tap the mic and say it"
+          }
+          className={`grid h-10 w-10 shrink-0 place-items-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-60 ${
+            isRecording
+              ? "voice-ring-pulse bg-[#D64541] text-white hover:brightness-95"
+              : "border border-black/10 bg-white text-black/70 hover:border-black/25 hover:text-black"
+          }`}
+        >
+          {isTranscribing || isRequesting ? (
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-black/25 border-t-black" />
+          ) : isRecording ? (
+            <span className="h-3.5 w-3.5 rounded-[3px] bg-white" aria-hidden />
+          ) : (
+            <svg
+              viewBox="0 0 24 24"
+              className="h-[18px] w-[18px]"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <rect x="9" y="2" width="6" height="12" rx="3" />
+              <path d="M5 10v1a7 7 0 0 0 14 0v-1" />
+              <path d="M12 18v4" />
+            </svg>
+          )}
+        </button>
+        {notice ? (
+          <p
+            role="status"
+            className="absolute right-0 top-[calc(100%+0.5rem)] z-20 w-60 rounded-xl border border-black/10 bg-white p-2.5 text-left text-[11px] leading-4 text-[#B4451F] shadow-lg"
+          >
+            {notice}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
 
   if (variant === "compact") {
     return (
