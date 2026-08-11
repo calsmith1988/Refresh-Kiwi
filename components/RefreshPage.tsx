@@ -85,6 +85,11 @@ const OVERTIME_MESSAGE =
 // it is time-based (healthy runs complete in ~2-3 minutes).
 const STAGE_2_AT_MS = 25 * 1000;
 const STAGE_3_AT_MS = 95 * 1000;
+// Mirrors the server's per-image cap (MAX_UPLOAD_BYTES in lib/assets), with a
+// total cap kept safely under next.config's middlewareClientMaxBodySize —
+// bodies over that buffer limit get truncated and fail as "Invalid form body".
+const MAX_UPLOAD_FILE_BYTES = 15 * 1024 * 1024;
+const MAX_UPLOAD_TOTAL_BYTES = 50 * 1024 * 1024;
 const ACTIVE_JOB_STORAGE_KEY = "refresh-kiwi:active-job";
 const HERO_KIWI_FLOATINESS = 2.25;
 
@@ -2400,6 +2405,32 @@ export default function RefreshPage({
     if (!freshPrompt.trim() || isRefreshing) {
       return;
     }
+
+    // Pre-flight upload size check: bodies over the middleware buffer limit
+    // get silently truncated server-side, which reads as a cryptic "Invalid
+    // form body" — catch it here with a message people can act on.
+    const attachments = [...(freshLogo ? [freshLogo] : []), ...freshImages];
+    const oversized = attachments.find(
+      (file) => file.size > MAX_UPLOAD_FILE_BYTES,
+    );
+
+    if (oversized) {
+      setErrorMessage(
+        `"${oversized.name}" is over 15MB. Try a smaller copy of that image, or leave it out — you can add photos later.`,
+      );
+      return;
+    }
+
+    const totalBytes = attachments.reduce((sum, file) => sum + file.size, 0);
+
+    if (totalBytes > MAX_UPLOAD_TOTAL_BYTES) {
+      setErrorMessage(
+        "Those images add up to more than 50MB. Remove a couple of the biggest ones — you can add more photos later.",
+      );
+      return;
+    }
+
+    setErrorMessage(null);
 
     if (requireVerification("fresh")) {
       return;
