@@ -97,28 +97,33 @@ function heroKiwiMotion(value: number, unit: "px" | "deg"): string {
   return `${Number((value * HERO_KIWI_FLOATINESS).toFixed(2))}${unit}`;
 }
 
+// Spread across the full hero width (the one-column layout has no "safe"
+// text column any more) — the centre radial veil keeps the headline,
+// subtitle, and composer readable over whatever drifts behind them.
 const HERO_KIWI_MARKS = [
-  { left: "52%", top: "-2%", size: "116px", opacity: 0.13, rotate: "-12deg" },
-  { left: "68%", top: "-5%", size: "158px", opacity: 0.18, rotate: "8deg" },
-  { left: "88%", top: "1%", size: "124px", opacity: 0.16, rotate: "-6deg" },
-  { left: "57%", top: "16%", size: "72px", opacity: 0.1, rotate: "-24deg" },
-  { left: "47%", top: "28%", size: "96px", opacity: 0.12, rotate: "15deg" },
-  { left: "64%", top: "24%", size: "132px", opacity: 0.18, rotate: "-18deg" },
-  { left: "82%", top: "21%", size: "104px", opacity: 0.15, rotate: "10deg" },
-  { left: "97%", top: "20%", size: "172px", opacity: 0.19, rotate: "-8deg" },
-  { left: "55%", top: "53%", size: "144px", opacity: 0.14, rotate: "7deg" },
-  { left: "72%", top: "49%", size: "190px", opacity: 0.21, rotate: "-10deg" },
-  { left: "91%", top: "52%", size: "112px", opacity: 0.15, rotate: "18deg" },
-  { left: "61%", top: "78%", size: "116px", opacity: 0.12, rotate: "-4deg" },
-  { left: "81%", top: "78%", size: "150px", opacity: 0.16, rotate: "12deg" },
-  { left: "99%", top: "83%", size: "128px", opacity: 0.14, rotate: "-14deg" },
+  { left: "2%", top: "-4%", size: "132px", opacity: 0.17, rotate: "10deg" },
+  { left: "19%", top: "3%", size: "104px", opacity: 0.13, rotate: "-14deg" },
+  { left: "39%", top: "-6%", size: "150px", opacity: 0.16, rotate: "6deg" },
+  { left: "63%", top: "-3%", size: "118px", opacity: 0.14, rotate: "-8deg" },
+  { left: "84%", top: "-5%", size: "162px", opacity: 0.18, rotate: "12deg" },
+  { left: "-3%", top: "27%", size: "172px", opacity: 0.19, rotate: "-10deg" },
+  { left: "13%", top: "42%", size: "96px", opacity: 0.12, rotate: "18deg" },
+  { left: "97%", top: "13%", size: "110px", opacity: 0.14, rotate: "8deg" },
+  { left: "88%", top: "34%", size: "142px", opacity: 0.17, rotate: "-16deg" },
+  { left: "3%", top: "66%", size: "118px", opacity: 0.13, rotate: "-6deg" },
+  { left: "21%", top: "82%", size: "148px", opacity: 0.16, rotate: "14deg" },
+  { left: "45%", top: "88%", size: "102px", opacity: 0.11, rotate: "-20deg" },
+  { left: "70%", top: "83%", size: "156px", opacity: 0.17, rotate: "-4deg" },
+  { left: "94%", top: "62%", size: "126px", opacity: 0.15, rotate: "16deg" },
 ] as const;
 
 const MOBILE_HERO_KIWI_MARKS = [
-  { left: "78%", top: "5%", size: "78px", opacity: 0.1, rotate: "8deg" },
-  { left: "94%", top: "23%", size: "102px", opacity: 0.12, rotate: "-12deg" },
-  { left: "76%", top: "62%", size: "86px", opacity: 0.09, rotate: "16deg" },
-  { left: "96%", top: "82%", size: "96px", opacity: 0.1, rotate: "-6deg" },
+  { left: "-6%", top: "2%", size: "84px", opacity: 0.1, rotate: "-10deg" },
+  { left: "74%", top: "7%", size: "96px", opacity: 0.11, rotate: "8deg" },
+  { left: "-8%", top: "44%", size: "90px", opacity: 0.09, rotate: "14deg" },
+  { left: "82%", top: "50%", size: "88px", opacity: 0.1, rotate: "-12deg" },
+  { left: "8%", top: "84%", size: "92px", opacity: 0.1, rotate: "6deg" },
+  { left: "76%", top: "87%", size: "100px", opacity: 0.11, rotate: "-8deg" },
 ] as const;
 
 const LOADING_STAGES = [
@@ -3044,10 +3049,11 @@ export default function RefreshPage({
                 className="absolute inset-0 transition-opacity duration-500"
                 style={heroSpotlightStyle}
               />
-              {/* Centre-biased veils keep the headline and composer legible
-                  over the drifting kiwi marks in the new one-column layout. */}
-              <div className="absolute inset-0 bg-[rgba(250,248,241,0.42)]" />
-              <div className="absolute inset-0 bg-[radial-gradient(ellipse_56%_62%_at_50%_44%,rgba(250,248,241,0.94)_0%,rgba(250,248,241,0.66)_48%,transparent_80%)]" />
+              {/* A light overall wash keeps the drifting kiwis subtle at the
+                  edges, while the centre radial fades them out behind the
+                  headline, subtitle, and composer so the text stays crisp. */}
+              <div className="absolute inset-0 bg-[rgba(250,248,241,0.16)]" />
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_54%_58%_at_50%_42%,rgba(250,248,241,0.97)_0%,rgba(250,248,241,0.82)_42%,rgba(250,248,241,0.38)_66%,transparent_86%)]" />
             </div>
           </div>
         ) : null}
