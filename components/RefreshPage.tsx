@@ -1398,7 +1398,7 @@ export default function RefreshPage({
             setIsSearchingPlaces(false);
           }
         });
-    }, 300);
+    }, 450);
 
     return () => {
       cancelled = true;
@@ -2718,6 +2718,9 @@ export default function RefreshPage({
               Use &quot;{url.trim()}&quot; as a web address anyway
             </button>
           ) : null}
+          <p className="border-t border-black/5 bg-[#faf8f1] px-4 py-2.5 text-xs leading-5 text-black/45">
+            Not seeing your business? Add your town or postcode.
+          </p>
         </>
       ) : (
         <p className="px-4 py-3 text-sm font-medium text-black/45">
@@ -4133,7 +4136,7 @@ export default function RefreshPage({
                         : "Your redesigned website online — we host it"}
                     </li>
                     <li>✓ Ask for as many changes as you need</li>
-                    <li>✓ Your own web address (www.yourbusiness.com)</li>
+                    <li>✓ Add your own web address (www.yourbusiness.com)</li>
                     <li>✓ Add extra pages whenever you need them</li>
                     <li>✓ Cancel anytime — no contracts</li>
                   </ul>
@@ -4668,7 +4671,7 @@ export default function RefreshPage({
               {[
                 "Your new website online — we host it",
                 "Unlimited changes, just ask in plain English",
-                "Your own web address (like www.yourbusiness.com)",
+                "Add your own web address (like www.yourbusiness.com)",
                 "Add extra pages whenever you need them",
               ].map((benefit) => (
                 <li key={benefit} className="flex items-start gap-3">

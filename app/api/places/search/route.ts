@@ -40,9 +40,14 @@ export async function POST(request: Request) {
   }
 
   try {
+    // Autocomplete fires one request per typing pause, so one visitor
+    // revising a search (adding their town, fixing typos) can produce dozens
+    // of requests in a couple of minutes — the old 30-per-10-minutes cap
+    // locked out legitimate users mid-search. 30/minute keeps real typing
+    // flowing while still capping runaway clients and Places API spend.
     await assertRateLimit(rateLimitKey(request, "places-search"), {
       limit: 30,
-      windowMs: 10 * 60 * 1000,
+      windowMs: 60 * 1000,
       message: "Too many business searches. Please wait a moment and try again.",
     });
 

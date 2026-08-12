@@ -135,7 +135,7 @@ OUTPUT: sites/${slug}/
 4. Write sites/${slug}/site.json:
    - brandName, slug ("${slug}"), sourceUrl
    - pages: [{ "path": "/", "title": "Home", "gated": false }]
-   - discoveredPages: [] unless obvious nav paths are already visible without extra browsing
+   - discoveredPages: one entry per header nav label you mirrored (see "Header navigation" below), e.g. { "path": "/our-treatments", "title": "Our Treatments" }. Leave [] only when the source genuinely has no internal nav links.
 5. When index.html, styles.css, and site.json are written under sites/${slug}/, commit them directly on main and push to origin main (no new branch, no pull request), then finish. The commit is required — the platform falls back to reading the repo when run artifacts are unavailable, so finishing without a commit can make the whole build count as failed.
 
 ${GIT_RULES}
@@ -194,6 +194,14 @@ ${GIT_RULES}
 - Either way, make the wow factor come from layout, typography, spacing, and motion — not from swapping the brand's identity.
 
 ${buildDesignRecipeSection(slug)}
+
+## Header navigation — mirror the source site's menu
+
+- Reuse the source site's real top-level navigation labels in the rebuilt header, in the same order, so the menu still matches when those pages are built later. The labels are in the homepage HTML you already fetched — do not visit other pages to find them.
+- Cap the header at 6 items. Use top-level items only (ignore dropdown children), and skip legal/policy links, login/account/portal links, and phone/social icons.
+- The secondary pages do not exist yet, so never link to their paths. Point each label at the homepage section that best matches it (e.g. "Our Treatments" → the services section anchor). If a label has no matching section, link it to the contact/CTA section — never leave href="#" and never link to a page that does not exist yet.
+- Record every mirrored label in site.json discoveredPages with the title exactly as shown in the nav and the path from the source link, normalized to a root-relative path (strip the domain, query strings, and fragments).
+- If the source site is a single page or has no meaningful internal nav, design whatever section-anchor nav suits the page and leave discoveredPages [].
 
 ## Design bar
 
@@ -376,13 +384,13 @@ The homepage already exists. Your job is to crawl the source website for importa
 
 1. Work only inside sites/${slug}/.
 2. Read the existing files first, especially index.html, styles.css, script.js if present, and site.json.
-3. Crawl the source site's main navigation and obvious internal links. Prioritize useful pages like About, Services, Products, Case Studies, Contact, Pricing, FAQs, and location/service pages. Do not generate legal/policy pages in this flow unless the user explicitly asked for legal pages.
+3. Check discoveredPages in site.json first — the homepage build recorded the source site's nav labels and paths there. Build those pages first, keeping the same titles and paths, then crawl the source site's main navigation and obvious internal links for anything else useful. Prioritize useful pages like About, Services, Products, Case Studies, Contact, Pricing, FAQs, and location/service pages. Do not generate legal/policy pages in this flow unless the user explicitly asked for legal pages.
 4. Build up to 6 additional pages. If the source site has fewer meaningful pages, build only those. Do not invent filler pages.
 5. Images: hotlink the source site's real images by their absolute https URLs, exactly like the homepage does. Do not download image files. Never invent image paths — only use URLs you actually saw on the source site. Galleries and image-heavy pages may use as many source images as the design deserves.
 6. Videos: same rule as the homepage — re-embed YouTube/Vimeo videos with responsive lazy-loaded iframes (youtube-nocookie for YouTube), and reference self-hosted video files by absolute https URL in <video controls preload="metadata"> tags. Never download video files or invent video URLs.
 7. Match the homepage design system: same brand colours and palette, spacing, typography, visual style, header/nav/footer, and responsive behavior. Read styles.css first and reuse its tokens rather than introducing new colours.
 8. Copy the homepage favicon <link rel="icon"> (and apple-touch-icon if present) into every new page's <head>. Do not invent a different favicon.
-9. Update the homepage navigation to link to the generated pages.
+9. Update the homepage navigation to link to the generated pages. The header labels were mirrored from the source site's menu, so swap each label's section-anchor href for the real page path without renaming or reordering the labels. Add nav or footer links for any extra pages you built beyond the mirrored labels.
 10. Update site.json with:
    - pages: include "/" plus each generated page with path, title, and gated false
    - discoveredPages: include any meaningful internal pages you found but did not generate

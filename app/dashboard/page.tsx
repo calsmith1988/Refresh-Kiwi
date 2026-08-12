@@ -774,6 +774,14 @@ export default function DashboardPage() {
   const [dismissedEditRequestIds, setDismissedEditRequestIds] = useState<
     Record<string, true>
   >({});
+  // Temporary "Edit applied" confirmation shown when an edit watched in this
+  // session finishes; auto-dismisses so the dashboard doesn't accumulate chrome.
+  const [editSuccessToast, setEditSuccessToast] = useState<{
+    editRequestId: string;
+    brandName: string;
+  } | null>(null);
+  const seenEditStatusesRef = useRef<Record<string, string>>({});
+  const editSuccessTimerRef = useRef<number | null>(null);
   const [celebration, setCelebration] = useState<
     "upgraded" | "cancelled" | null
   >(null);
@@ -969,6 +977,50 @@ export default function DashboardPage() {
       window.clearInterval(timer);
     };
   }, [hasActiveEdit, hasActivePageGeneration, hasActiveRefreshJobs]);
+
+  // Surface a brief "Edit applied" confirmation when an edit we watched go
+  // queued/running in this session flips to complete. Tracking transitions
+  // (rather than any complete edit) keeps the toast from re-appearing on
+  // every dashboard load after an old edit.
+  useEffect(() => {
+    const seen = seenEditStatusesRef.current;
+
+    for (const website of websites) {
+      const request = website.latestEditRequest;
+      if (!request) {
+        continue;
+      }
+
+      const previousStatus = seen[request.id];
+      if (
+        request.status === "complete" &&
+        (previousStatus === "queued" || previousStatus === "running")
+      ) {
+        setEditSuccessToast({
+          editRequestId: request.id,
+          brandName: website.brandName || website.slug,
+        });
+
+        if (editSuccessTimerRef.current !== null) {
+          window.clearTimeout(editSuccessTimerRef.current);
+        }
+        editSuccessTimerRef.current = window.setTimeout(() => {
+          setEditSuccessToast(null);
+          editSuccessTimerRef.current = null;
+        }, 10_000);
+      }
+
+      seen[request.id] = request.status;
+    }
+  }, [websites]);
+
+  useEffect(() => {
+    return () => {
+      if (editSuccessTimerRef.current !== null) {
+        window.clearTimeout(editSuccessTimerRef.current);
+      }
+    };
+  }, []);
 
   // Close the image preview with the Escape key.
   useEffect(() => {
@@ -4942,6 +4994,50 @@ export default function DashboardPage() {
         </div>
       ) : null}
 
+      {editSuccessToast ? (
+        <div className="pointer-events-none fixed inset-x-0 bottom-6 z-50 flex justify-center px-5">
+          <div
+            role="status"
+            aria-live="polite"
+            className="preview-pop pointer-events-auto flex items-center gap-3 rounded-full border border-black/10 bg-white py-3 pl-4 pr-6 shadow-2xl shadow-black/15"
+          >
+            <span
+              aria-hidden
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-kiwi-green text-xs font-bold text-black"
+            >
+              ✓
+            </span>
+            <p className="text-sm font-semibold text-black">
+              Edit applied — {editSuccessToast.brandName} is updated.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                if (editSuccessTimerRef.current !== null) {
+                  window.clearTimeout(editSuccessTimerRef.current);
+                  editSuccessTimerRef.current = null;
+                }
+                setEditSuccessToast(null);
+              }}
+              aria-label="Dismiss"
+              className="-mr-2 grid h-7 w-7 place-items-center rounded-full text-black/40 transition hover:bg-black/5 hover:text-black"
+            >
+              <svg
+                aria-hidden
+                viewBox="0 0 24 24"
+                className="h-3.5 w-3.5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              >
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {showProSheet ? (
         <div
           onMouseDown={(event) => {
@@ -4968,7 +5064,7 @@ export default function DashboardPage() {
               {[
                 "Your new website online — we host it",
                 "Unlimited changes, just ask in plain English",
-                "Your own web address (like www.yourbusiness.com)",
+                "Add your own web address (like www.yourbusiness.com)",
                 "Add extra pages whenever you need them",
               ].map((benefit) => (
                 <li key={benefit} className="flex items-start gap-3">
