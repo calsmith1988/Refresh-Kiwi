@@ -4,6 +4,7 @@ import { readPreviewFile } from "@/lib/preview/serve";
 import {
   canRewritePreviewContent,
   rewriteLocalPreviewOriginsText,
+  rewritePreviewPathsToRootText,
 } from "@/lib/preview/rewrite";
 import { isSvgContentType, svgSecurityHeaders } from "@/lib/assets/validate";
 import { CUSTOM_DOMAIN_HOST_HEADER } from "@/lib/security/headers";
@@ -34,9 +35,10 @@ type ServedWebsite = {
   redirectToHost: string | null;
 };
 
-function rewriteLocalPreviewOrigins(
+function rewriteServedContent(
   body: Buffer,
   contentType: string,
+  slug: string,
 ): Blob | string {
   if (!canRewritePreviewContent(contentType)) {
     const arrayBuffer = body.buffer.slice(
@@ -47,7 +49,12 @@ function rewriteLocalPreviewOrigins(
     return new Blob([arrayBuffer]);
   }
 
-  return rewriteLocalPreviewOriginsText(body.toString("utf8"));
+  // Origin scrub first: stripping a baked-in localhost origin exposes its
+  // /preview/{slug}/ path as root-relative, which the second pass then cleans.
+  return rewritePreviewPathsToRootText(
+    rewriteLocalPreviewOriginsText(body.toString("utf8")),
+    slug,
+  );
 }
 
 function isHtmlContentType(contentType: string): boolean {
@@ -244,7 +251,7 @@ export async function GET(request: Request, context: RouteContext) {
     return notFound(request, "file_not_found", { slug: website.slug });
   }
 
-  let body = rewriteLocalPreviewOrigins(file.body, file.contentType);
+  let body = rewriteServedContent(file.body, file.contentType, website.slug);
 
   if (typeof body === "string" && isHtmlContentType(file.contentType)) {
     body = injectSeoTags({

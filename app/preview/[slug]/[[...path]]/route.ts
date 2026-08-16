@@ -130,10 +130,14 @@ export async function GET(request: Request, context: RouteContext) {
   // Directory-style URLs can leave generated sites resolving against a bad
   // base (we've seen agents bake localhost:10000 into client redirects).
   // Always land on the explicit index document, matching the dashboard links.
+  // The Location must be relative: behind Render's proxy, request.url resolves
+  // to the internal origin (https://localhost:10000), so an absolute redirect
+  // built from it sends visitors' browsers to localhost.
   if (!pathSegments?.length) {
-    return NextResponse.redirect(
-      new URL(`/preview/${slug}/index.html`, request.url),
-    );
+    return new NextResponse(null, {
+      status: 307,
+      headers: { Location: `/preview/${slug}/index.html` },
+    });
   }
 
   const websiteAccess = await getWebsiteAccessBySlug(slug);
