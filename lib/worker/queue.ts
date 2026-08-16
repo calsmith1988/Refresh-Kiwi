@@ -114,6 +114,32 @@ export async function failBackgroundTask(
 }
 
 /**
+ * Requeues a task and refunds the attempt the claim consumed. Used for
+ * transient Cursor capacity errors ([resource_exhausted]): those are not the
+ * task's fault, and burning the small attempt budget on them means a capacity
+ * blip lasting a few retries permanently fails a customer's build. The caller
+ * bounds this with a time window (see the worker), so an extended outage
+ * eventually falls back to counted attempts instead of looping forever.
+ */
+export async function requeueBackgroundTaskWithoutAttempt(
+  taskId: string,
+  error: unknown,
+): Promise<void> {
+  const message = error instanceof Error ? error.message : "Unknown worker error";
+
+  await getDb().execute(sql`
+    UPDATE background_tasks
+    SET
+      status = 'queued',
+      attempts = GREATEST(attempts - 1, 0),
+      error_message = ${message},
+      locked_at = NULL,
+      updated_at = now()
+    WHERE id = ${taskId}
+  `);
+}
+
+/**
  * Resets the job/edit a task drives back to a processable state so a retried
  * or recovered task actually re-runs, instead of the processor early-returning
  * (because the entity is stuck mid-flight) while the worker still marks the

@@ -1,9 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { Agent } from "@cursor/sdk";
-
-import { getCursorApiKey } from "@/lib/cursor/config";
 import { githubHeaders, parseGithubRepo } from "@/lib/github/api";
 import { resolveSitesRepoUrlForSlug } from "@/lib/github/repos";
 import { logMemoryUsage } from "@/lib/observability/memory";
@@ -12,8 +9,6 @@ import { uploadSiteDirectoryToR2 } from "@/lib/storage/r2";
 
 const GITHUB_SYNC_ATTEMPTS = 15;
 const GITHUB_SYNC_DELAY_MS = 3_000;
-const ARTIFACT_SYNC_ATTEMPTS = 5;
-const ARTIFACT_SYNC_DELAY_MS = 2_000;
 // Give a normal push-to-main time to land before checking whether the agent
 // left the finished site on its own branch instead.
 const BRANCH_RESCUE_AFTER_ATTEMPTS = 5;
@@ -23,22 +18,6 @@ export { githubHeaders, parseGithubRepo };
 
 async function sleep(ms: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function listArtifactsWithRelevant(
-  agent: Awaited<ReturnType<typeof Agent.resume>>,
-  prefix: string,
-) {
-  const all = await agent.listArtifacts();
-
-  const relevant = all.filter(
-    (artifact) =>
-      artifact.path.startsWith(prefix) &&
-      !artifact.path.endsWith("/") &&
-      artifact.path !== prefix,
-  );
-
-  return { all, relevant };
 }
 
 function relativePathFromPrefix(pathname: string, prefix: string): string {
@@ -55,89 +34,10 @@ function hasRequiredHomepageFiles(relativePaths: string[]): boolean {
   );
 }
 
-function logIncompleteSync(source: "Cursor artifacts" | "GitHub main", prefix: string) {
+function logIncompleteSync(source: "GitHub main", prefix: string) {
   console.info(
     `[refresh-kiwi] ${source} for ${prefix} did not include index.html and site.json yet`,
   );
-}
-
-async function syncFromAgentArtifacts(
-  agentId: string,
-  slug: string,
-  outputDir: string,
-): Promise<boolean> {
-  const apiKey = getCursorApiKey();
-  const prefix = `sites/${slug}/`;
-
-  await using agent = await Agent.resume(agentId, { apiKey });
-
-  for (let attempt = 1; attempt <= ARTIFACT_SYNC_ATTEMPTS; attempt++) {
-    const { all, relevant } = await listArtifactsWithRelevant(agent, prefix);
-    logMemoryUsage("preview-sync:artifacts-listed", {
-      slug,
-      attempt,
-      artifacts: relevant.length,
-      artifactsTotal: all.length,
-    });
-
-    // A raw list that is non-empty while the filtered list is empty means the
-    // artifact paths no longer match the sites/{slug}/ prefix we expect —
-    // surface a sample so the mismatch is diagnosable from worker logs.
-    if (all.length > 0 && relevant.length === 0) {
-      const sample = all
-        .slice(0, 5)
-        .map((artifact) => artifact.path)
-        .join(", ");
-      console.warn(
-        `[refresh-kiwi] artifacts exist but none match prefix ${prefix}; sample paths: ${sample}`,
-      );
-    }
-
-    if (relevant.length > 0) {
-      const relativePaths = relevant.map((artifact) =>
-        relativePathFromPrefix(artifact.path, prefix),
-      );
-
-      if (!hasRequiredHomepageFiles(relativePaths)) {
-        logIncompleteSync("Cursor artifacts", prefix);
-        if (attempt < ARTIFACT_SYNC_ATTEMPTS) {
-          await sleep(ARTIFACT_SYNC_DELAY_MS);
-          continue;
-        }
-
-        return false;
-      }
-
-      for (const artifact of relevant) {
-        const relativePath = relativePathFromPrefix(artifact.path, prefix);
-        const destination = path.join(outputDir, relativePath);
-
-        await mkdir(path.dirname(destination), { recursive: true });
-        logMemoryUsage("preview-sync:before-artifact-download", {
-          slug,
-          file: relativePath,
-        });
-        const buffer = await agent.downloadArtifact(artifact.path);
-        logMemoryUsage("preview-sync:after-artifact-download", {
-          slug,
-          file: relativePath,
-          bytes: buffer.byteLength,
-        });
-        await writeFile(destination, buffer);
-      }
-
-      return true;
-    }
-
-    if (attempt < ARTIFACT_SYNC_ATTEMPTS) {
-      console.info(
-        `[refresh-kiwi] no artifacts yet for ${prefix}, retry ${attempt}/${ARTIFACT_SYNC_ATTEMPTS}`,
-      );
-      await sleep(ARTIFACT_SYNC_DELAY_MS);
-    }
-  }
-
-  return false;
 }
 
 async function uploadSyncedPreview(slug: string, outputDir: string): Promise<void> {
@@ -146,7 +46,13 @@ async function uploadSyncedPreview(slug: string, outputDir: string): Promise<voi
     await uploadSiteDirectoryToR2(slug, outputDir);
     logMemoryUsage("preview-sync:after-r2-upload", { slug });
   } catch (error) {
-    console.error(`[refresh-kiwi] R2 sync failed for ${slug}:`, error);
+    // Deliberately non-fatal (the build itself succeeded), but serious: until
+    // a later sync re-uploads, this site serves from the slow GitHub-contents
+    // fallback whenever the worker's local copy is lost.
+    console.error(
+      `[refresh-kiwi] R2 sync failed for ${slug} after retries; site will rely on the GitHub serving fallback:`,
+      error,
+    );
   }
 }
 
@@ -362,6 +268,13 @@ async function tryMergeAgentBranchIntoMain(slug: string): Promise<boolean> {
   return false;
 }
 
+/**
+ * Pulls the agent's finished site files from the repo's main branch onto the
+ * worker (and into R2). Agents commit their work to GitHub — the Cursor
+ * "artifacts" API is a different mechanism (screenshots/videos under the VM's
+ * artifacts/ directory) and never contains site files, so the repo is the
+ * only sync source. The agentId is logged purely for traceability.
+ */
 export async function syncPreviewFromAgent(
   agentId: string,
   slug: string,
@@ -370,25 +283,9 @@ export async function syncPreviewFromAgent(
   const outputDir = previewDirectory(slug);
 
   console.info(
-    `[refresh-kiwi] syncing Cursor artifacts for ${prefix} agentId=${agentId}`,
+    `[refresh-kiwi] syncing ${prefix} from GitHub main agentId=${agentId}`,
   );
   logMemoryUsage("preview-sync:start", { slug });
-
-  const syncedFromArtifacts = await syncFromAgentArtifacts(
-    agentId,
-    slug,
-    outputDir,
-  );
-
-  if (syncedFromArtifacts) {
-    await uploadSyncedPreview(slug, outputDir);
-    logMemoryUsage("preview-sync:complete", { slug, source: "artifacts" });
-    return;
-  }
-
-  console.info(
-    `[refresh-kiwi] no Cursor artifacts for ${prefix}, falling back to GitHub main`,
-  );
 
   let branchRescueAttempted = false;
 

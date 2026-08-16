@@ -1,4 +1,5 @@
 import { localizeWebsiteImages } from "@/lib/assets/localize";
+import { readSeedAssets, type SeedAssetInput } from "@/lib/assets/seed";
 import { configureSharpForLongRunningServer } from "@/lib/assets/sharp-config";
 import { generateStarterSeedAssets } from "@/lib/assets/starter";
 import {
@@ -18,6 +19,7 @@ import {
   failBackgroundTask,
   MAX_TASK_ATTEMPTS,
   recoverStaleBackgroundWork,
+  requeueBackgroundTaskWithoutAttempt,
   resetEntityForRetry,
   type BackgroundTask,
 } from "@/lib/worker/queue";
@@ -32,6 +34,14 @@ const RECOVERY_INTERVAL_MS = Number(
 // retry doesn't slam straight into the same limit.
 const CURSOR_RETRY_BACKOFF_MS = Number(
   process.env.WORKER_CURSOR_RETRY_BACKOFF_MS ?? 10_000,
+);
+// How long (from the task's first claim) capacity errors get free requeues
+// that don't consume the attempt budget. Inside the window a 429 blip can
+// retry as often as needed; past it, failures count normally so a prolonged
+// Cursor outage can't loop a task forever. Keep well under the 90-minute
+// stale-recovery window.
+const CURSOR_CAPACITY_RETRY_WINDOW_MS = Number(
+  process.env.WORKER_CURSOR_CAPACITY_RETRY_WINDOW_MS ?? 15 * 60_000,
 );
 
 let shouldStop = false;
@@ -78,17 +88,38 @@ async function processTask(task: BackgroundTask): Promise<void> {
         jobId: string;
         generateStarterVisuals?: boolean;
       }>(task.payload);
-      const starterAssets = payload.generateStarterVisuals
-        ? await (async () => {
-            const [job] = await getDb()
-              .select({ creationPrompt: schema.jobs.creationPrompt })
-              .from(schema.jobs)
-              .where(eq(schema.jobs.id, payload.jobId))
-              .limit(1);
 
-            return generateStarterSeedAssets(job?.creationPrompt ?? "");
-          })()
-        : [];
+      let starterAssets: SeedAssetInput[] = [];
+
+      if (payload.generateStarterVisuals) {
+        const [job] = await getDb()
+          .select({
+            slug: schema.jobs.slug,
+            creationPrompt: schema.jobs.creationPrompt,
+          })
+          .from(schema.jobs)
+          .where(eq(schema.jobs.id, payload.jobId))
+          .limit(1);
+
+        // Starter images are generated and seeded before the Cursor run, so a
+        // retry after an agent-start failure already has them in the asset
+        // manifest. Reuse those (processFreshJob reads the manifest when given
+        // no inputs) instead of paying for a fresh set on every attempt.
+        const existingSeedAssets = job ? await readSeedAssets(job.slug) : [];
+        const alreadyGenerated = existingSeedAssets.some(
+          (asset) => asset.source === "generated",
+        );
+
+        if (!alreadyGenerated) {
+          starterAssets = await generateStarterSeedAssets(
+            job?.creationPrompt ?? "",
+          );
+        } else {
+          console.info(
+            `[refresh-kiwi-worker] task ${task.id} reusing previously generated starter assets`,
+          );
+        }
+      }
 
       await processFreshJob(payload.jobId, starterAssets, { finalAttempt });
       break;
@@ -180,6 +211,29 @@ async function runWorker(): Promise<void> {
         `[refresh-kiwi-worker] task ${task.id} failed type=${task.type}`,
         error,
       );
+
+      // Capacity errors from Cursor aren't the task's fault: refund the
+      // attempt so a 429 blip can't eat the whole budget and permanently fail
+      // a build. Time-bounded from the task's first claim so a long outage
+      // eventually falls back to counted attempts.
+      const withinCapacityRetryWindow =
+        task.startedAt != null &&
+        Date.now() - new Date(task.startedAt).getTime() <
+          CURSOR_CAPACITY_RETRY_WINDOW_MS;
+
+      if (isRetryableCursorStartupError(error) && withinCapacityRetryWindow) {
+        console.warn(
+          `[refresh-kiwi-worker] task ${task.id} hit a transient Cursor capacity error; requeueing without consuming an attempt`,
+        );
+        // The retry may reclaim with the same attempt count, so processTask's
+        // attempts > 1 reset won't fire — reset the stuck entity here, before
+        // the task becomes claimable again.
+        await resetEntityForRetry(task);
+        await requeueBackgroundTaskWithoutAttempt(task.id, error);
+        await sleep(CURSOR_RETRY_BACKOFF_MS);
+        continue;
+      }
+
       await failBackgroundTask(task.id, error);
 
       if (

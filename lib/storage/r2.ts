@@ -9,6 +9,11 @@ const SERVICE = "s3";
 const REQUEST_TYPE = "aws4_request";
 const EMPTY_PAYLOAD_HASH = createHash("sha256").update("").digest("hex");
 const R2_UPLOAD_CONCURRENCY = 2;
+// Per-file retry budget for directory uploads. R2 is the primary serving
+// store: a silently failed upload leaves a site serving from the slow
+// GitHub-contents fallback, so transient PUT failures are worth retrying.
+const R2_PUT_ATTEMPTS = 3;
+const R2_PUT_RETRY_DELAY_MS = 1_000;
 const CONTENT_TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
@@ -331,12 +336,30 @@ export async function uploadSiteDirectoryToR2(
           file,
           bytes: body.byteLength,
         });
-        await putSiteFile({
-          slug,
-          file,
-          body,
-          contentType: contentTypeForPath(file),
-        });
+
+        for (let attempt = 1; attempt <= R2_PUT_ATTEMPTS; attempt++) {
+          try {
+            await putSiteFile({
+              slug,
+              file,
+              body,
+              contentType: contentTypeForPath(file),
+            });
+            break;
+          } catch (error) {
+            if (attempt >= R2_PUT_ATTEMPTS) {
+              throw error;
+            }
+
+            console.warn(
+              `[refresh-kiwi] R2 PUT for ${slug}/${file} failed (attempt ${attempt}/${R2_PUT_ATTEMPTS}); retrying:`,
+              error,
+            );
+            await new Promise((resolve) =>
+              setTimeout(resolve, R2_PUT_RETRY_DELAY_MS * attempt),
+            );
+          }
+        }
       }),
     );
 
