@@ -138,6 +138,15 @@ OUTPUT: sites/${slug}/
    - discoveredPages: one entry per header nav label you mirrored (see "Header navigation" below), e.g. { "path": "/our-treatments", "title": "Our Treatments" }. Leave [] only when the source genuinely has no internal nav links.
 5. When index.html, styles.css, and site.json are written under sites/${slug}/, commit them directly on main and push to origin main (no new branch, no pull request), then finish. The commit is required — the platform falls back to reading the repo when run artifacts are unavailable, so finishing without a commit can make the whole build count as failed.
 
+## Linking your own files — always /preview/${slug}/ paths
+
+- Every reference to a file you create under sites/${slug}/ must use the /preview/${slug}/ prefix. The preview server mounts the site at that path, so anything else loads nothing and the page renders as unstyled HTML.
+  - Stylesheet: <link rel="stylesheet" href="/preview/${slug}/styles.css">
+  - Script: <script src="/preview/${slug}/script.js"></script>
+  - Local assets: /preview/${slug}/assets/favicon.svg
+- Never write site-root paths like /styles.css and never write bare relative paths like href="styles.css".
+- This rule is only for files you create. Hotlinked source images keep their absolute https URLs, and the contact form keeps posting to /api/site-contact.
+
 ${GIT_RULES}
 
 ## If the source website cannot be read — fail, do not improvise
@@ -200,7 +209,7 @@ ${buildDesignRecipeSection(slug)}
 - Reuse the source site's real top-level navigation labels in the rebuilt header, in the same order, so the menu still matches when those pages are built later. The labels are in the homepage HTML you already fetched — do not visit other pages to find them.
 - Cap the header at 6 items. Use top-level items only (ignore dropdown children), and skip legal/policy links, login/account/portal links, and phone/social icons.
 - The secondary pages do not exist yet, so never link to their paths. Point each label at the homepage section that best matches it (e.g. "Our Treatments" → the services section anchor). If a label has no matching section, link it to the contact/CTA section — never leave href="#" and never link to a page that does not exist yet.
-- Record every mirrored label in site.json discoveredPages with the title exactly as shown in the nav and the path from the source link, normalized to a root-relative path (strip the domain, query strings, and fragments).
+- Record every mirrored label in site.json discoveredPages with the title exactly as shown in the nav and the path from the source link, keeping only the path portion of the URL (strip the domain, query string, and fragment — e.g. https://example.com/our-treatments?x=1 becomes "/our-treatments"). This shape applies only to site.json data, not to any href on the page.
 - If the source site is a single page or has no meaningful internal nav, design whatever section-anchor nav suits the page and leave discoveredPages [].
 
 ## Design bar
@@ -221,7 +230,7 @@ Avoid:
 - A generic Tailwind/AI landing page look.
 - Recreating the old site structure section-for-section.
 - Broken image references — every image URL must come from the source site.
-- Never use localhost, 127.0.0.1, or port-based preview origins in links, scripts, forms, canonical tags, Open Graph URLs, or base tags. Use root-relative paths such as /preview/${slug}/ and /preview/${slug}/page-path.
+- Never use localhost, 127.0.0.1, or port-based preview origins in links, scripts, forms, canonical tags, Open Graph URLs, or base tags. Your own files are always linked via /preview/${slug}/ paths (see "Linking your own files" above).
 
 Do not build secondary pages in this phase. Do not spend time on a multi-page plan. Finish as soon as the homepage files are written and committed.`;
 }
@@ -266,6 +275,15 @@ ${formatSeedAssets(seedAssets)}
    - pages: [{ "path": "/", "title": "Home", "gated": false }]
    - discoveredPages: []
 5. Commit the finished homepage files directly on main and push to origin main (no new branch, no pull request) before finishing. Do not finish until index.html, styles.css, and site.json are written under sites/${slug}/ and available from the run artifacts or the repository.
+
+## Linking your own files — always /preview/${slug}/ paths
+
+- Every reference to a file you create under sites/${slug}/ must use the /preview/${slug}/ prefix. The preview server mounts the site at that path, so anything else loads nothing and the page renders as unstyled HTML.
+  - Stylesheet: <link rel="stylesheet" href="/preview/${slug}/styles.css">
+  - Script: <script src="/preview/${slug}/script.js"></script>
+  - Local assets: /preview/${slug}/assets/favicon.svg
+- Never write site-root paths like /styles.css and never write bare relative paths like href="styles.css".
+- This rule is only for files you create. Provided starter assets keep their listed URLs, and the contact form keeps posting to /api/site-contact.
 
 ${GIT_RULES}
 
@@ -317,7 +335,7 @@ Avoid:
 - A generic Tailwind/AI landing page look.
 - Fake factual claims.
 - Broken image references.
-- Never use localhost, 127.0.0.1, or port-based preview origins in links, scripts, forms, canonical tags, Open Graph URLs, or base tags. Use root-relative paths such as /preview/${slug}/ and /preview/${slug}/page-path.
+- Never use localhost, 127.0.0.1, or port-based preview origins in links, scripts, forms, canonical tags, Open Graph URLs, or base tags. Your own files are always linked via /preview/${slug}/ paths (see "Linking your own files" above).
 
 Do not build secondary pages in this phase. The homepage files are the deliverable, so make sure they are present before finishing.`;
 }

@@ -6,6 +6,7 @@ import { readPreviewFile } from "@/lib/preview/serve";
 import {
   canRewritePreviewContent,
   rewriteLocalPreviewOriginsText,
+  rewriteRootPathsForPreview,
 } from "@/lib/preview/rewrite";
 import { getWebsiteAccessBySlug } from "@/lib/websites/service";
 
@@ -154,7 +155,14 @@ export async function GET(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Preview not found" }, { status: 404 });
   }
 
-  const body = rewriteLocalPreviewOrigins(file.body, file.contentType);
+  let body = rewriteLocalPreviewOrigins(file.body, file.contentType);
+
+  // Safety net for agent output that references its own files with site-root
+  // paths (href="/styles.css"): correct on live domains, broken under
+  // /preview/{slug}/ — rewrite them to the preview prefix.
+  if (typeof body === "string") {
+    body = rewriteRootPathsForPreview(body, slug, file.contentType);
+  }
 
   return new NextResponse(body, {
     headers: {
