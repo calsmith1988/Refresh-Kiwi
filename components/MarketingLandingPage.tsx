@@ -93,7 +93,7 @@ export default function MarketingLandingPage({ page }: MarketingLandingPageProps
 
         <section className="mt-12 rounded-[2rem] border border-black/10 bg-white p-6 sm:p-10">
           <h2 className="font-fraunces text-3xl font-semibold tracking-tight">
-            Common questions
+            Questions people actually ask
           </h2>
           <div className="mt-5 divide-y divide-black/5">
             {page.faqs.map((faq) => (
@@ -115,12 +115,11 @@ export default function MarketingLandingPage({ page }: MarketingLandingPageProps
 
         <section className="mt-12 rounded-[2rem] bg-kiwi-green p-8">
           <h2 className="font-fraunces text-3xl font-semibold tracking-tight">
-            Try a free refreshed preview
+            Paste your URL. See it refreshed in about two minutes.
           </h2>
           <p className="mt-3 max-w-2xl text-sm leading-7 text-black/65">
-            Paste your current website address and Refresh Kiwi will create a
-            separate preview in about two minutes. Your live site stays unchanged
-            until you choose to publish.
+            Free preview. Your live site stays exactly where it is until you
+            decide to publish. No signup required.
           </p>
           <BlogRefreshForm />
         </section>

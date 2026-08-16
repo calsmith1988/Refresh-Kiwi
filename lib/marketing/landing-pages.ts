@@ -42,62 +42,62 @@ export const marketingLandingPages: LandingPage[] = [
     ],
     eyebrow: "Pay monthly website design",
     intro:
-      "If you want a better website but do not want a large upfront bill, paying monthly can make sense. Refresh Kiwi lets you try a redesigned version of your site for free, then host it on Kiwi Pro for £8 per month if you want to publish.",
+      "Your site still has that 2014 energy — beige hero, phone number buried three scrolls down, mobile layout that fights back. You want it fixed. You do not want a four-figure invoice before you've seen anything. Website design pay monthly is the sensible move: see a refreshed version free, then publish for £8 a month if it earns the switch.",
     sections: [
       {
-        heading: "What pay-monthly website design usually means",
+        heading: "What pay-monthly actually means (and what it doesn't)",
         paragraphs: [
-          "Pay-monthly website design spreads the cost of a new site over a subscription instead of charging thousands upfront. Some providers bundle design, hosting, and support into one monthly fee. Others charge a setup fee plus a monthly retainer.",
-          "For small businesses, the appeal is simple: lower risk, predictable costs, and a website that stays maintained without hiring an agency for every small change.",
+          "Pay-monthly website design spreads the cost instead of hitting you with thousands upfront. Some outfits bundle design, hosting, and support into one monthly fee. Others charge a setup fee, then a retainer, then bill you again when you want the phone number moved two inches left.",
+          "For a plumber in Pontypridd or a bakery that still apologises for its splash page — the appeal is simple. Lower risk. Predictable cost. A site that gets updated without booking a 'quick call' that eats your Tuesday.",
         ],
       },
       {
-        heading: "How Refresh Kiwi pricing works",
+        heading: "How Refresh Kiwi does it",
         paragraphs: [
-          "Refresh Kiwi separates the try-it step from the pay-monthly step. You paste your current website address and get a refreshed preview in about two minutes. That preview is free and does not require signup.",
-          "If you like the preview and want to publish it, Kiwi Pro costs £8 per month. That includes hosting, a custom domain, extra pages, unlimited edits in plain English, and the ability to cancel anytime.",
+          "We split try-it from pay-for-it. Paste your URL. Get a refreshed preview in about two minutes. Free. No signup. No card details. No 'we'll send a proposal within five working days.'",
+          "Like what you see? Kiwi Pro is £8 a month. Hosting, custom domain, extra pages, unlimited edits in plain English — 'make the quote button bigger,' not 'adjust the CTA padding.' Cancel when you want.",
         ],
         callout:
-          "There is no large upfront design fee. You see the refreshed site before you pay anything.",
+          "No upfront design fee. You see the refreshed site before a penny leaves your account.",
       },
       {
-        heading: "What is included in the free preview",
+        heading: "The free preview — what's in the box",
         bullets: [
-          "A redesigned homepage based on your current website or business description.",
-          "Your real contact details, services, and content reshaped into a clearer layout.",
-          "A separate preview you can inspect while your current site stays live.",
-          "No signup and no payment required to try it.",
+          "A redesigned homepage from your current site or a short business brief.",
+          "Your real phone number, services, and copy — reshaped so humans can actually read them.",
+          "A separate preview while your live site keeps doing its thing.",
+          "No signup. No payment. No 'book a discovery call.'",
         ],
       },
       {
-        heading: "What Kiwi Pro adds for £8/month",
+        heading: "Kiwi Pro — £8/month, the bit where it goes live",
         bullets: [
-          "Publish your refreshed site and host it on Refresh Kiwi.",
-          "Connect a custom domain (for example, yourbusiness.co.uk).",
-          "Add extra pages beyond the homepage.",
-          "Request changes in plain English — no technical skills needed.",
-          "Cancel anytime if it is not working for you.",
+          "Publish and host the refreshed site on Refresh Kiwi.",
+          "Connect your domain — yourbusiness.co.uk, not something.refreshkiwi.site.",
+          "Extra pages beyond the homepage.",
+          "Unlimited edits in plain English. Say what you want. We change it.",
+          "Cancel anytime. Genuinely.",
         ],
       },
       {
-        heading: "Who pay-monthly website design suits",
+        heading: "Who this suits",
         paragraphs: [
-          "Pay-monthly website design works well for sole traders, local services, clinics, cafes, trades, and other small businesses that need a clear brochure-style site rather than complex software.",
-          "It is a good fit if your current site has useful information but looks dated, reads poorly on mobile, or makes it hard for visitors to call, email, or book.",
+          "Sole traders, local services, clinics, cafes, trades — anyone who needs a clear brochure site, not a software project. If your content is mostly right but the presentation makes you wince when you hand someone your card, pay-monthly website design fits.",
+          "Especially if visitors can't find your number on mobile, or your homepage reads like it was written by a committee that never met your customers.",
         ],
       },
       {
-        heading: "What pay-monthly does not replace",
+        heading: "What we are not",
         paragraphs: [
-          "Refresh Kiwi is not an ecommerce platform, booking system, or membership site. If you need a full online shop with cart and checkout, or deep integrations with CRM or inventory systems, you may need a specialist platform or agency.",
-          "For a straightforward business website that explains what you do and helps people get in touch, pay-monthly hosting with a refreshed design is often enough.",
+          "Not an ecommerce platform. Not a booking system. Not a membership site. If you need cart, checkout, inventory sync, or CRM plumbing, you need a specialist — and we will not pretend otherwise.",
+          "If you need a straightforward site that explains what you do and makes it easy to get in touch? £8 a month and a refreshed design is often the whole story.",
         ],
       },
       {
-        heading: "How to get started",
+        heading: "Two minutes. Paste below.",
         paragraphs: [
-          "Paste your website address into the form below. Refresh Kiwi reads your current site, creates a fresher preview, and shows it to you in about two minutes. Your live website does not change until you choose to publish.",
-          "If the preview looks right, upgrade to Kiwi Pro for £8 per month. If not, you have lost nothing except a couple of minutes.",
+          "Drop your URL in the form. We read your current site, build a fresher preview, show it to you in about two minutes. Your live website does not budge until you say go.",
+          "Preview looks right? Kiwi Pro, £8 a month. Doesn't? You've lost two minutes and gained clarity. Fair trade.",
         ],
       },
     ],
@@ -105,22 +105,22 @@ export const marketingLandingPages: LandingPage[] = [
       {
         question: "Is there a contract with pay-monthly website design?",
         answer:
-          "Kiwi Pro is billed monthly and you can cancel anytime. There is no long-term contract.",
+          "Kiwi Pro bills monthly. Cancel when you like. No twelve-month lock-in, no 'early termination fee' small print.",
       },
       {
         question: "Do I pay before seeing the redesigned website?",
         answer:
-          "No. The preview is free. You only pay if you choose to publish with Kiwi Pro.",
+          "No. Preview first, always. You only pay if you choose to publish with Kiwi Pro.",
       },
       {
         question: "What happens to my current website?",
         answer:
-          "Nothing changes on your live site until you publish. The preview is separate so you can compare before deciding.",
+          "Nothing. It stays live. The preview is separate — compare side by side, show your partner, sleep on it.",
       },
       {
         question: "Can I request changes after I subscribe?",
         answer:
-          "Yes. Kiwi Pro includes unlimited edits in plain English. Tell us what to change and we update the site for you.",
+          "Yes. Kiwi Pro includes unlimited edits in plain English. Tell us what to change. We update the site.",
       },
     ],
     relatedLinks: [
@@ -144,64 +144,64 @@ export const marketingLandingPages: LandingPage[] = [
     ],
     eyebrow: "Website redesign services",
     intro:
-      "Searching for website redesign services near me often means you want someone to improve your site without a long agency project. Refresh Kiwi is an online redesign service based in the UK — we work remotely with businesses across England, Wales, Scotland, and Northern Ireland.",
+      "You searched website redesign services near me because your site embarrasses you and you want someone else to fix it — without six weeks of discovery workshops and a invoice that arrives before you've seen a mockup. Refresh Kiwi is an online redesign service. UK-wide. Remote. Based in Caerphilly, run by CJS Global LTD. No shopfront. No pretending.",
     sections: [
       {
-        heading: "An honest note about location",
+        heading: "Location — the honest bit",
         paragraphs: [
-          "Refresh Kiwi does not have local branch offices or in-person design meetings. We are an online service run by CJS Global LTD from Caerphilly, Wales. That means we can help UK businesses anywhere, but we are not a traditional local web agency with a shopfront.",
-          "If you need someone to visit your premises or run workshops in person, a local freelancer or agency may suit you better. If you want a faster way to see a redesigned version of your existing site, an online refresh service can work well.",
+          "We do not have branch offices in Manchester, Bristol, or anywhere else. No one will visit your premises with a mood board. CJS Global LTD runs Refresh Kiwi from Caerphilly, Wales, and we work with businesses across England, Wales, Scotland, and Northern Ireland over the internet.",
+          "Need someone in the room? Hire a local freelancer or agency. Want to see a redesigned version of your existing site before you commit budget or calendar? That's us.",
         ],
         callout:
-          "We serve UK businesses online. There is no fake local office — just a straightforward remote redesign service.",
+          "UK businesses, served online. No fake local office on Google Maps. Just a straight remote redesign service.",
       },
       {
-        heading: "What our website redesign service includes",
+        heading: "What you get",
         bullets: [
-          "Reading your current website and keeping useful business information.",
-          "Creating a fresher layout with clearer calls to action.",
-          "Improving mobile readability and visual trust.",
-          "A free preview you inspect before anything goes live.",
-          "Optional hosting and ongoing edits with Kiwi Pro (£8/month).",
+          "We read your current site and keep the useful stuff — services, number, reviews, the bits customers actually need.",
+          "A fresher layout with calls to action that don't hide.",
+          "Mobile that doesn't feel like an afterthought.",
+          "A free preview before anything goes live.",
+          "Optional hosting and edits with Kiwi Pro — £8/month.",
         ],
       },
       {
-        heading: "How the redesign process works",
+        heading: "Three steps, about two minutes to start",
         paragraphs: [
-          "Step one: paste your website address or describe your business. Refresh Kiwi generates a separate preview in about two minutes.",
-          "Step two: review the preview on your phone and desktop. Check contact details, services, photos, and the overall feel.",
-          "Step three: if you want to publish, subscribe to Kiwi Pro for £8 per month. Request changes in plain English anytime.",
+          "One: paste your URL or describe the business. Preview in about two minutes.",
+          "Two: check it on your phone. Verify the number, the services, the photos. Would you send a customer here?",
+          "Three: like it? Kiwi Pro, £8 a month. Publish, connect your domain, ask for changes in plain English whenever.",
         ],
       },
       {
         heading: "When an online redesign service is enough",
         bullets: [
           "Your services and contact details are mostly correct already.",
-          "The site looks old but still contains useful content.",
-          "You want a clearer homepage and stronger calls to action.",
-          "You do not need ecommerce, booking integrations, or custom software.",
-          "You want to see a result quickly before committing budget.",
+          "The site looks like 2014 called and wants its template back — but the content underneath is fine.",
+          "You want a clearer homepage and a phone number people can actually tap.",
+          "You don't need ecommerce, booking integrations, or custom software.",
+          "You want proof before you spend.",
         ],
       },
       {
-        heading: "When you may need more than a refresh",
+        heading: "When you need more than us",
         paragraphs: [
-          "A redesign service focused on presentation will not replace a full rebuild if your business model has changed, your site structure is broken, or you need ecommerce with cart and checkout.",
-          "Refresh Kiwi is best for brochure-style business websites: clear services, contact details, trust signals, and a professional look. If your project needs complex development, consider an agency or specialist.",
+          "If your business model has changed, your site structure is broken, or you need cart and checkout — a presentation-focused redesign service won't cut it.",
+          "Refresh Kiwi is for brochure sites: clear services, contact details, trust signals, a look that doesn't make you apologise. Complex development? Agency or specialist.",
         ],
       },
       {
-        heading: "Why UK small businesses choose Refresh Kiwi",
+        heading: "Why owners pick us over a six-week project",
         paragraphs: [
-          "Many owners search for website redesign services near me because they want help but not a six-week project with discovery calls and revision rounds. Refresh Kiwi offers a preview-first approach: see the redesigned site, then decide.",
-          "Pricing is simple — free to try, £8 per month to publish. No hidden setup fees or surprise invoices.",
+          "Plenty of people search website redesign services near me because they want help, not a project plan with Gantt charts. Preview first. See the site. Then decide.",
+          "Free to try. £8 a month to publish. No setup fee lurking in the footer.",
         ],
       },
       {
-        heading: "Get a refreshed preview today",
+        heading: "Same process whether you're in London or Llanelli",
         paragraphs: [
-          "Whether you are in London, Manchester, Cardiff, Edinburgh, Belfast, or a smaller town, the process is the same. Paste your URL below and see what a refreshed version of your site could look like.",
-          "Your current website stays unchanged until you choose to switch.",
+          "Paste your URL below. See what a refreshed version looks like. Your current site stays untouched until you switch.",
+          "That's the whole pitch. No calendar link required.",
         ],
       },
     ],
@@ -209,22 +209,22 @@ export const marketingLandingPages: LandingPage[] = [
       {
         question: "Do you offer website redesign services near me in person?",
         answer:
-          "No. Refresh Kiwi is a remote, online service. We work with UK businesses over the internet rather than through local office visits.",
+          "No. Remote only. We work with UK businesses online — email info@refresh.kiwi if you want to talk, but nobody's driving to your shop with a laptop.",
       },
       {
         question: "How long does a website redesign take?",
         answer:
-          "The initial preview takes about two minutes. Publishing and any follow-up edits depend on when you subscribe and what changes you request.",
+          "Initial preview: about two minutes. Publishing and follow-up edits depend on when you subscribe and what you ask us to change.",
       },
       {
         question: "Will you migrate my SEO rankings?",
         answer:
-          "Refresh Kiwi creates a new static site. SEO depends on content quality, redirects, and how you switch domains. See our guide on redesigning without losing SEO for practical steps.",
+          "We build a new static site. Rankings depend on content, redirects, and how you switch. Our guide on redesigning without losing SEO covers the practical stuff.",
       },
       {
         question: "Can I keep my current domain?",
         answer:
-          "Yes. Kiwi Pro includes connecting a custom domain so visitors reach your refreshed site at the same address.",
+          "Yes. Kiwi Pro includes connecting your custom domain — same address, refreshed site.",
       },
     ],
     relatedLinks: [
@@ -248,68 +248,68 @@ export const marketingLandingPages: LandingPage[] = [
     ],
     eyebrow: "Website design packages",
     intro:
-      "Website design packages usually bundle design, pages, hosting, and support into tiers. Refresh Kiwi keeps it simple: one free package to try and one paid package to publish. No bronze, silver, and gold tiers — just a clear choice.",
+      "Most website design packages pages read like a menu designed to confuse you into the middle tier. Bronze, silver, gold. Twelve pages, three revision rounds, SEO add-on sold separately. Refresh Kiwi has two options: free preview, Kiwi Pro at £8 a month. That's the whole website design packages story.",
     sections: [
       {
-        heading: "Why most package pages feel confusing",
+        heading: "Why package pages make your eyes glaze over",
         paragraphs: [
-          "Many web agencies list three or four packages with different page counts, revision rounds, and add-ons. It can be hard to know what you actually need or what you are paying for before work starts.",
-          "Refresh Kiwi offers two packages because that matches how the product works: try a refreshed preview for free, then pay monthly only if you want to publish and keep the site live.",
+          "Agencies love tiers. Different page counts, revision caps, hosting bundled or not, 'strategy workshop' as a line item. You end up guessing what you need before anyone shows you a single screen.",
+          "We have two packages because the product has two modes: try it free, pay monthly if you publish. No bronze medal for showing up.",
         ],
       },
       {
         heading: "Package 1: Free preview",
         bullets: [
-          "Paste your website address or describe your business.",
-          "Get a redesigned preview in about two minutes.",
-          "No signup, no payment, no credit card.",
-          "Your current website stays exactly as it is.",
-          "Inspect the preview on mobile and desktop before deciding.",
+          "Paste your URL or describe the business.",
+          "Redesigned preview in about two minutes.",
+          "No signup. No card. No 'quick call to discuss your needs.'",
+          "Your current site stays exactly as it is.",
+          "Check it on mobile before you decide anything.",
         ],
         callout:
-          "The free preview is the whole point. You see the redesign before spending anything.",
+          "The free preview is the product demo. You see the redesign before spending anything.",
       },
       {
         heading: "Package 2: Kiwi Pro — £8/month",
         bullets: [
-          "Publish your refreshed website and host it on Refresh Kiwi.",
-          "Connect a custom domain.",
-          "Add extra pages beyond the homepage.",
-          "Unlimited edits — ask for changes in plain English.",
+          "Publish and host the refreshed site.",
+          "Connect your custom domain.",
+          "Extra pages beyond the homepage.",
+          "Unlimited edits in plain English.",
           "Cancel anytime.",
         ],
         paragraphs: [
-          "Kiwi Pro is the only paid tier. There are no extra packages, setup fees, or per-page charges beyond what is included.",
+          "One paid tier. No upsells, no per-page charges, no 'enterprise' package hiding round the corner.",
         ],
       },
       {
-        heading: "What both packages include",
+        heading: "What both use",
         paragraphs: [
-          "Both the free preview and Kiwi Pro use the same redesign engine. Refresh Kiwi reads your current site or business description and produces a clearer, mobile-friendly layout with your real contact details and services.",
-          "The difference is whether you publish and keep the site live with ongoing hosting and edits.",
+          "Same engine either way. We read your site or brief and produce a clearer, mobile-friendly layout with your real details — not lorem ipsum and a stock photo of someone in a hard hat nodding at a tablet.",
+          "The difference is whether you keep it live with hosting and ongoing edits.",
         ],
       },
       {
-        heading: "What is not in either package",
+        heading: "What's not in either package",
         paragraphs: [
-          "Refresh Kiwi does not offer ecommerce packages with shopping cart and checkout, integrated booking calendars, membership areas, or custom software development. Those need specialist platforms or agencies.",
-          "Our packages are for brochure-style business websites: explain what you do, show trust signals, and make it easy to get in touch.",
+          "No shopping cart. No checkout. No booking calendar integration. No membership area. No custom app development. Those need platforms and specialists built for the job.",
+          "Our packages are for brochure sites: what you do, why someone should trust you, how to get in touch.",
         ],
       },
       {
-        heading: "How to choose between the packages",
+        heading: "Which one to pick",
         bullets: [
-          "Start with the free preview if you are unsure whether a refresh is enough.",
-          "Choose Kiwi Pro if the preview looks right and you want it live on your domain.",
-          "Stay on the free preview if you only wanted to see options before briefing an agency.",
-          "Cancel Kiwi Pro anytime if your needs change.",
+          "Not sure a refresh is enough? Start free.",
+          "Preview looks right and you want it on your domain? Kiwi Pro.",
+          "Just wanted ammunition for briefing an agency? Free preview, no guilt.",
+          "Needs changed? Cancel Kiwi Pro. No drama.",
         ],
       },
       {
-        heading: "Compare with typical agency packages",
+        heading: "Versus a typical agency package",
         paragraphs: [
-          "Agency packages often start at hundreds or thousands of pounds upfront, with page limits and defined revision rounds. Refresh Kiwi flips that: see the result first, pay £8 per month only if you publish.",
-          "For many small businesses, that is enough to get a professional site without a large project.",
+          "Agency packages often start at hundreds or thousands upfront, with page limits and two revision rounds before the meter runs again. We flip it: see the result, pay £8 a month only if you publish.",
+          "For a lot of small businesses, that's the whole website. Done.",
         ],
       },
     ],
@@ -317,22 +317,22 @@ export const marketingLandingPages: LandingPage[] = [
       {
         question: "Are there hidden tiers or upsells?",
         answer:
-          "No. Refresh Kiwi has a free preview and Kiwi Pro at £8 per month. There are no additional paid packages.",
+          "No. Free preview and Kiwi Pro at £8 a month. Two options. Full stop.",
       },
       {
         question: "How many pages are included in Kiwi Pro?",
         answer:
-          "Kiwi Pro includes the homepage plus extra pages. There is no separate per-page fee within the subscription.",
+          "Homepage plus extra pages. No per-page fee on top of the subscription.",
       },
       {
         question: "Can I try the free package more than once?",
         answer:
-          "Yes. You can refresh different URLs or try again if you want to compare results.",
+          "Yes. Different URLs, different tries — compare until you're satisfied or bored.",
       },
       {
         question: "What happens if I cancel Kiwi Pro?",
         answer:
-          "You can cancel anytime. Check our terms for details on what happens to your hosted site after cancellation.",
+          "Cancel anytime. Check our terms for what happens to the hosted site after — we're not going to spring a surprise on you.",
       },
     ],
     relatedLinks: [
@@ -356,68 +356,68 @@ export const marketingLandingPages: LandingPage[] = [
     ],
     eyebrow: "Ecommerce website redesign",
     intro:
-      "An ecommerce website redesign usually means updating how your online store looks and reads — clearer product presentation, better mobile layout, stronger trust signals. Refresh Kiwi can refresh an existing site or build from a brief, but it is important to understand what the product can and cannot do.",
+      "Your online store works — orders come in, stock moves — but the storefront looks like it lost a fight with 2016. An ecommerce website redesign should fix that without breaking checkout or pretending you're getting a Shopify migration for £8. Refresh Kiwi refreshes how your site looks and reads. We will tell you straight what we cannot do.",
     sections: [
       {
-        heading: "What Refresh Kiwi can do for ecommerce sites",
+        heading: "What we can do for ecommerce sites",
         paragraphs: [
-          "Refresh Kiwi can take an existing website URL — including many ecommerce sites — and produce a refreshed preview with clearer layout, improved mobile readability, and stronger calls to action.",
-          "If you are starting from scratch, you can describe your business and products in plain English and get a brochure-style storefront preview.",
+          "Paste your store URL — Shopify, WooCommerce, whatever's public — and get a refreshed preview with clearer layout, better mobile readability, and trust signals that don't hide in the footer.",
+          "Starting from scratch? Describe the business and products in plain English. We'll build a brochure-style storefront preview, not a warehouse system.",
         ],
         bullets: [
-          "Refresh the visual design and structure of an existing site.",
-          "Improve how products or services are presented on the page.",
-          "Make contact details, policies, and trust signals easier to find.",
-          "Create a separate preview while your current store stays live.",
+          "Refresh the visual design and page structure.",
+          "Present products or services more clearly.",
+          "Surface contact details, policies, and proof where people actually look.",
+          "Keep your live store running while you review the preview.",
         ],
       },
       {
-        heading: "What Refresh Kiwi cannot do",
+        heading: "What we cannot do — read this bit",
         paragraphs: [
-          "Refresh Kiwi does not integrate with Shopify, WooCommerce, or other ecommerce platforms. There is no shopping cart, checkout, inventory sync, or product database connection in the product today.",
-          "If you need a full online shop where customers add items to a basket and pay on your site, you will need your existing platform or a dedicated ecommerce solution. Refresh Kiwi is best when you want a better-looking site or a simpler brochure-style presence.",
+          "No Shopify admin connection. No WooCommerce sync. No cart, checkout, inventory, or product database. If customers need to add to basket and pay on your site, keep your platform — or hire someone who builds that for a living.",
+          "Refresh Kiwi is for when you want a better-looking site, a cleaner landing page that links to your existing shop, or you're moving toward enquiries instead of online checkout.",
         ],
         callout:
-          "We refresh how your site looks and reads. We do not replace Shopify, WooCommerce, or platform checkout flows.",
+          "We refresh how your site looks and reads. We do not replace Shopify, WooCommerce, or your checkout flow.",
       },
       {
-        heading: "When an ecommerce redesign refresh makes sense",
+        heading: "When an ecommerce refresh makes sense",
         bullets: [
-          "Your store runs on a platform but the theme looks dated.",
-          "You want to see a fresher layout before committing to a new theme or agency.",
-          "Your business sells mainly through enquiries, quotes, or in-person sales rather than online checkout.",
-          "You need a cleaner landing page that links out to your existing shop.",
-          "You are moving away from ecommerce toward a simpler brochure site.",
+          "The platform works but the theme looks tired.",
+          "You want to see a fresher layout before paying for a new theme or agency.",
+          "Most sales happen via enquiry, quote, or in-person — not basket checkout.",
+          "You need a clean landing page that sends people to your existing shop.",
+          "You're simplifying from full ecommerce to a brochure site.",
         ],
       },
       {
-        heading: "When you need a platform specialist instead",
+        heading: "When you need a platform person, not us",
         bullets: [
-          "You need cart, checkout, and payment processing on your site.",
-          "You manage hundreds of SKUs with inventory sync.",
-          "You rely on Shopify apps, WooCommerce plugins, or custom ecommerce APIs.",
-          "You need order management, subscriptions, or customer accounts.",
+          "Cart, checkout, and payment processing on-site.",
+          "Hundreds of SKUs with inventory sync.",
+          "Shopify apps, WooCommerce plugins, custom ecommerce APIs.",
+          "Order management, subscriptions, customer accounts.",
         ],
       },
       {
-        heading: "Protecting SEO during an ecommerce redesign",
+        heading: "SEO during an ecommerce redesign",
         paragraphs: [
-          "Redesigning an ecommerce site carries SEO risk if product URLs, categories, or content change without redirects. Refresh Kiwi creates a separate preview so your live store is untouched while you review.",
-          "If you publish a refreshed site, plan redirects from old URLs to new ones and keep product titles and descriptions accurate. Our blog guide on redesigning without losing SEO covers practical steps.",
+          "Change product URLs without redirects and Google forgets you exist. We build a separate preview so your live store keeps ranking while you review.",
+          "If you publish, plan 301 redirects and keep product titles accurate. Our blog guide on redesigning without losing SEO walks through it.",
         ],
       },
       {
-        heading: "Pricing for ecommerce refreshes",
+        heading: "Pricing — same as everyone else here",
         paragraphs: [
-          "The preview is free — paste your store URL and see a refreshed version in about two minutes. If you want to publish the new site, Kiwi Pro costs £8 per month and includes hosting, a custom domain, extra pages, and unlimited edits in plain English.",
-          "There is no separate ecommerce tier. The same Kiwi Pro package applies.",
+          "Preview free. Paste the store URL, see a refreshed version in about two minutes. Publish with Kiwi Pro — £8 a month, hosting, domain, extra pages, edits in plain English.",
+          "No special ecommerce tier. Same package.",
         ],
       },
       {
-        heading: "Try a refreshed preview of your store",
+        heading: "Paste your store URL below",
         paragraphs: [
-          "Paste your current ecommerce site address below. Refresh Kiwi will read what it can from your existing pages and show you a fresher preview. Review it carefully — especially product names, prices, and links — before deciding to publish.",
-          "Your live store stays unchanged until you switch.",
+          "We'll read what we can from your public pages and show a fresher preview. Check product names, prices, and links carefully before you publish — we're good, not psychic.",
+          "Live store stays live until you switch.",
         ],
       },
     ],
@@ -425,22 +425,22 @@ export const marketingLandingPages: LandingPage[] = [
       {
         question: "Does Refresh Kiwi work with Shopify?",
         answer:
-          "Refresh Kiwi can read a public Shopify storefront URL and create a refreshed preview, but it does not connect to your Shopify admin, products, or checkout. Publishing replaces your site with a static Refresh Kiwi site, not a Shopify store.",
+          "We can read a public Shopify storefront and build a preview. We do not connect to your admin, products, or checkout. Publishing gives you a static Refresh Kiwi site — not a Shopify store.",
       },
       {
         question: "Can customers buy products on a Refresh Kiwi site?",
         answer:
-          "No. Refresh Kiwi sites are brochure-style. They can link to external shops or contact forms, but there is no built-in cart or checkout.",
+          "No. Brochure-style. Link out to your shop or use a contact form. No cart, no checkout.",
       },
       {
         question: "Will redesigning my ecommerce site hurt SEO?",
         answer:
-          "Any redesign can affect SEO if URLs or content change without redirects. Use the free preview to plan changes, then follow redirect best practices when you publish.",
+          "Any redesign can if URLs or content change without redirects. Use the free preview to plan, then redirect properly when you publish.",
       },
       {
         question: "Can I refresh a WooCommerce site?",
         answer:
-          "Yes, Refresh Kiwi can read a public WooCommerce site URL and produce a preview. It does not sync with WooCommerce products or orders.",
+          "Yes — public URL in, preview out. No sync with WooCommerce products or orders.",
       },
     ],
     relatedLinks: [
