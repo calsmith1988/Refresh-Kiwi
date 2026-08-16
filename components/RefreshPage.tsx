@@ -4455,6 +4455,30 @@ export default function RefreshPage({
                     <Link className="transition hover:text-black" href="/blog">
                       Blog
                     </Link>
+                    <Link
+                      className="transition hover:text-black"
+                      href="/website-design-pay-monthly"
+                    >
+                      Pay monthly design
+                    </Link>
+                    <Link
+                      className="transition hover:text-black"
+                      href="/website-redesign-services"
+                    >
+                      Redesign services
+                    </Link>
+                    <Link
+                      className="transition hover:text-black"
+                      href="/website-design-packages"
+                    >
+                      Design packages
+                    </Link>
+                    <Link
+                      className="transition hover:text-black"
+                      href="/ecommerce-website-redesign"
+                    >
+                      Ecommerce redesign
+                    </Link>
                   </nav>
                 </div>
 

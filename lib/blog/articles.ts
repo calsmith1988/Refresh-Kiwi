@@ -60,6 +60,12 @@ export const contentClusters: ContentCluster[] = [
     recommendedCadence: "Use as the trust-building hub for AI and GEO-oriented queries.",
     articleSlugs: ["ai-website-redesign-small-business"],
   },
+  {
+    name: "Website design process and SEO-safe redesign",
+    intent: "Capture process-oriented searches and owners worried about SEO during a redesign.",
+    recommendedCadence: "Link from money pages and redesign service content.",
+    articleSlugs: ["website-design-process", "redesign-website-without-losing-seo"],
+  },
 ];
 
 export const articles: Article[] = [
@@ -526,6 +532,207 @@ export const articles: Article[] = [
         question: "Can I use a refreshed preview as an agency brief?",
         answer:
           "Yes. Even if you later hire someone, a preview can help show the direction, structure, and level of change you want.",
+      },
+    ],
+  },
+  {
+    slug: "website-design-process",
+    title: "Website Design Process: A Plain Guide for Small Businesses",
+    description:
+      "Understand the website design process from brief to launch — what happens at each stage, what you need to prepare, and how to avoid common delays.",
+    excerpt:
+      "A practical walkthrough of the website design process for small business owners, without agency jargon or unnecessary complexity.",
+    publishedAt: "2026-08-16",
+    updatedAt: "2026-08-16",
+    author: blogAuthor.name,
+    category: "Website Design",
+    readingTime: "8 min read",
+    primaryKeyword: "website design process",
+    secondaryKeywords: [
+      "web design process",
+      "website design steps",
+      "how website design works",
+    ],
+    intent: "informational",
+    funnelStage: "problem-aware",
+    priority: 6,
+    sections: [
+      {
+        heading: "What the website design process actually covers",
+        paragraphs: [
+          "The website design process is the sequence of steps that turns a business need into a live website. For a small business, it usually includes understanding what the site should do, gathering content, designing the layout, building the pages, checking everything works, and publishing.",
+          "Agencies often label these stages with jargon — discovery, wireframes, UI design, development, QA. The underlying work is the same: make sure the site represents the business clearly and helps visitors take the next step.",
+        ],
+      },
+      {
+        heading: "Stage 1: Define the goal",
+        bullets: [
+          "What should visitors do? Call, book, buy, request a quote, visit in person?",
+          "Who is the site for? Local customers, national clients, or a niche audience?",
+          "What is wrong with the current site, if you have one?",
+          "What must stay the same? Brand name, services, prices, legal pages.",
+          "What is the deadline and budget?",
+        ],
+        callout:
+          "A clear goal stops the project drifting. Most small business sites exist to explain the business and generate enquiries.",
+      },
+      {
+        heading: "Stage 2: Gather content",
+        paragraphs: [
+          "Content is the slowest part of most website projects. Before design starts, collect your services list, contact details, opening hours, service areas, photos, reviews, accreditations, and any legal text you need.",
+          "Designers cannot invent your real phone number or prices. The more accurate your content, the faster the process moves.",
+        ],
+      },
+      {
+        heading: "Stage 3: Structure and layout",
+        paragraphs: [
+          "This is where the site takes shape: homepage hero, services blocks, about section, trust signals, contact area, and footer. For a simple business site, a single homepage plus an about page and contact page is often enough.",
+          "The layout should make the main action obvious on mobile. Most visitors will see your site on a phone first.",
+        ],
+      },
+      {
+        heading: "Stage 4: Design and build",
+        paragraphs: [
+          "Design covers colours, typography, spacing, and imagery. Build turns the design into working pages. For a refresh rather than a full rebuild, much of the content already exists — the work is mostly presentation.",
+          "Refresh Kiwi compresses this stage: paste your URL or describe your business and get a preview in about two minutes. You still review the result, but you see something concrete early instead of waiting weeks for a first draft.",
+        ],
+      },
+      {
+        heading: "Stage 5: Review and revise",
+        bullets: [
+          "Check every phone number, email, address, and link.",
+          "Read services and prices against your real offering.",
+          "Test on mobile and desktop.",
+          "Ask someone outside the business if the site is clear.",
+          "Request changes in plain language — bigger button, different photo, shorter paragraph.",
+        ],
+      },
+      {
+        heading: "Stage 6: Publish and maintain",
+        paragraphs: [
+          "Publishing means connecting your domain, making the site live, and submitting it to search engines if needed. After launch, plan for updates: new services, changed hours, fresh photos, seasonal offers.",
+          "With Kiwi Pro, Refresh Kiwi hosts the site and handles edits on request for £8 per month. Your current site stays live until you choose to switch.",
+        ],
+      },
+      {
+        heading: "How long the process takes",
+        paragraphs: [
+          "Agency projects often run four to twelve weeks depending on scope, revisions, and how quickly you supply content. A refresh-first approach can show a preview the same day, which helps you decide whether a full project is even necessary.",
+          "See our website design packages page for how Refresh Kiwi splits free preview and paid hosting.",
+        ],
+      },
+    ],
+    faqs: [
+      {
+        question: "Do I need to write all the copy myself?",
+        answer:
+          "You need to supply accurate business facts. Refresh Kiwi can reshape existing content from your current site, but you should review everything before publishing.",
+      },
+      {
+        question: "How many revision rounds are normal?",
+        answer:
+          "Agencies often include two or three rounds. With Refresh Kiwi, Kiwi Pro includes unlimited edits in plain English rather than numbered revision rounds.",
+      },
+    ],
+  },
+  {
+    slug: "redesign-website-without-losing-seo",
+    title: "How to Redesign a Website Without Losing SEO",
+    description:
+      "Practical steps to redesign a website without losing SEO rankings — URLs, redirects, content, and a safe preview-first approach for small businesses.",
+    excerpt:
+      "Redesigning a website does not have to wipe out your search traffic. Here is what to protect before, during, and after the switch.",
+    publishedAt: "2026-08-16",
+    updatedAt: "2026-08-16",
+    author: blogAuthor.name,
+    category: "SEO",
+    readingTime: "9 min read",
+    primaryKeyword: "redesign website without losing seo",
+    secondaryKeywords: [
+      "website redesign seo",
+      "seo friendly website redesign",
+      "website migration seo",
+    ],
+    intent: "informational",
+    funnelStage: "problem-aware",
+    priority: 7,
+    sections: [
+      {
+        heading: "Why redesigns can hurt SEO",
+        paragraphs: [
+          "Search engines rank pages based on content, links, and trust built over time. A redesign that changes URLs, deletes pages, or replaces useful content with thin copy can cause rankings to drop.",
+          "The risk is not the new design itself. It is breaking the connections between old URLs and new ones, or publishing weaker content than what ranked before.",
+        ],
+        callout:
+          "Keep what works. Improve presentation without throwing away pages that bring traffic.",
+      },
+      {
+        heading: "Before you redesign: audit what you have",
+        bullets: [
+          "List pages that bring the most traffic in Google Search Console.",
+          "Note which keywords each important page targets.",
+          "Export your current sitemap or crawl your site for all URLs.",
+          "Identify pages you can keep, merge, or retire.",
+          "Save title tags and meta descriptions that perform well.",
+        ],
+      },
+      {
+        heading: "Keep URLs stable where possible",
+        paragraphs: [
+          "The safest approach is to redesign in place — same URLs, better layout. If your platform allows it, update the theme or design without changing page addresses.",
+          "When URLs must change, plan 301 redirects from every old URL to its closest match on the new site. A redirect tells search engines the page moved permanently.",
+        ],
+      },
+      {
+        heading: "Protect your best content",
+        paragraphs: [
+          "Do not delete long-form service pages, location pages, or blog posts that rank unless you have a deliberate merge plan. If you shorten copy, keep the facts, keywords, and answers people searched for.",
+          "Refresh Kiwi starts from your existing site content, which helps preserve useful information. You still review the preview to make sure nothing important was dropped.",
+        ],
+      },
+      {
+        heading: "Use a preview before going live",
+        paragraphs: [
+          "The preview-first model matters for SEO as well as peace of mind. Generate a separate preview, compare it with your live site, and check that key pages and details survived the refresh.",
+          "Your current site stays live and indexed while you review. That avoids a premature switch that search engines have not been prepared for.",
+        ],
+      },
+      {
+        heading: "Technical checks before launch",
+        bullets: [
+          "Set up 301 redirects for any changed URLs.",
+          "Keep the same domain if possible.",
+          "Preserve title tags and headings on important pages, or improve them rather than replacing with generic text.",
+          "Submit the updated sitemap in Google Search Console after launch.",
+          "Check internal links, contact forms, and phone links work.",
+          "Monitor Search Console for crawl errors in the first few weeks.",
+        ],
+      },
+      {
+        heading: "After launch: what to expect",
+        paragraphs: [
+          "Some ranking fluctuation is normal after a redesign, even with good redirects. Search engines need time to recrawl and reassess pages.",
+          "If traffic drops sharply, check for broken redirects, noindex tags accidentally added, or missing pages. Fix issues quickly rather than waiting.",
+        ],
+      },
+      {
+        heading: "When a full rebuild needs more planning",
+        paragraphs: [
+          "Large sites with hundreds of pages, ecommerce categories, or multi-location SEO need a migration plan beyond a simple refresh. If that describes you, consider professional SEO migration help.",
+          "For a typical small business brochure site with a handful of pages, a careful refresh with redirects and content review is usually enough.",
+        ],
+      },
+    ],
+    faqs: [
+      {
+        question: "Will changing my website design affect Google rankings?",
+        answer:
+          "A design change alone does not automatically hurt rankings. Problems come from broken URLs, lost content, or missing redirects.",
+      },
+      {
+        question: "Do I need to keep the same page titles?",
+        answer:
+          "Not exactly, but keep the same intent and keywords on pages that already rank. Improve clarity rather than starting from scratch.",
       },
     ],
   },
