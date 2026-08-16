@@ -20,9 +20,6 @@ export const metadata: Metadata = {
   title: "Refresh Kiwi — Same website, fresher skin",
   description:
     "Paste your web address and get a fresh, modern version of your website in about 2 minutes. Built for local businesses. Same website, fresher skin.",
-  alternates: {
-    canonical: "/",
-  },
   openGraph: {
     title: "Refresh Kiwi — Same website, fresher skin",
     description:
