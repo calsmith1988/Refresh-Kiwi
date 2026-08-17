@@ -181,6 +181,14 @@ async function resolveWebsite(host: string): Promise<ServedWebsite | null> {
 }
 
 export async function GET(request: Request, context: RouteContext) {
+  try {
+    return await serveCustomDomain(request, context);
+  } catch {
+    return notFound(request, "internal_error");
+  }
+}
+
+async function serveCustomDomain(request: Request, context: RouteContext) {
   // Only the middleware-set header is trusted here. The ?host= query param
   // and the raw Host header are client-controlled, so honouring them would
   // let anyone serve a connected customer's site from the app's own origin.
@@ -226,15 +234,19 @@ export async function GET(request: Request, context: RouteContext) {
   // doesn't ship those files, so hand-written versions always win.
   if (!file && path?.length === 1) {
     if (path[0] === "sitemap.xml") {
-      return new NextResponse(
-        await buildCustomDomainSitemap(website.slug, canonicalHost),
-        {
-          headers: {
-            "Content-Type": "application/xml; charset=utf-8",
-            "Cache-Control": "public, max-age=3600",
+      try {
+        return new NextResponse(
+          await buildCustomDomainSitemap(website.slug, canonicalHost),
+          {
+            headers: {
+              "Content-Type": "application/xml; charset=utf-8",
+              "Cache-Control": "public, max-age=3600",
+            },
           },
-        },
-      );
+        );
+      } catch {
+        return notFound(request, "sitemap_unavailable", { slug: website.slug });
+      }
     }
 
     if (path[0] === "robots.txt") {

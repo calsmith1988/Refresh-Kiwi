@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import SiteLogo from "@/components/SiteLogo";
@@ -5,6 +6,7 @@ import { getDb, schema } from "@/lib/db";
 import { verifyDomainHelpToken } from "@/lib/domains/help-token";
 import { detectDomainProvider } from "@/lib/domains/providers";
 import { buildDomainDnsRecords } from "@/lib/domains/records";
+import { noindexRobots } from "@/lib/seo/marketing";
 import { eq } from "drizzle-orm";
 
 const { websites } = schema;
@@ -13,9 +15,9 @@ const { websites } = schema;
 // engines, and the connection status must always be fresh.
 export const dynamic = "force-dynamic";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Connect your domain — Refresh Kiwi",
-  robots: { index: false, follow: false },
+  robots: noindexRobots,
 };
 
 interface PageProps {

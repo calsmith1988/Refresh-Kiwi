@@ -80,7 +80,7 @@ export default function BlogRefreshForm() {
         payload.id,
       )}&url=${encodeURIComponent(url)}&jobToken=${encodeURIComponent(
         payload.accessToken ?? "",
-      )}#refresh-input`;
+      )}#hero`;
     } catch (error) {
       setIsSubmitting(false);
       setErrorMessage(
