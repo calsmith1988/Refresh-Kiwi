@@ -60,6 +60,12 @@ export const contentClusters: ContentCluster[] = [
     recommendedCadence: "Use as the trust-building hub for AI and GEO-oriented queries.",
     articleSlugs: ["ai-website-redesign-small-business"],
   },
+  {
+    name: "Builder comparisons",
+    intent: "Honest comparisons between Refresh Kiwi and popular website builders for UK small businesses.",
+    recommendedCadence: "Link between comparison posts and money pages as new guides go live.",
+    articleSlugs: ["wix-alternative", "squarespace-alternatives", "godaddy-airo"],
+  },
 ];
 
 export const articles: Article[] = [
@@ -526,6 +532,264 @@ export const articles: Article[] = [
         question: "Can I use a refreshed preview as an agency brief?",
         answer:
           "Yes. Even if you later hire someone, a preview can help show the direction, structure, and level of change you want.",
+      },
+    ],
+  },
+  {
+    slug: "wix-alternative",
+    title: "Refresh Kiwi vs Wix: A Wix Alternative for UK Small Businesses",
+    description:
+      "An honest wix alternative comparison for UK small businesses — what Wix is good at, where a refresh beats a builder, and what free actually means.",
+    excerpt:
+      "Wix is a real builder with a huge template mall. Refresh Kiwi is not that. Here is when a two-minute refresh beats dragging boxes until midnight.",
+    publishedAt: "2026-08-17",
+    updatedAt: "2026-08-17",
+    author: blogAuthor.name,
+    category: "Comparisons",
+    readingTime: "9 min read",
+    primaryKeyword: "wix alternative",
+    secondaryKeywords: [
+      "wix alternative free",
+      "are wix websites bad for seo",
+      "is wix website actually free",
+      "what is wix like",
+      "what are wix alternatives",
+    ],
+    intent: "comparison",
+    funnelStage: "comparison",
+    priority: 6,
+    sections: [
+      {
+        heading: "What is a Wix alternative?",
+        paragraphs: [
+          "A Wix alternative is any route to a business website that is not Wix's drag-and-drop builder — another builder, WordPress, an agency, or a refresh tool that rebuilds what you already have.",
+          "Most alternatives still ask you to pick a template and move pixels. Refresh Kiwi skips that entirely: paste a URL, a Google listing, or a brief, and get a redesigned preview in about two minutes.",
+          "If you want monthly hosting with unlimited plain-English edits rather than a builder subscription, see our [pay-monthly website design](/website-design-pay-monthly) page. For a broader look at refresh work, our [website redesign services](/website-redesign-services) guide covers what actually changes on the page.",
+        ],
+      },
+      {
+        heading: "What is Wix like?",
+        paragraphs: [
+          "Wix is a full website builder — templates, an editor, apps, ecommerce tiers, and a huge library of blocks you arrange yourself.",
+          "It suits people who enjoy tinkering, want granular control, or need Wix-specific features like bookings or a Wix store. The trade-off is time: a polished Wix site usually means evenings lost to layout decisions.",
+          "Refresh Kiwi is the opposite energy. No canvas, no widget drawer, no \"which header style says trustworthy plumber.\" You bring the business facts; we reshape them into something that looks like it belongs in this decade — beige-hero optional.",
+        ],
+      },
+      {
+        heading: "Is a Wix website actually free?",
+        paragraphs: [
+          "Wix has a free plan, but it comes with Wix branding, a Wix subdomain, and limits that push most serious businesses onto paid tiers fairly quickly.",
+          "Free is real for testing the editor. It is not usually where you want to send customers once you care about looking established.",
+          "Refresh Kiwi is free to try in a different way: generate a preview from your current site or listing without signing up, and your live site stays untouched until you choose to switch. No credits, no token counter, no \"upgrade to remove the badge\" moment.",
+        ],
+      },
+      {
+        heading: "Is there a free Wix alternative?",
+        paragraphs: [
+          "Yes — several builders offer free tiers, and some refresh tools let you preview before you pay. \"Free\" just means different things depending on whether you want to build, host, or only see a draft.",
+          "A free builder still costs your time. A free preview costs nothing but a URL and two minutes.",
+          "Refresh Kiwi gives you the preview first. Kiwi Pro is £8/month when you want hosting and unlimited edits, including voice or plain-English changes — one tier, no maze. Compare that against stacking Wix plans, apps, and premium templates on our [website design packages](/website-design-packages) page.",
+        ],
+      },
+      {
+        heading: "Are Wix websites bad for SEO?",
+        paragraphs: [
+          "No — Wix websites are not automatically bad for SEO. Wix handles basics like mobile layouts, SSL, and sitemaps, and plenty of Wix sites rank fine.",
+          "Where Wix sites struggle is usually content and structure, not the platform badge: thin pages, duplicate boilerplate, messy headings, or a layout that hides what you actually do.",
+          "Refresh Kiwi does not promise SEO wizardry. It does give you a cleaner structure, clearer service sections, and copy pulled from your real business rather than generic filler — which helps humans and search engines alike. Fair comparison, not a smear: Wix can rank; so can a refreshed site if the words on it are worth reading.",
+        ],
+      },
+      {
+        heading: "What are Wix alternatives?",
+        paragraphs: [
+          "Common Wix alternatives include Squarespace, WordPress, GoDaddy's AI builders, Hostinger, agencies, freelancers, and refresh-first tools like Refresh Kiwi.",
+          "Builders give you control. Agencies give you hand-holding. Refresh tools give you speed when the content is mostly there but the presentation is not.",
+          "We are honest about the split: if you want a builder, Wix and [Squarespace alternatives](/blog/squarespace-alternatives) exist for a reason. If you want your existing site modernised without learning an editor, that is the lane we stay in — same lane as skipping [GoDaddy Airo](/blog/godaddy-airo) when you already have a URL worth saving.",
+        ],
+      },
+      {
+        heading: "Refresh Kiwi vs Wix: which fits a UK small business?",
+        paragraphs: [
+          "Choose Wix if you want to build from scratch in a editor, need Wix-specific apps, or genuinely enjoy the process. Choose Refresh Kiwi if you already have a site, a Google listing, or a rough brief and want a fresher version in about two minutes.",
+          "We are not trying to beat Wix at being Wix. We win at not being a builder — speed, simplicity, one £8/month Pro tier, unlimited edits, current site stays live until you switch.",
+          "Refresh Kiwi is built by CJS Global LTD in Caerphilly — remote, no fake local offices, email info@refresh.kiwi. Paste your URL, see the preview, decide. That is the whole pitch.",
+        ],
+        callout:
+          "Wix is a builder. Refresh Kiwi is a refresh. Pick the tool that matches how you actually want to spend your Tuesday evening.",
+      },
+    ],
+  },
+  {
+    slug: "squarespace-alternatives",
+    title: "Refresh Kiwi vs Squarespace: Squarespace Alternatives for UK Small Businesses",
+    description:
+      "Squarespace alternatives compared honestly for UK small businesses — SEO, pricing, polish, and when a refresh beats another polished builder.",
+    excerpt:
+      "Squarespace is gorgeous and expensive. Refresh Kiwi is the not-a-builder option for owners who want a sharper site without another subscription maze.",
+    publishedAt: "2026-08-17",
+    updatedAt: "2026-08-17",
+    author: blogAuthor.name,
+    category: "Comparisons",
+    readingTime: "9 min read",
+    primaryKeyword: "squarespace alternatives",
+    secondaryKeywords: [
+      "squarespace alternative",
+      "is squarespace any good for seo",
+      "are squarespace websites any good",
+      "which one is better squarespace or wordpress",
+    ],
+    intent: "comparison",
+    funnelStage: "comparison",
+    priority: 7,
+    sections: [
+      {
+        heading: "What are Squarespace alternatives?",
+        paragraphs: [
+          "Squarespace alternatives are other ways to get a business website without Squarespace's editor and pricing — builders like Wix, hosted WordPress, AI site tools, agencies, or refresh services.",
+          "Most alternatives still put you in front of a template gallery. Refresh Kiwi does not: it redesigns from your URL, Google listing, or brief in about two minutes.",
+          "If monthly hosting with unlimited edits matters more than another designer-grade theme, our [pay-monthly website design](/website-design-pay-monthly) page spells out Kiwi Pro at £8/month. For scope and pricing context, see [website design packages](/website-design-packages) too.",
+        ],
+      },
+      {
+        heading: "What is a Squarespace alternative?",
+        paragraphs: [
+          "A Squarespace alternative is simply any platform or service that gets you online without Squarespace — one tool is rarely a perfect swap because each optimises for different jobs.",
+          "Some alternatives match Squarespace's polish. Others match its price (or undercut it). Refresh Kiwi matches neither: we match the moment your site looks tired but your services, reviews, and phone number are fine.",
+          "We are not WordPress. We will not pretend to be. If you need a CMS with plugins and a developer on speed dial, WordPress or an agency is a fair call. If you need a faster face for the business you already run online, that is us.",
+        ],
+      },
+      {
+        heading: "Is Squarespace any good for SEO?",
+        paragraphs: [
+          "Yes — Squarespace is fine for SEO basics. Clean templates, SSL, sitemaps, decent mobile layouts, and sensible page settings are built in.",
+          "Rankings still depend on what you publish: useful service pages, local relevance, internal links, and copy that sounds like your business rather than a stock paragraph about \"quality solutions.\"",
+          "Refresh Kiwi will not out-SEO a content strategy you never write. It will give you a clearer page structure and business copy drawn from what you already show online — which is often the bit Squarespace owners skip because they were busy choosing fonts.",
+        ],
+      },
+      {
+        heading: "Are Squarespace websites any good?",
+        paragraphs: [
+          "Squarespace websites look good — that is the point. Templates are cohesive, typography is tasteful, and the whole thing feels designed even when the words are thin.",
+          "They are a strong fit for portfolios, cafes, studios, and anyone who wants a showroom site and does not mind the subscription.",
+          "Refresh Kiwi targets a different embarrassment: the trades site from 2014 that still has the right phone number. We keep the useful facts, lose the clutter, and show you a preview before anything goes live. Squarespace makes you build. We refresh what you have — or start from a brief if you are starting from scratch.",
+        ],
+      },
+      {
+        heading: "Which is better, Squarespace or WordPress?",
+        paragraphs: [
+          "Squarespace is better when you want polish without managing hosting, plugins, updates, or a developer. WordPress is better when you need flexibility, custom functionality, or ownership of a larger content operation.",
+          "Neither is \"better\" in the abstract — they are different levels of control versus convenience.",
+          "Refresh Kiwi is not WordPress and does not try to be. We are a refresh: about two minutes from a URL to a preview, £8/month to host with unlimited edits. If you are weighing Squarespace against WordPress, you are shopping for builders or CMS platforms. If you are weighing either against us, ask whether you want to build or whether you want the site you already have to stop apologising for itself.",
+        ],
+      },
+      {
+        heading: "Refresh Kiwi vs Squarespace: honest pick for UK SMBs",
+        paragraphs: [
+          "Pick Squarespace if you want a polished builder, enjoy the editor, and are happy paying for that experience every month. Pick Refresh Kiwi if you want speed, one Pro tier, no drag-and-drop, and a preview before your current site changes.",
+          "Squarespace is pricey and coherent. We are cheap and direct — free to try, live site stays up until you switch, unlimited plain-English or voice edits on Pro.",
+          "Still comparing builders? Read our [Wix alternative](/blog/wix-alternative) and [GoDaddy Airo](/blog/godaddy-airo) guides for the same honest treatment. Still comparing services? Our [website redesign services](/website-redesign-services) page walks through what a refresh actually touches.",
+        ],
+        callout:
+          "Squarespace sells the studio. Refresh Kiwi sells the two-minute glow-up for the site you were already sending people to.",
+      },
+    ],
+  },
+  {
+    slug: "godaddy-airo",
+    title: "GoDaddy Airo Explained — and How Refresh Kiwi Compares",
+    description:
+      "What GoDaddy Airo is, what it costs, whether it is legit, and how it compares to Refresh Kiwi and Hostinger for UK small businesses.",
+    excerpt:
+      "GoDaddy Airo is an AI website builder bundled with GoDaddy hosting. Here is what that means in plain English — and when a refresh beats another AI mall.",
+    publishedAt: "2026-08-17",
+    updatedAt: "2026-08-17",
+    author: blogAuthor.name,
+    category: "Comparisons",
+    readingTime: "10 min read",
+    primaryKeyword: "godaddy airo",
+    secondaryKeywords: [
+      "is godaddy airo a good website builder",
+      "godaddy airo cost",
+      "godaddy airo seo",
+      "godaddy airo vs hostinger",
+    ],
+    intent: "comparison",
+    funnelStage: "comparison",
+    priority: 8,
+    sections: [
+      {
+        heading: "What is GoDaddy Airo?",
+        paragraphs: [
+          "GoDaddy Airo is GoDaddy's AI-assisted website builder — you answer prompts, it generates layouts and copy, and it sits inside GoDaddy's domain and hosting ecosystem.",
+          "Think of it as GoDaddy's fast lane for getting something online when you already bought a domain there or want everything in one account.",
+          "Refresh Kiwi is a different shape: paste a URL, a Google listing, or a brief and get a redesigned preview in about two minutes — no builder canvas, no upsell corridor. We are built by CJS Global LTD in Caerphilly (info@refresh.kiwi), remote, no fake offices.",
+        ],
+      },
+      {
+        heading: "Is GoDaddy Airo a good website builder?",
+        paragraphs: [
+          "It is good enough for a quick first draft — especially if you want GoDaddy to handle domain, hosting, and editing in one place and you are starting from zero.",
+          "Like most AI builders, output can feel generic until you rewrite sections, swap photos, and fix details the AI guessed wrong.",
+          "Refresh Kiwi is not a builder and does not claim to be. We refresh an existing site or start from your brief, keep your live site untouched until you switch, and let you edit in plain English on Kiwi Pro (£8/month, unlimited edits). Good for owners who already have something online worth saving.",
+        ],
+      },
+      {
+        heading: "Is GoDaddy Airo easy to use?",
+        paragraphs: [
+          "Yes — Airo is designed to be easy. Prompts, suggested sections, and GoDaddy's familiar dashboard mean you can publish without learning HTML.",
+          "Easy does not always mean fast when you still need to review every line, replace stock phrases, and click through hosting upsells.",
+          "Refresh Kiwi optimises for a different kind of easy: one input, about two minutes, preview ready. No credits, no tokens, no tier maze. See our [website redesign services](/website-redesign-services) page for what happens in that window.",
+        ],
+      },
+      {
+        heading: "Is GoDaddy Airo legit?",
+        paragraphs: [
+          "Yes — GoDaddy Airo is a legitimate GoDaddy product, not a third-party scam. You are buying into a large registrar and host with standard terms and support channels.",
+          "Legit also does not mean perfect — read renewal prices, check what is included, and treat AI copy as a draft.",
+          "Refresh Kiwi is legit in the smaller sense: a real UK company (CJS Global LTD), a real preview-before-publish model, and a single Pro tier at £8/month. No invented guarantees, no fake local shopfront.",
+        ],
+      },
+      {
+        heading: "Is GoDaddy Airo good for SEO?",
+        paragraphs: [
+          "Airo covers basics — mobile-friendly pages, SSL through GoDaddy hosting, and standard metadata fields — but SEO still lives in your content and structure.",
+          "AI-generated boilerplate and thin service pages will not rank just because GoDaddy said they would.",
+          "Refresh Kiwi pulls from your real business details where possible, which gives you a head start on specificity — the thing search engines and humans both reward. We do not promise rankings. We promise a site that says what you actually do in Caerphilly, Cardiff, or wherever you work — not \"welcome to our innovative solutions hub.\"",
+        ],
+      },
+      {
+        heading: "Does GoDaddy Airo include hosting?",
+        paragraphs: [
+          "Yes — Airo sites are meant to run on GoDaddy hosting. The builder and hosting are bundled in GoDaddy's world, which is the point of keeping you in one ecosystem.",
+          "Check the plan you are on for storage, email, and renewal pricing before you assume \"included\" means \"included forever at this price.\"",
+          "Kiwi Pro includes hosting for £8/month with unlimited edits when you publish through Refresh Kiwi. Your current site stays live until you choose to switch — same safety, fewer surprise renewals. Details sit on our [pay-monthly website design](/website-design-pay-monthly) page.",
+        ],
+      },
+      {
+        heading: "What does GoDaddy Airo cost?",
+        paragraphs: [
+          "GoDaddy Airo pricing depends on the GoDaddy plan you attach it to — website tiers, promotional first-term prices, and renewal rates that often jump after year one.",
+          "There is no single public number that stays true for every user because bundles, domains, and upsells change the total.",
+          "Refresh Kiwi is simpler: free to try the preview, £8/month for Kiwi Pro hosting and unlimited edits. One tier. No credits. Compare overall value on our [website design packages](/website-design-packages) page rather than guessing at bundle maths.",
+        ],
+      },
+      {
+        heading: "GoDaddy Airo vs Hostinger",
+        paragraphs: [
+          "Hostinger pitches AI website tools and cheap hosting with a different dashboard and renewal rhythm. GoDaddy Airo pitches AI inside the registrar you might already use for your domain.",
+          "Both are builder-plus-hosting plays. Pick whichever account you would rather log into for the next three years — and read renewal prices before the introductory rate expires.",
+          "Refresh Kiwi is off that axis entirely. We are not Hostinger, not GoDaddy, not a hosting mall with an AI tab. If you want a refreshed preview in about two minutes without choosing a builder, that is us. If you want a traditional builder, Airo and Hostinger are fair options — we will not pretend to replace them.",
+        ],
+      },
+      {
+        heading: "Refresh Kiwi vs GoDaddy Airo: which should you use?",
+        paragraphs: [
+          "Use GoDaddy Airo if you want everything inside GoDaddy — domain, AI builder, hosting — and you are happy to edit in their system. Use Refresh Kiwi if you already have a site or listing and want a faster refresh without a builder subscription maze.",
+          "We win on not being a builder: about two minutes to preview, live site stays up, £8/month Pro with unlimited plain-English or voice edits.",
+          "Cross-read our [Wix alternative](/blog/wix-alternative) and [Squarespace alternatives](/blog/squarespace-alternatives) posts if you are still shopping builders. Different tools, same rule: match the job, not the marketing adjective.",
+        ],
+        callout:
+          "GoDaddy Airo builds you a new site in their world. Refresh Kiwi refreshes yours in about two minutes — then lets you talk to it in plain English until it looks right.",
       },
     ],
   },
