@@ -16,6 +16,40 @@ type ArticlePageProps = {
   params: Promise<{ slug: string }>;
 };
 
+function renderParagraphWithLinks(text: string) {
+  const parts = text.split(/(\[[^\]]+\]\([^)]+\))/g);
+
+  return parts.map((part, index) => {
+    const match = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+
+    if (match) {
+      return (
+        <Link
+          key={`${match[1]}-${index}`}
+          href={match[2]}
+          className="font-medium text-black underline decoration-black/20 underline-offset-2 hover:decoration-black"
+        >
+          {match[1]}
+        </Link>
+      );
+    }
+
+    return part;
+  });
+}
+
+function getSectionAnswerText(section: {
+  paragraphs?: string[];
+  bullets?: string[];
+}) {
+  const text = [
+    ...(section.paragraphs ?? []),
+    ...(section.bullets ?? []),
+  ].join(" ");
+
+  return text.replace(/\[[^\]]+\]\(([^)]+)\)/g, "$1");
+}
+
 export function generateStaticParams() {
   return publishedArticles.map((article) => ({ slug: article.slug }));
 }
@@ -93,20 +127,34 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
     mainEntityOfPage: articleUrl,
     keywords: [article.primaryKeyword, ...article.secondaryKeywords].join(", "),
   };
-  const faqJsonLd = article.faqs?.length
-    ? {
-        "@context": "https://schema.org",
-        "@type": "FAQPage",
-        mainEntity: article.faqs.map((faq) => ({
-          "@type": "Question",
-          name: faq.question,
-          acceptedAnswer: {
-            "@type": "Answer",
-            text: faq.answer,
-          },
-        })),
-      }
-    : null;
+  const faqJsonLd =
+    article.intent === "comparison"
+      ? {
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: article.sections.map((section) => ({
+            "@type": "Question",
+            name: section.heading,
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: getSectionAnswerText(section),
+            },
+          })),
+        }
+      : article.faqs?.length
+        ? {
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            mainEntity: article.faqs.map((faq) => ({
+              "@type": "Question",
+              name: faq.question,
+              acceptedAnswer: {
+                "@type": "Answer",
+                text: faq.answer,
+              },
+            })),
+          }
+        : null;
 
   return (
     <main className="min-h-screen bg-[#fbfaf5] text-black">
@@ -181,7 +229,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
                   key={paragraph}
                   className="mt-4 text-base leading-8 text-black/65"
                 >
-                  {paragraph}
+                  {renderParagraphWithLinks(paragraph)}
                 </p>
               ))}
               {section.bullets ? (
