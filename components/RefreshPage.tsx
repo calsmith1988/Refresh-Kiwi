@@ -2810,6 +2810,9 @@ export default function RefreshPage({
             <a href="#faq" className="transition hover:text-black">
               Questions
             </a>
+            <Link href="/blog" className="transition hover:text-black">
+              Blog
+            </Link>
           </nav>
           <div
             className={`items-center gap-2 ${

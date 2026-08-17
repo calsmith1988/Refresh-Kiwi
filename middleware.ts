@@ -19,7 +19,23 @@ function normalizeHost(request: NextRequest): string {
   const host =
     request.headers.get("host") ?? request.headers.get("x-forwarded-host") ?? "";
 
-  return host.split(":")[0]?.toLowerCase() ?? "";
+  return host.split(":")[0]?.toLowerCase().replace(/\.+$/, "") ?? "";
+}
+
+function isMarketingHost(host: string): boolean {
+  if (!host || APP_HOSTS.has(host)) {
+    return !host || APP_HOSTS.has(host);
+  }
+
+  try {
+    const marketingHost = new URL(getAppMarketingUrl()).hostname
+      .toLowerCase()
+      .replace(/\.+$/, "");
+
+    return host === marketingHost || host === `www.${marketingHost}`;
+  } catch {
+    return false;
+  }
 }
 
 export function middleware(request: NextRequest) {
@@ -43,6 +59,15 @@ export function middleware(request: NextRequest) {
   // Never forward a client-supplied copy of the internal host header.
   const requestHeaders = new Headers(request.headers);
   requestHeaders.delete(CUSTOM_DOMAIN_HOST_HEADER);
+
+  // Marketing metadata routes must always reach app/sitemap.ts and app/robots.ts,
+  // never the custom-domain rewrite (which can 500 on infrastructure errors).
+  if (
+    (pathname === "/sitemap.xml" || pathname === "/robots.txt") &&
+    isMarketingHost(host)
+  ) {
+    return NextResponse.next({ request: { headers: requestHeaders } });
+  }
 
   // Sites domain apex is not a customer site — send people to the app.
   if (host && isSitesApexHost(host)) {

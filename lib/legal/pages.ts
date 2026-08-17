@@ -12,14 +12,9 @@ export type LegalPageContent = {
   sections: LegalSection[];
 };
 
-const company = {
-  name: "CJS Global LTD",
-  tradingName: "Refresh Kiwi",
-  number: "10664657",
-  registeredOffice: "8 Henfron, Energlyn, Caerphilly, CF83 2NU, United Kingdom",
-  email: "info@refresh.kiwi",
-  governingLaw: "England and Wales",
-};
+import { marketingCompany } from "@/lib/seo/marketing";
+
+const company = marketingCompany;
 
 const lastUpdated = "14 June 2026";
 

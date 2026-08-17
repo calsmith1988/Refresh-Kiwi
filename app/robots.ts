@@ -6,11 +6,16 @@ const privatePaths = [
   "/api/",
   "/dashboard",
   "/account",
+  "/admin",
   "/preview/",
   "/custom-domain/",
+  "/forgot-password",
   "/reset-password",
   "/verify-email",
+  "/change-email",
   "/unsubscribe",
+  "/domain-help",
+  "/help-centre",
 ];
 
 export default function robots(): MetadataRoute.Robots {
