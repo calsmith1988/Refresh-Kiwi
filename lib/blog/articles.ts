@@ -60,6 +60,12 @@ export const contentClusters: ContentCluster[] = [
     recommendedCadence: "Use as the trust-building hub for AI and GEO-oriented queries.",
     articleSlugs: ["ai-website-redesign-small-business"],
   },
+  {
+    name: "Website design process and SEO-safe redesign",
+    intent: "Capture process-oriented searches and owners worried about SEO during a redesign.",
+    recommendedCadence: "Link from money pages and redesign service content.",
+    articleSlugs: ["website-design-process", "redesign-website-without-losing-seo"],
+  },
 ];
 
 export const articles: Article[] = [
@@ -69,7 +75,7 @@ export const articles: Article[] = [
     description:
       "A practical guide to refreshing a small business website without starting again from scratch.",
     excerpt:
-      "Learn when a website refresh is enough, what to keep, what to improve, and how to make an older site look trustworthy again.",
+      "Your site isn't broken. It's just wearing clothes from a different decade. Here's when a refresh fixes it — and when you're kidding yourself.",
     publishedAt: "2026-06-15",
     updatedAt: "2026-06-15",
     author: blogAuthor.name,
@@ -87,56 +93,56 @@ export const articles: Article[] = [
     priority: 1,
     sections: [
       {
-        heading: "What a website refresh actually means",
+        heading: "A refresh is not a rebuild — know the difference",
         paragraphs: [
-          "A website refresh keeps the useful parts of your existing website and improves the way they are presented. It is not the same as throwing everything away and commissioning a full rebuild.",
-          "For many small businesses, the words, services, opening hours, phone number, reviews, and photos are already good enough. The problem is that the design looks tired, the layout is hard to scan, or the page does not make the next step obvious.",
+          "A website refresh keeps what's working and fixes how it looks and reads. It's not 'burn it down and start again with a £4,000 agency quote.'",
+          "Most small businesses already have the right words — services, hours, phone number, reviews, photos from that job in Merthyr you're still proud of. The problem is presentation. Tired design. Phone number buried. Homepage that explains what you do but not why anyone should pick up the phone.",
         ],
         callout:
-          "A refresh is usually right when the business has not changed dramatically, but the website no longer creates confidence.",
+          "Refresh when the business hasn't changed much but the site no longer earns trust.",
       },
       {
-        heading: "Signs your website needs a refresh",
+        heading: "Signs your site needs a refresh (be honest)",
         bullets: [
-          "It looks dated compared with local competitors.",
-          "Visitors have to hunt for your phone number, booking link, or address.",
-          "The homepage explains what you do, but not why someone should choose you.",
-          "The site works on desktop but feels awkward on a phone.",
-          "Images are too small, stretched, blurry, or inconsistent.",
-          "The site has useful information, but it is buried in long paragraphs.",
-          "You are embarrassed to send people to it, even though the business itself is good.",
+          "Local competitors look sharper and you know it.",
+          "Visitors hunt for your number like it's a Easter egg.",
+          "Homepage says what you do, not why you're the one to call.",
+          "Desktop fine. Mobile a thumb-war.",
+          "Photos stretched, blurry, or from three owners ago.",
+          "Good information trapped in paragraph prisons.",
+          "You'd rather give out your mobile than the website URL — and the business itself is solid.",
         ],
       },
       {
-        heading: "What to keep from the old site",
+        heading: "Don't throw away the good stuff",
         paragraphs: [
-          "The best refreshes do not delete everything. They keep the facts that customers need and reshape them into a clearer page.",
-          "Keep your real services, real contact details, real reviews, real photos, and any details that make the business feel local and trustworthy. Those are hard-earned signals that a generic template cannot invent.",
+          "The best refreshes keep the facts customers need and rearrange them so humans can scan them.",
+          "Real services. Real number. Real reviews. Real photos. Local details no template can fake. That's your edge — don't delete it for a cleaner font.",
         ],
       },
       {
-        heading: "What to improve first",
+        heading: "Fix these first",
         bullets: [
-          "Hero section: say what you do, where you do it, and the main action visitors should take.",
-          "Calls to action: make phone, email, booking, or quote requests easy to find.",
-          "Service sections: split services into clear blocks instead of one long list.",
-          "Trust signals: show reviews, years in business, guarantees, accreditations, or local coverage.",
-          "Mobile layout: check that text, buttons, and images are comfortable on a phone.",
-          "Speed and clarity: remove clutter that slows down the page or distracts from conversion.",
+          "Hero: what you do, where, and the one action you want.",
+          "Calls to action: phone, email, quote — visible without scrolling into exile.",
+          "Services: blocks, not a single wall of text.",
+          "Trust: reviews, years trading, accreditations, areas covered.",
+          "Mobile: buttons big enough for actual thumbs.",
+          "Clutter: if it doesn't help someone enquire, lose it.",
         ],
       },
       {
-        heading: "When a refresh is not enough",
+        heading: "When a refresh won't save you",
         paragraphs: [
-          "A refresh is not always the right answer. If your business model has changed, your site structure is broken, your content is inaccurate, or you need complex features like booking systems, ecommerce, portals, or integrations, a deeper rebuild may be better.",
-          "The decision should be practical: if the current site contains useful business information and mainly needs a better presentation layer, refresh it. If the foundation is wrong, rebuild it.",
+          "Business model changed. Site structure broken. Content wrong. You need booking systems, ecommerce, portals, integrations — a refresh is lipstick. You need a rebuild.",
+          "Practical rule: useful information, bad presentation? Refresh. Wrong foundation? Rebuild.",
         ],
       },
       {
-        heading: "How Refresh Kiwi approaches it",
+        heading: "How we do it",
         paragraphs: [
-          "Refresh Kiwi starts from your current website address, keeps the useful business information, and creates a fresher preview that you can inspect before anything changes on your live site.",
-          "That preview-first model matters. You can see whether a refresh is enough before paying for hosting, connecting a domain, or replacing your existing website.",
+          "Paste your URL. We keep the useful business information and build a fresher preview. Your live site doesn't move until you say so.",
+          "Preview first means you find out if a refresh is enough before you pay for hosting, connect a domain, or switch anything live.",
         ],
       },
     ],
@@ -144,12 +150,12 @@ export const articles: Article[] = [
       {
         question: "Is a website refresh cheaper than a redesign?",
         answer:
-          "Usually, yes. A refresh is narrower because it keeps the useful content and focuses on layout, clarity, trust, and presentation rather than rebuilding every part of the site.",
+          "Usually, yes. You're keeping the content and fixing layout, clarity, and trust — not rebuilding every page from a blank screen.",
       },
       {
         question: "Will refreshing my website hurt SEO?",
         answer:
-          "It should not if important pages, headings, copy, and URLs are handled carefully. A refresh can help if it improves mobile usability, clarity, internal linking, and conversion.",
+          "Not if you handle URLs, headings, and copy carefully. A refresh that improves mobile usability and clarity often helps more than it hurts.",
       },
     ],
   },
@@ -159,7 +165,7 @@ export const articles: Article[] = [
     description:
       "Use this small business website refresh checklist to improve trust, clarity, mobile usability, and conversions.",
     excerpt:
-      "A practical checklist for deciding what to keep, what to update, and what to remove from an older business website.",
+      "Twenty-one checks before you pay someone four figures to rebuild a site that mostly needs a clearer homepage and a phone number people can tap.",
     publishedAt: "2026-06-15",
     updatedAt: "2026-06-15",
     author: blogAuthor.name,
@@ -177,71 +183,71 @@ export const articles: Article[] = [
     priority: 2,
     sections: [
       {
-        heading: "Start with the customer journey",
+        heading: "Think like a stranger with two minutes",
         paragraphs: [
-          "Before changing colours or fonts, look at the site like a new customer. They want to know what you do, whether you serve their area, whether you look trustworthy, and how to contact you.",
-          "If the page does not answer those questions quickly, the refresh should focus there first.",
+          "Before you touch colours or fonts, load the site like a new customer. What do you do? Do you serve their area? Do you look legit? How do I get in touch?",
+          "If those four questions aren't answered fast, the refresh starts there. Not with a new logo.",
         ],
       },
       {
-        heading: "Homepage checklist",
+        heading: "Homepage — the bit that actually matters",
         bullets: [
-          "The first screen says what the business does in plain language.",
-          "The location or service area is obvious where it matters.",
-          "There is one primary call to action, such as call, book, enquire, or get a quote.",
-          "The phone number or contact button is easy to tap on mobile.",
-          "The homepage shows key services without forcing visitors into a menu.",
-          "The page includes at least one trust signal above or near the fold.",
-          "The copy sounds like the business, not a stock template.",
+          "First screen says what the business does. Plain English. No 'Welcome to our online home.'",
+          "Location or service area obvious where it matters.",
+          "One primary action: call, book, enquire, quote — not four equal buttons fighting for attention.",
+          "Phone number or contact button tappable on mobile without precision thumb surgery.",
+          "Key services visible without opening a maze menu.",
+          "At least one trust signal before they scroll away.",
+          "Copy sounds like you — not a template written for 'Acme Solutions Ltd.'",
         ],
       },
       {
-        heading: "Trust checklist",
+        heading: "Trust — would you hand this URL to your mum?",
         bullets: [
-          "Reviews or testimonials are visible and specific.",
-          "Photos feel real and relevant to the business.",
-          "Claims are believable and not exaggerated.",
-          "Opening hours, address, and contact details match other places online.",
-          "Any licences, insurance, guarantees, or accreditations are current.",
+          "Reviews or testimonials visible and specific — not 'Great service! — A.S.'",
+          "Photos look like your actual business, not a stock handshake.",
+          "Claims believable. No 'world-class' unless you can back it.",
+          "Hours, address, contact match Google and your card.",
+          "Licences, insurance, accreditations current — or remove them.",
         ],
       },
       {
-        heading: "Mobile checklist",
+        heading: "Mobile — where most of your visitors live",
         bullets: [
-          "Buttons are large enough to tap.",
-          "Text is readable without zooming.",
-          "Images do not push important content too far down.",
-          "Menus are simple and do not hide the main action.",
-          "Forms are short and easy to complete.",
+          "Buttons big enough to tap.",
+          "Text readable without pinch-zoom.",
+          "Images don't shove the phone number off the planet.",
+          "Menu simple. Main action not hidden behind a hamburger that leads nowhere.",
+          "Forms short. Nobody completes a twelve-field enquiry on a bus.",
         ],
       },
       {
-        heading: "Content checklist",
+        heading: "Content — cut the dead wood",
         bullets: [
-          "Remove services you no longer offer.",
-          "Add missing services people ask about regularly.",
-          "Rewrite long paragraphs into short sections.",
-          "Make prices, starting prices, or quote expectations clear if possible.",
-          "Explain what happens after someone contacts you.",
-          "Add local context where it genuinely helps customers choose.",
+          "Remove services you stopped offering in 2019.",
+          "Add the ones people keep asking about.",
+          "Break paragraph walls into short sections.",
+          "Prices or 'from £X' clear if you can — or say how quotes work.",
+          "Explain what happens after they contact you.",
+          "Local context where it helps — 'covering Caerphilly and surrounding valleys,' not 'nationwide excellence.'",
         ],
       },
       {
-        heading: "Technical checklist",
+        heading: "Technical — boring but worth ten minutes",
         bullets: [
-          "Use descriptive page titles and meta descriptions.",
-          "Keep important URLs stable where possible.",
-          "Check that images have sensible alt text.",
-          "Make sure the site loads quickly on mobile.",
-          "Use HTTPS and avoid broken links.",
-          "Check forms, phone links, and email links after launch.",
+          "Page titles and meta descriptions that describe the page.",
+          "Important URLs stable where possible.",
+          "Alt text on images — basic accessibility.",
+          "Loads fast on mobile. Test on your actual phone, not just desktop.",
+          "HTTPS. No broken links.",
+          "Forms, tel: links, mailto: links work after any change.",
         ],
       },
       {
-        heading: "Use the checklist before paying for a rebuild",
+        heading: "Run this before you fund a rebuild",
         paragraphs: [
-          "Many older websites do not need a large project. They need a clearer homepage, stronger calls to action, better mobile layout, and more visible proof that the business is trustworthy.",
-          "That is exactly the kind of gap a refresh can test quickly.",
+          "Plenty of older sites don't need a six-week project. They need a clearer homepage, a visible number, mobile that cooperates, and proof you're real.",
+          "That's exactly what a refresh is for — and you can test it in minutes, not months.",
         ],
       },
     ],
@@ -249,12 +255,12 @@ export const articles: Article[] = [
       {
         question: "How often should a small business refresh its website?",
         answer:
-          "Review it at least once a year, and refresh it whenever services, pricing, opening hours, photos, or customer expectations have changed.",
+          "Review once a year minimum. Refresh when services, prices, hours, photos, or customer expectations have moved on without the site.",
       },
       {
         question: "Should I refresh every page at once?",
         answer:
-          "Not always. Start with the homepage and pages that bring enquiries. Then improve supporting pages once the main customer path is clear.",
+          "Not necessarily. Homepage and enquiry pages first. Supporting pages once the main path works.",
       },
     ],
   },
@@ -264,7 +270,7 @@ export const articles: Article[] = [
     description:
       "A realistic guide to UK small business website redesign costs, from DIY refreshes to agency rebuilds.",
     excerpt:
-      "Understand what affects website redesign cost, when a refresh is enough, and how to avoid paying for more than you need.",
+      "From DIY fiddling to agency quotes that make you sit down — what small business website redesign cost in the UK actually looks like, and when you're overpaying.",
     publishedAt: "2026-06-15",
     updatedAt: "2026-06-15",
     author: blogAuthor.name,
@@ -282,63 +288,63 @@ export const articles: Article[] = [
     priority: 3,
     sections: [
       {
-        heading: "The short answer",
+        heading: "The short answer (before the sales call)",
         paragraphs: [
-          "A UK small business website redesign can cost anything from almost nothing for a DIY template refresh to several thousand pounds for a custom agency rebuild. The right budget depends on how much strategy, design, copywriting, development, content migration, and ongoing support you need.",
-          "If your current website already has useful content and you mainly need a cleaner, more modern presentation, a refresh can be a much lighter option than a full redesign.",
+          "Small business website redesign cost in the UK runs from nearly free if you're DIY-ing a template to several thousand pounds for a custom agency rebuild. The right number depends on how much strategy, copy, development, migration, and hand-holding you actually need.",
+          "If your site already has useful content and mainly needs to stop looking like 2014, a refresh beats a full redesign on price every time.",
         ],
       },
       {
-        heading: "Typical cost bands",
+        heading: "Typical bands — rough and honest",
         bullets: [
-          "DIY template update: low upfront cost, but takes your time and may still look generic.",
-          "Freelancer refresh: often suitable for simple brochure sites when you know exactly what needs changing.",
-          "Agency redesign: useful for larger projects with brand, copy, SEO, integrations, and custom design needs.",
-          "AI-assisted preview-first refresh: useful when you want to see a modernised version before committing to a bigger project.",
+          "DIY template refresh: cheap upfront, costs your weekend, may still look like everyone else.",
+          "Freelancer refresh: fine for simple brochure sites when you know exactly what's wrong.",
+          "Agency redesign: brand, copy, SEO migration, integrations — the full production.",
+          "Preview-first refresh: see a modernised version before committing to the big spend.",
         ],
       },
       {
-        heading: "What changes the price",
+        heading: "What moves the price",
         bullets: [
-          "Number of pages.",
-          "Whether copy needs rewriting or just restructuring.",
-          "Whether new photography, branding, or illustrations are required.",
-          "Booking, ecommerce, membership, or CRM integrations.",
+          "Page count.",
+          "Copy rewrite vs rearrange.",
+          "New photos, branding, illustrations.",
+          "Booking, ecommerce, membership, CRM — the expensive words.",
           "SEO migration and redirects.",
           "Custom design requirements.",
-          "Ongoing hosting, maintenance, and support.",
+          "Hosting, maintenance, support after launch.",
         ],
       },
       {
-        heading: "When paying for a full redesign makes sense",
+        heading: "When a full redesign earns its invoice",
         paragraphs: [
-          "A full redesign is worth considering when the business has changed significantly, the brand needs repositioning, the site needs complex functionality, or the current structure is actively holding the business back.",
-          "For example, a restaurant adding online ordering, a trades business expanding into several service areas, or a consultancy changing its offer may need more than a cosmetic update.",
+          "Business changed significantly. Brand needs repositioning. Complex functionality. Site structure actively hurting you.",
+          "Restaurant adding online ordering. Trades firm expanding into three counties. Consultancy with a new offer — cosmetic won't cut it.",
         ],
       },
       {
-        heading: "When a refresh is more sensible",
+        heading: "When a refresh is the smart money",
         paragraphs: [
-          "A refresh is often enough when the site is basically accurate but looks old, hides key information, or fails to convert visitors because the layout is unclear.",
-          "In that case, the fastest win is usually better messaging, clearer sections, stronger calls to action, and a modern mobile-friendly design.",
+          "Site is basically accurate but looks old, hides the number, and converts like a wet leaflet.",
+          "Fastest win: clearer messaging, scannable sections, obvious calls to action, mobile that works.",
         ],
       },
       {
-        heading: "How to control redesign cost",
+        heading: "How to stop the budget leaking",
         bullets: [
-          "List the pages that actually help customers make a decision.",
-          "Keep accurate existing copy instead of rewriting everything from scratch.",
-          "Use real customer questions to guide sections.",
-          "Refresh the homepage first before expanding the whole site.",
-          "Avoid custom functionality unless it solves a real business problem.",
-          "Ask for a preview or prototype before committing to the full build.",
+          "List pages that actually help someone decide to call.",
+          "Keep accurate copy — don't rewrite for the sake of it.",
+          "Use real customer questions to shape sections.",
+          "Homepage first. Always homepage first.",
+          "Skip custom functionality unless it solves a real problem.",
+          "Ask for a preview or prototype before signing the big quote.",
         ],
       },
       {
-        heading: "Refresh Kiwi's angle",
+        heading: "Where Refresh Kiwi sits",
         paragraphs: [
-          "Refresh Kiwi is designed for the moment before a full redesign feels justified. You paste your current website address, get a fresh preview, and decide whether that level of improvement is enough.",
-          "If it is enough, you can publish it and keep asking for changes in plain English. If it is not enough, the preview can still clarify what you want from a designer or agency.",
+          "Built for the moment before a full redesign feels justified. Paste your URL, get a fresh preview, decide if that level of improvement is enough.",
+          "Enough? Publish for £8 a month, keep asking for changes in plain English. Not enough? You've still clarified what to brief a designer.",
         ],
       },
     ],
@@ -346,12 +352,12 @@ export const articles: Article[] = [
       {
         question: "Is the cheapest website redesign usually the best choice?",
         answer:
-          "No. The cheapest option can be fine for a simple refresh, but not if you need strategy, copywriting, SEO migration, or custom functionality.",
+          "Cheap works for a simple refresh. Not when you need strategy, copywriting, SEO migration, or custom functionality — then cheap becomes expensive later.",
       },
       {
         question: "Can I redesign my website in stages?",
         answer:
-          "Yes. Many small businesses should start with the homepage and high-intent service pages before spending money on lower-priority pages.",
+          "Yes. Homepage and high-intent service pages first. Lower-priority pages when the main path converts.",
       },
     ],
   },
@@ -361,7 +367,7 @@ export const articles: Article[] = [
     description:
       "A practical explanation of AI website redesign for small businesses, including benefits, limits, and review steps.",
     excerpt:
-      "AI can speed up website redesign, but it still needs business context, review, and sensible publishing checks.",
+      "AI can rebuild your homepage in minutes. It can also confidently put the wrong phone number on it. Here's where it helps, where it doesn't, and what to check before you publish.",
     publishedAt: "2026-06-15",
     updatedAt: "2026-06-15",
     author: blogAuthor.name,
@@ -379,52 +385,52 @@ export const articles: Article[] = [
     priority: 4,
     sections: [
       {
-        heading: "AI is useful, but not magic",
+        heading: "Useful. Not magic. Not your business partner.",
         paragraphs: [
-          "AI can help turn an old website into a cleaner, more modern version quickly. It can read existing copy, recognise common page patterns, suggest layout improvements, and produce a first draft that would otherwise take much longer.",
-          "But AI does not know your business the way you do. It can misread details, over-polish copy, miss important local context, or make assumptions that need checking before anything goes live.",
+          "AI website redesign can turn a tired site into a cleaner draft quickly — read existing copy, spot common patterns, suggest layout, produce something that would've taken days by hand.",
+          "It doesn't know your business. Wrong number. Wrong town. Over-polished copy that sounds like a LinkedIn influencer. Assumptions you have to catch before anything goes live.",
         ],
       },
       {
-        heading: "Where AI helps most",
+        heading: "Where AI actually pulls its weight",
         bullets: [
-          "Creating a first design direction from an existing website.",
-          "Restructuring long copy into clearer sections.",
-          "Making calls to action more visible.",
-          "Suggesting better headings and service blocks.",
-          "Producing variations that help you decide what you like.",
-          "Making small edits from plain-English instructions.",
+          "First design direction from an existing site.",
+          "Long copy into scannable sections.",
+          "Calls to action visible instead of hidden.",
+          "Better headings and service blocks.",
+          "Variations so you can pick a direction.",
+          "Small edits from plain-English instructions.",
         ],
       },
       {
-        heading: "Where humans still matter",
+        heading: "Where you still matter",
         bullets: [
-          "Checking phone numbers, prices, opening hours, and legal claims.",
-          "Deciding what makes the business different.",
-          "Approving images and brand tone.",
-          "Confirming regulated claims, guarantees, or professional credentials.",
-          "Testing forms, booking links, maps, and phone links.",
+          "Phone numbers, prices, hours, legal claims — check every one.",
+          "What makes you different from the other plumber in Pontypridd.",
+          "Photos and tone — yours, not generic.",
+          "Regulated claims, guarantees, credentials.",
+          "Forms, booking links, maps, tel: links — tap them yourself.",
         ],
       },
       {
-        heading: "A safe review process",
+        heading: "Review like it's a strong draft, not gospel",
         paragraphs: [
-          "Treat AI output as a strong draft, not a final answer. Before publishing, compare the new site with your current website and check every business-critical detail.",
-          "A simple review pass should cover contact details, services, locations, pricing, photos, reviews, claims, accessibility, mobile layout, and calls to action.",
+          "Compare new against old. Every business-critical detail.",
+          "Contact info, services, locations, pricing, photos, reviews, claims, mobile layout, calls to action — one pass, minimum.",
         ],
       },
       {
-        heading: "Why preview-first matters",
+        heading: "Preview first or regret later",
         paragraphs: [
-          "The safest way to use AI for a small business website is to generate a separate preview first. That means your current website stays live while you inspect the refreshed version.",
-          "Refresh Kiwi follows that model. Nothing changes on your real website until you choose to publish.",
+          "Safest move: generate a separate preview. Live site stays live while you inspect.",
+          "That's how Refresh Kiwi works. Nothing changes on your real site until you publish.",
         ],
       },
       {
-        heading: "AI and SEO",
+        heading: "AI and SEO — the non-panic version",
         paragraphs: [
-          "AI-assisted content is not automatically bad for SEO. What matters is whether the final page is useful, accurate, original, and created for people rather than only for rankings.",
-          "For a local business website, that means clear services, local relevance, trustworthy proof, useful answers, and a page that helps customers take the next step.",
+          "Google doesn't auto-penalise AI-assisted content. It penalises rubbish — thin, wrong, spammy.",
+          "For a local business site: clear services, local relevance, real proof, useful answers, obvious next step. Same as always.",
         ],
       },
     ],
@@ -432,12 +438,12 @@ export const articles: Article[] = [
       {
         question: "Will Google penalise an AI-redesigned website?",
         answer:
-          "Not simply because AI helped create it. The risk is low-quality, unhelpful, inaccurate, or spammy content. Review and improve AI output before publishing.",
+          "Not because AI touched it. Because the output was low-quality, inaccurate, or unhelpful. Review before publish.",
       },
       {
         question: "Can AI replace a web designer?",
         answer:
-          "Sometimes it can solve simpler refresh jobs. For complex branding, strategy, integrations, or high-stakes projects, a designer or agency may still be the better choice.",
+          "For simpler refresh jobs, often yes. Complex branding, strategy, integrations, high-stakes projects — still hire a human.",
       },
     ],
   },
@@ -447,7 +453,7 @@ export const articles: Article[] = [
     description:
       "Compare agency redesigns with faster website refresh options for small businesses that need a better site without a large project.",
     excerpt:
-      "A website redesign agency can be valuable, but not every small business needs a full project to get a better-looking site.",
+      "Agencies do brilliant work — for the right project. For a site that mostly needs to look current and convert better, you might not need the full production.",
     publishedAt: "2026-06-15",
     updatedAt: "2026-06-15",
     author: blogAuthor.name,
@@ -465,54 +471,54 @@ export const articles: Article[] = [
     priority: 5,
     sections: [
       {
-        heading: "Agencies are useful, but not always necessary",
+        heading: "Agencies earn their money — sometimes not from you",
         paragraphs: [
-          "A good web design agency can help with brand strategy, custom design, copywriting, SEO migration, complex development, and long-term support. For the right project, that is worth paying for.",
-          "But many small businesses do not need that level of work. They need their existing site to look current, explain the business clearly, work better on mobile, and make enquiries easier.",
+          "A good agency brings brand strategy, custom design, copywriting, SEO migration, complex development, long-term support. Right project, worth every penny.",
+          "Plenty of small businesses don't need that. They need the site to look current, explain the business clearly, work on mobile, and stop hiding the phone number.",
         ],
       },
       {
-        heading: "When an agency is the right choice",
+        heading: "When hire the agency",
         bullets: [
-          "You are changing brand, positioning, or target market.",
-          "You need ecommerce, bookings, memberships, or integrations.",
-          "You have a large site with SEO traffic that needs careful migration.",
-          "You need new photography, copywriting, and design from scratch.",
-          "Several stakeholders need workshops, approvals, and project management.",
+          "Brand, positioning, or target market changing.",
+          "Ecommerce, bookings, memberships, integrations.",
+          "Large site with SEO traffic needing careful migration.",
+          "Photography, copy, design from scratch.",
+          "Multiple stakeholders needing workshops and project management.",
         ],
       },
       {
         heading: "When a refresh is enough",
         bullets: [
-          "Your services and business details are already mostly correct.",
-          "The site looks old but still contains useful content.",
-          "The homepage needs clearer structure and stronger calls to action.",
-          "You want to see a better version before committing budget.",
-          "You do not need custom functionality.",
+          "Services and details mostly correct.",
+          "Site looks old but content underneath is fine.",
+          "Homepage needs structure and a visible call to action.",
+          "You want proof before committing budget.",
+          "No custom functionality required.",
         ],
       },
       {
         heading: "The preview-first alternative",
         paragraphs: [
-          "A preview-first refresh gives you evidence before commitment. Instead of paying upfront for a full redesign, you generate a refreshed version and decide whether it solves the problem.",
-          "That is especially useful for sole traders, local services, cafes, clinics, salons, trades, and other small businesses where the website is important but not a huge software project.",
+          "Generate a refreshed version. Look at it. Decide if the problem is solved.",
+          "Sole traders, local services, cafes, clinics, trades — website matters, but it's not a software launch.",
         ],
       },
       {
-        heading: "How to compare options",
+        heading: "Five questions before you sign anything",
         bullets: [
-          "Cost: what do you pay before seeing anything?",
-          "Speed: can you review something today, this week, or next month?",
-          "Control: can you request changes in plain language?",
-          "Risk: does your old website stay live while you decide?",
-          "Scope: are you fixing presentation, or rebuilding the business online?",
+          "Cost: what do I pay before seeing anything?",
+          "Speed: today, this week, or 'phase two in Q3'?",
+          "Control: can I ask for changes in plain English?",
+          "Risk: does my old site stay live while I decide?",
+          "Scope: presentation fix or rebuild the business online?",
         ],
       },
       {
-        heading: "A sensible path",
+        heading: "Sensible path",
         paragraphs: [
-          "If you are unsure, try a refresh first. If the preview gets close, you may not need an agency project yet. If it exposes deeper issues, you will be better prepared to brief a freelancer or agency.",
-          "Either outcome is useful because it turns a vague feeling - my website looks old - into something you can actually compare.",
+          "Unsure? Refresh first. Preview close enough — skip the agency for now. Preview exposes deeper problems — you're better briefed when you do hire.",
+          "Either way, 'my website looks old' becomes something you can compare instead of worry about.",
         ],
       },
     ],
@@ -520,12 +526,213 @@ export const articles: Article[] = [
       {
         question: "Is a refresh a replacement for an agency?",
         answer:
-          "It can be for simple brochure-style websites. For complex sites, brand strategy, or integrations, an agency may still be the right option.",
+          "For simple brochure sites, often yes. Complex sites, brand strategy, integrations — agency still wins.",
       },
       {
         question: "Can I use a refreshed preview as an agency brief?",
         answer:
-          "Yes. Even if you later hire someone, a preview can help show the direction, structure, and level of change you want.",
+          "Absolutely. Show them the direction, structure, level of change you want — even if they rebuild it properly.",
+      },
+    ],
+  },
+  {
+    slug: "website-design-process",
+    title: "Website Design Process: A Plain Guide for Small Businesses",
+    description:
+      "Understand the website design process from brief to launch — what happens at each stage, what you need to prepare, and how to avoid common delays.",
+    excerpt:
+      "From brief to launch without the agency jargon — what actually happens at each stage, and where projects stall because nobody collected the phone number.",
+    publishedAt: "2026-08-16",
+    updatedAt: "2026-08-16",
+    author: blogAuthor.name,
+    category: "Website Design",
+    readingTime: "8 min read",
+    primaryKeyword: "website design process",
+    secondaryKeywords: [
+      "web design process",
+      "website design steps",
+      "how website design works",
+    ],
+    intent: "informational",
+    funnelStage: "problem-aware",
+    priority: 6,
+    sections: [
+      {
+        heading: "What the website design process actually is",
+        paragraphs: [
+          "The website design process is the steps between 'we need a site' and 'it's live.' For a small business: figure out what the site should do, gather content, design layout, build pages, check it works, publish.",
+          "Agencies call it discovery, wireframes, UI, development, QA. Same work underneath — make the business clear and get visitors to act.",
+        ],
+      },
+      {
+        heading: "Stage 1: Decide what winning looks like",
+        bullets: [
+          "What should visitors do? Call, book, buy, quote, visit?",
+          "Who for? Local, national, niche?",
+          "What's wrong with the current site?",
+          "What must stay? Name, services, prices, legal pages.",
+          "Deadline and budget — the awkward but necessary bit.",
+        ],
+        callout:
+          "Clear goal stops drift. Most small business sites exist to explain the business and get enquiries.",
+      },
+      {
+        heading: "Stage 2: Gather content (where timelines die)",
+        paragraphs: [
+          "Slowest stage. Services list, contact details, hours, areas covered, photos, reviews, accreditations, legal text.",
+          "Designers can't invent your real number or prices. Accurate content in = faster process out.",
+        ],
+      },
+      {
+        heading: "Stage 3: Structure and layout",
+        paragraphs: [
+          "Homepage hero, services, about, trust, contact, footer. Simple site? Homepage plus about and contact is often plenty.",
+          "Main action obvious on mobile. Most visitors are on a phone. Design for that thumb.",
+        ],
+      },
+      {
+        heading: "Stage 4: Design and build",
+        paragraphs: [
+          "Colours, type, spacing, images. Build makes it work. Refresh rather than rebuild? Content exists — mostly presentation.",
+          "Refresh Kiwi compresses this: paste URL or describe the business, preview in about two minutes. Still review it — but you're not waiting three weeks for a first mockup.",
+        ],
+      },
+      {
+        heading: "Stage 5: Review and revise",
+        bullets: [
+          "Every number, email, address, link.",
+          "Services and prices against reality.",
+          "Mobile and desktop.",
+          "Ask someone outside the business: is this clear?",
+          "Changes in plain English — bigger button, different photo, shorter paragraph.",
+        ],
+      },
+      {
+        heading: "Stage 6: Publish and maintain",
+        paragraphs: [
+          "Connect domain, go live, submit sitemap if needed. Then plan updates — new services, changed hours, fresh photos, seasonal offers.",
+          "Kiwi Pro: we host and handle edits on request for £8 a month. Current site stays live until you switch.",
+        ],
+      },
+      {
+        heading: "How long this takes",
+        paragraphs: [
+          "Agency: four to twelve weeks, depending on scope, revisions, and how fast you send content. Refresh-first: preview same day, decide if you even need the full project.",
+          "See our website design packages page for how we split free preview and paid hosting.",
+        ],
+      },
+    ],
+    faqs: [
+      {
+        question: "Do I need to write all the copy myself?",
+        answer:
+          "Supply accurate facts. We reshape content from your current site — you review everything before publish.",
+      },
+      {
+        question: "How many revision rounds are normal?",
+        answer:
+          "Agencies: two or three rounds typically. Kiwi Pro: unlimited edits in plain English, no round counting.",
+      },
+    ],
+  },
+  {
+    slug: "redesign-website-without-losing-seo",
+    title: "How to Redesign a Website Without Losing SEO",
+    description:
+      "Practical steps to redesign a website without losing SEO rankings — URLs, redirects, content, and a safe preview-first approach for small businesses.",
+    excerpt:
+      "Redesign your site without Google forgetting you exist — URLs, redirects, content, and why previewing first beats flipping the switch blind.",
+    publishedAt: "2026-08-16",
+    updatedAt: "2026-08-16",
+    author: blogAuthor.name,
+    category: "SEO",
+    readingTime: "9 min read",
+    primaryKeyword: "redesign website without losing seo",
+    secondaryKeywords: [
+      "website redesign seo",
+      "seo friendly website redesign",
+      "website migration seo",
+    ],
+    intent: "informational",
+    funnelStage: "problem-aware",
+    priority: 7,
+    sections: [
+      {
+        heading: "Why redesigns tank rankings",
+        paragraphs: [
+          "Google ranks pages built on content, links, and trust over time. Change URLs without redirects, delete pages, swap useful copy for thin fluff — rankings drop.",
+          "The new design isn't the villain. Broken connections between old and new URLs are. Weaker content than what ranked before is.",
+        ],
+        callout:
+          "Keep what works. Improve how it looks without binning pages that bring traffic.",
+      },
+      {
+        heading: "Before you touch anything: audit",
+        bullets: [
+          "Pages bringing traffic in Google Search Console.",
+          "Keywords each important page targets.",
+          "Export sitemap or crawl for all URLs.",
+          "Keep, merge, or retire — decide deliberately.",
+          "Save title tags and meta descriptions that perform.",
+        ],
+      },
+      {
+        heading: "Keep URLs stable if you can",
+        paragraphs: [
+          "Safest: redesign in place. Same URLs, better layout. New theme, same addresses.",
+          "URLs must change? 301 redirect every old URL to its closest match. Permanent move — tell Google properly.",
+        ],
+      },
+      {
+        heading: "Protect content that ranks",
+        paragraphs: [
+          "Don't delete long service pages, location pages, or blog posts that bring traffic unless you're merging with a plan. Shorten copy? Keep the facts, keywords, and answers people searched for.",
+          "Refresh Kiwi starts from your existing content — helps preserve useful information. Still review the preview so nothing important vanished.",
+        ],
+      },
+      {
+        heading: "Preview before you flip the switch",
+        paragraphs: [
+          "Preview-first helps SEO as much as sanity. Separate preview, compare to live, check key pages and details survived.",
+          "Live site stays indexed while you review. No premature switch before search engines are ready.",
+        ],
+      },
+      {
+        heading: "Technical checks before launch",
+        bullets: [
+          "301 redirects for changed URLs.",
+          "Same domain if possible.",
+          "Title tags and headings on important pages — improve, don't genericise.",
+          "Submit updated sitemap in Search Console after launch.",
+          "Internal links, forms, phone links work.",
+          "Watch Search Console for crawl errors first few weeks.",
+        ],
+      },
+      {
+        heading: "After launch — don't panic immediately",
+        paragraphs: [
+          "Some fluctuation is normal. Google needs time to recrawl.",
+          "Sharp drop? Broken redirects, accidental noindex, missing pages. Fix fast.",
+        ],
+      },
+      {
+        heading: "Big sites need bigger plans",
+        paragraphs: [
+          "Hundreds of pages, ecommerce categories, multi-location SEO — migration plan beyond a simple refresh. Professional SEO help may be worth it.",
+          "Typical small business brochure site, handful of pages? Careful refresh, redirects, content review — usually enough.",
+        ],
+      },
+    ],
+    faqs: [
+      {
+        question: "Will changing my website design affect Google rankings?",
+        answer:
+          "Design alone doesn't automatically hurt. Broken URLs, lost content, missing redirects — those do.",
+      },
+      {
+        question: "Do I need to keep the same page titles?",
+        answer:
+          "Same intent and keywords on pages that rank. Improve clarity — don't wipe and start generic.",
       },
     ],
   },

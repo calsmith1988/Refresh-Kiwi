@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 
 import { getAbsoluteUrl, publishedArticles } from "@/lib/blog/articles";
 import { legalPageList } from "@/lib/legal/pages";
+import { marketingLandingPages } from "@/lib/marketing/landing-pages";
 
 const staticRoutes = [
   {
@@ -24,6 +25,11 @@ const staticRoutes = [
     priority: 0.8,
     changeFrequency: "weekly" as const,
   },
+  ...marketingLandingPages.map((page) => ({
+    path: `/${page.slug}`,
+    priority: 0.85,
+    changeFrequency: "monthly" as const,
+  })),
 ];
 
 const legalLastModified = new Date("2026-06-14");
