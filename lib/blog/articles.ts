@@ -77,6 +77,15 @@ export const contentClusters: ContentCluster[] = [
       "10web-alternative",
     ],
   },
+  {
+    name: "Three ways in",
+    intent: "Explain the Google listing and scratch paths without cannibalising competitor comparison keywords.",
+    recommendedCadence: "Link from comparison posts and homepage messaging.",
+    articleSlugs: [
+      "create-website-from-google-business-profile",
+      "voice-website-builder",
+    ],
+  },
 ];
 
 export const articles: Article[] = [
@@ -619,6 +628,28 @@ export const articles: Article[] = [
         ],
       },
       {
+        heading: "No URL? Two other ways in",
+        paragraphs: [
+          "Most people compare Wix after pasting an old URL — still the fastest way to see if a refresh beats a builder. No site to paste? Type your business name and we pull your Google listing. Nothing online at all? Talk into the mic or type what you do.",
+          "Same ~two-minute preview, same Kiwi Pro at £8/month, same live-site-stays-live rule if you already have one. No drag-and-drop, no credits, no tier maze.",
+          "Deeper reads: [create a website from your Google Business Profile](/blog/create-website-from-google-business-profile) and our [voice website builder](/blog/voice-website-builder) guide.",
+        ],
+      },
+      {
+        heading: "Do I need a website URL before I can use Refresh Kiwi?",
+        paragraphs: [
+          "No. A URL is the quickest compare against Wix when you already have something live, but it is door one of three.",
+          "Door two: find on Google. Door three: start from scratch by talking or typing. Wix wants you in the editor either way. We meet you where the facts already are.",
+        ],
+      },
+      {
+        heading: "Can I start a site from scratch without learning Wix?",
+        paragraphs: [
+          "Yes. Describe the business into the microphone — we transcribe — or type it plain. About two minutes to a preview.",
+          "That is not Wix's template mall. It is the scratch path on Refresh Kiwi, alongside refresh-from-URL and find-on-Google.",
+        ],
+      },
+      {
         heading: "Refresh Kiwi vs Wix: which fits a UK small business?",
         paragraphs: [
           "Choose Wix if you want to build from scratch in a editor, need Wix-specific apps, or genuinely enjoy the process. Choose Refresh Kiwi if you already have a site, a Google listing, or a rough brief and want a fresher version in about two minutes.",
@@ -691,6 +722,28 @@ export const articles: Article[] = [
           "Squarespace is better when you want polish without managing hosting, plugins, updates, or a developer. WordPress is better when you need flexibility, custom functionality, or ownership of a larger content operation.",
           "Neither is \"better\" in the abstract — they are different levels of control versus convenience.",
           "Refresh Kiwi is not WordPress and does not try to be. We are a refresh: about two minutes from a URL to a preview, £8/month to host with unlimited edits. If you are weighing Squarespace against WordPress, you are shopping for builders or CMS platforms. If you are weighing either against us, ask whether you want to build or whether you want the site you already have to stop apologising for itself.",
+        ],
+      },
+      {
+        heading: "No URL? Two other ways in",
+        paragraphs: [
+          "Squarespace comparisons usually start with a URL paste — fair, when the site exists but the template date does not. No URL? Search your business name and we build from your Google listing. Brand-new business? Talk or type what you do.",
+          "Same preview in about two minutes, same £8/month Kiwi Pro, unlimited plain-English or voice edits. Your current site stays live until you switch.",
+          "See [create a website from your Google Business Profile](/blog/create-website-from-google-business-profile) and [voice website builder](/blog/voice-website-builder) for the full picture.",
+        ],
+      },
+      {
+        heading: "Do I need an existing website to skip Squarespace?",
+        paragraphs: [
+          "No. An existing URL is the most common front door, not the only one.",
+          "A Google listing alone is enough to start. So is a voice memo about what you actually do — no Squarespace trial, no font picker.",
+        ],
+      },
+      {
+        heading: "Can I make a site from my Google listing instead of Squarespace?",
+        paragraphs: [
+          "Yes. Type the business name, we fetch the listing, and turn it into a real site — not Google's free stub, not a Squarespace theme.",
+          "About two minutes, preview first, host on Kiwi Pro when ready. Squarespace makes you build. We start from facts you already published somewhere.",
         ],
       },
       {
@@ -793,6 +846,28 @@ export const articles: Article[] = [
         ],
       },
       {
+        heading: "No URL? Two other ways in",
+        paragraphs: [
+          "GoDaddy Airo and Refresh Kiwi both like a URL when you have one — quickest way to see a refresh beside an AI builder. No URL? Find your business on Google and we pull the listing. Starting cold? Talk into the mic or type what you do.",
+          "Same ~two-minute output, same single Pro tier at £8/month, no credits or token meter. Live site stays up until you publish the preview.",
+          "More detail: [create a website from your Google Business Profile](/blog/create-website-from-google-business-profile) · [voice website builder](/blog/voice-website-builder).",
+        ],
+      },
+      {
+        heading: "Do I need a URL before using Refresh Kiwi instead of GoDaddy Airo?",
+        paragraphs: [
+          "No. URL first if you have one worth saving — that is still the spine of this comparison.",
+          "Without a URL, Google listing or scratch works the same way: preview in about two minutes, no Airo prompt maze, no hosting upsell before you see anything.",
+        ],
+      },
+      {
+        heading: "Can I start from scratch without GoDaddy or a domain yet?",
+        paragraphs: [
+          "Yes. Describe the business by voice or text — we transcribe and build the site. Free to try the preview.",
+          "You do not need to buy a domain through GoDaddy first. You need a business worth putting online — the rest is door three on Refresh Kiwi.",
+        ],
+      },
+      {
         heading: "Refresh Kiwi vs GoDaddy Airo: which should you use?",
         paragraphs: [
           "Use GoDaddy Airo if you want everything inside GoDaddy — domain, AI builder, hosting — and you are happy to edit in their system. Use Refresh Kiwi if you already have a site or listing and want a faster refresh without a builder subscription maze.",
@@ -865,6 +940,28 @@ export const articles: Article[] = [
           "Choose Lovable if you want to prototype or build a new web app from prompts and you are comfortable managing credits, code output, and iteration inside their product.",
           "Choose something simpler if your problem is \"my site looks like 2014\" rather than \"I need a new React app.\" That is the Refresh Kiwi lane.",
           "We are not competing with Lovable at being Lovable. We win at not being a builder — speed, one Pro tier, refresh from URL or listing, live site stays up until you switch. CJS Global LTD, Caerphilly. info@refresh.kiwi. Remote, no fake offices.",
+        ],
+      },
+      {
+        heading: "No URL? Two other ways in",
+        paragraphs: [
+          "Lovable lives in prompts and credits; Refresh Kiwi usually starts with a URL when you have a site to save. No URL? Type your business name — we grab the Google listing. Nothing online? Talk or type what you do — same ~two minutes, no token burn.",
+          "Kiwi Pro is £8/month to host with unlimited edits. No Lovable credit arithmetic every time you nudge a headline.",
+          "Walkthroughs: [create a website from your Google Business Profile](/blog/create-website-from-google-business-profile) and [voice website builder](/blog/voice-website-builder).",
+        ],
+      },
+      {
+        heading: "Do I need a URL to use Refresh Kiwi instead of Lovable?",
+        paragraphs: [
+          "No. URL refresh is the common path when comparing against Lovable's generate-from-scratch model, but it is not required.",
+          "Google listing or scratch — voice or text — hits the same preview-first flow without spending credits in Lovable's world.",
+        ],
+      },
+      {
+        heading: "Can I describe my business instead of prompting Lovable?",
+        paragraphs: [
+          "Yes. Talk into the microphone or type plain English about what you do. We transcribe and turn it into a site.",
+          "That is Refresh Kiwi's scratch path — not code generation on credits, not a new app in someone else's dashboard.",
         ],
       },
       {
@@ -942,6 +1039,28 @@ export const articles: Article[] = [
         ],
       },
       {
+        heading: "No URL? Two other ways in",
+        paragraphs: [
+          "Hostinger wants you in hosting first; Refresh Kiwi often starts with a URL paste when a site already exists. No URL? Search your business on Google — we build from the listing. No listing? Talk or type — about two minutes, no builder bolted on.",
+          "Same Kiwi Pro at £8/month, unlimited edits, preview before you pay. Not another intro hosting rate.",
+          "Read [create a website from your Google Business Profile](/blog/create-website-from-google-business-profile) and [voice website builder](/blog/voice-website-builder).",
+        ],
+      },
+      {
+        heading: "Do I need a website before I can skip Hostinger's builder?",
+        paragraphs: [
+          "No. A URL is fastest when you are refreshing something live, but Hostinger's builder is not your only alternative.",
+          "Google listing alone works. So does scratch by voice — no Hostinger account, no template picker, no renewal surprise.",
+        ],
+      },
+      {
+        heading: "Can I build from my Google listing without Hostinger hosting?",
+        paragraphs: [
+          "Yes. Type the business name, we fetch the Google Business Profile details, and produce a real preview — not a hosting upsell page.",
+          "Host when ready on Kiwi Pro for £8/month. Your old site, if you have one, stays live until you switch.",
+        ],
+      },
+      {
         heading: "Refresh Kiwi vs Hostinger: honest pick for UK SMBs",
         paragraphs: [
           "Pick Hostinger if hosting price is the decision and a bolted-on builder is fine. Pick Refresh Kiwi if you want a sharper site from your existing URL without entering a hosting upsell funnel.",
@@ -1013,6 +1132,28 @@ export const articles: Article[] = [
           "Webflow wins when the site is the product — portfolios, SaaS marketing sites, design-led brands with someone who owns the build.",
           "Something simpler wins when the site is a shop sign — plumbers, clinics, cafes, trades, anyone who needs enquiries, not awards.",
           "Refresh Kiwi edits in plain English or voice on Pro. No classes, no breakpoints panel, no credits. One £8/month tier on [website design packages](/website-design-packages).",
+        ],
+      },
+      {
+        heading: "No URL? Two other ways in",
+        paragraphs: [
+          "Webflow comparisons usually assume a URL worth redesigning — fair for a trades site that already exists. No URL? Find the business on Google and we pull the listing. Starting from zero? Talk or type what you do — no Webflow classes required.",
+          "Same ~two-minute preview, same £8/month Kiwi Pro, unlimited plain-English edits. Not a visual CMS.",
+          "More: [create a website from your Google Business Profile](/blog/create-website-from-google-business-profile) · [voice website builder](/blog/voice-website-builder).",
+        ],
+      },
+      {
+        heading: "Do I need a URL before Refresh Kiwi can replace Webflow?",
+        paragraphs: [
+          "No. URL refresh is door one when you already have a site that makes you wince.",
+          "Door two: Google listing. Door three: scratch by voice or text. Webflow wants a designer. We want your business facts.",
+        ],
+      },
+      {
+        heading: "Can I start a brochure site without learning Webflow?",
+        paragraphs: [
+          "Yes. Describe the business into the mic or type it — about two minutes to a preview, no breakpoints panel.",
+          "That is the scratch path. Same output as URL refresh or Google lookup — pick the door you actually have.",
         ],
       },
       {
@@ -1090,6 +1231,28 @@ export const articles: Article[] = [
         ],
       },
       {
+        heading: "No URL? Two other ways in",
+        paragraphs: [
+          "Leaving WordPress often starts with pasting the old site URL — still the clearest before/after. No URL because you never finished WP? Type your business name and we pull your Google listing. Nothing online? Talk or type what you do — no plugins to install.",
+          "Same preview in about two minutes, Kiwi Pro at £8/month, unlimited edits. Not a CMS, not WordPress.",
+          "Guides: [create a website from your Google Business Profile](/blog/create-website-from-google-business-profile) and [voice website builder](/blog/voice-website-builder).",
+        ],
+      },
+      {
+        heading: "Do I need a WordPress site or URL to use Refresh Kiwi?",
+        paragraphs: [
+          "No. We are not WordPress — you do not export a database or migrate plugins.",
+          "URL if you have one, Google listing if that is where your hours live, voice or text if you are starting clean. Same preview-first model, none of the wp-admin maintenance.",
+        ],
+      },
+      {
+        heading: "Can I skip WordPress entirely and start from my Google listing?",
+        paragraphs: [
+          "Yes. That is door two — we fetch the listing and build a real site, not Google's thin free page and not a theme plus five plugins.",
+          "About two minutes, free to try, host on Pro when ready. WordPress alternatives are not all WordPress-shaped.",
+        ],
+      },
+      {
         heading: "Refresh Kiwi vs WordPress: honest pick",
         paragraphs: [
           "Pick WordPress if you need a CMS, plugins, or custom development. Pick Refresh Kiwi if you need a sharper site in about two minutes and edits in plain English, not php.ini.",
@@ -1161,6 +1324,28 @@ export const articles: Article[] = [
           "Neither tool guarantees rankings. SEO lives in useful pages, local relevance, and copy that sounds like your business — not the badge on the builder.",
           "Durable can produce generic AI copy fast. Refresh Kiwi pulls from your real details where possible, which helps specificity.",
           "Fair comparison: both need a human check before publish. We do not smear Durable; we note that speed without your real phone number is still speed in the wrong direction.",
+        ],
+      },
+      {
+        heading: "No URL? Two other ways in",
+        paragraphs: [
+          "Durable and Refresh Kiwi both move fast — URL paste is still the sharpest compare when a site already exists. No URL? Find on Google. No listing? Talk or type what you do — same ~two minutes, no credit meter like Durable's.",
+          "Kiwi Pro is £8/month, unlimited edits including voice. Preview first, live site stays up if you have one.",
+          "See [create a website from your Google Business Profile](/blog/create-website-from-google-business-profile) and [voice website builder](/blog/voice-website-builder).",
+        ],
+      },
+      {
+        heading: "Do I need a URL to choose Refresh Kiwi over Durable?",
+        paragraphs: [
+          "No. URL refresh is the usual compare because both tools are fast — but Durable's questionnaire is not your only option.",
+          "Google listing or scratch by voice works the same way here: real preview, no credits counting down.",
+        ],
+      },
+      {
+        heading: "Can I start from scratch without Durable's AI questionnaire?",
+        paragraphs: [
+          "Yes. Talk into the mic or type plain English — we transcribe and build. About two minutes.",
+          "Closest AI-builder cousin, different shape: we refresh what exists or listen to what you say, without watching a credit bar.",
         ],
       },
       {
@@ -1238,6 +1423,28 @@ export const articles: Article[] = [
         ],
       },
       {
+        heading: "No URL? Two other ways in",
+        paragraphs: [
+          "Weebly owners usually paste the old drag-and-drop URL — still the honest compare. No Weebly site to paste? Type your business name for the Google listing. Brand new? Talk or type what you do — no blocks to drag.",
+          "Same ~two-minute preview, £8/month Kiwi Pro, unlimited edits. Your current site stays live until you switch.",
+          "Details: [create a website from your Google Business Profile](/blog/create-website-from-google-business-profile) · [voice website builder](/blog/voice-website-builder).",
+        ],
+      },
+      {
+        heading: "Do I need a Weebly or website URL first?",
+        paragraphs: [
+          "No. Paste one if you have it — fastest way to leave the widget drawer behind.",
+          "Without a URL, Google lookup or scratch by voice gets you the same preview without opening Weebly's editor.",
+        ],
+      },
+      {
+        heading: "Can I make a site from scratch without dragging Weebly boxes?",
+        paragraphs: [
+          "Yes. Describe the business by voice or text. We transcribe and publish a preview in about two minutes.",
+          "That is door three — alongside refresh-from-URL and find-on-Google. Weebly is not invited.",
+        ],
+      },
+      {
         heading: "Refresh Kiwi vs Weebly: honest pick",
         paragraphs: [
           "Pick Weebly if drag-and-drop is your comfort zone and the site is tiny. Pick Refresh Kiwi if you want a modern preview in about two minutes and edits in plain English on Pro.",
@@ -1312,6 +1519,28 @@ export const articles: Article[] = [
         ],
       },
       {
+        heading: "No URL? Two other ways in",
+        paragraphs: [
+          "10Web assumes WordPress; Refresh Kiwi usually starts with a URL when something live needs saving. No URL? Pull your Google listing by business name. Nothing to migrate? Talk or type what you do — no wp-admin, no AI credit stack.",
+          "Same preview in about two minutes, Kiwi Pro at £8/month, unlimited plain-English or voice edits.",
+          "Read [create a website from your Google Business Profile](/blog/create-website-from-google-business-profile) and [voice website builder](/blog/voice-website-builder).",
+        ],
+      },
+      {
+        heading: "Do I need a WordPress URL before Refresh Kiwi beats 10Web?",
+        paragraphs: [
+          "No. We are not WordPress — no install, no hosting stack to manage.",
+          "URL if you have a site worth refreshing, Google if that is where your business lives online, voice or text if you are starting from zero.",
+        ],
+      },
+      {
+        heading: "Can I start without a URL or a WordPress install?",
+        paragraphs: [
+          "Yes. Scratch by voice or typing — we transcribe and build. About two minutes to preview.",
+          "10Web wraps WordPress in AI. Refresh Kiwi gives you three doors that none of them require a plugin folder.",
+        ],
+      },
+      {
         heading: "Refresh Kiwi vs 10Web: honest pick",
         paragraphs: [
           "Pick 10Web if you want WordPress with AI and managed hosting in one bill. Pick Refresh Kiwi if you want a refreshed site in about two minutes without entering the WP ecosystem.",
@@ -1320,6 +1549,170 @@ export const articles: Article[] = [
         ],
         callout:
           "10Web is WordPress wearing an AI jacket. Refresh Kiwi is the refresh for owners who never wanted the jacket or the stack underneath it.",
+      },
+    ],
+  },
+  {
+    slug: "create-website-from-google-business-profile",
+    title: "Create a Website from Your Google Business Profile",
+    description:
+      "How to turn a Google Business Profile into a real website — why Google's free page is not enough, and when Refresh Kiwi beats starting from scratch.",
+    excerpt:
+      "You already have a Google listing and no site worth sending people to. Type the name — we build a real site, not Google's stub.",
+    publishedAt: "2026-08-17",
+    updatedAt: "2026-08-17",
+    author: blogAuthor.name,
+    category: "Getting Started",
+    readingTime: "9 min read",
+    primaryKeyword: "create website from google business profile",
+    secondaryKeywords: [
+      "google business profile website",
+      "google business profile website builder",
+      "website from google listing",
+    ],
+    intent: "comparison",
+    funnelStage: "conversion",
+    priority: 16,
+    sections: [
+      {
+        heading: "Can I create a website from my Google Business Profile?",
+        paragraphs: [
+          "Yes. If your hours, phone number, reviews, and photos already live on Google, that is enough to start — you do not need a separate website URL first.",
+          "Refresh Kiwi lets you type your business name, we fetch the listing, and turn it into a full site preview in about two minutes.",
+          "That is door two on Refresh Kiwi — alongside paste-a-URL refresh and start-from-scratch by voice or text. Same Kiwi Pro at £8/month to host, unlimited edits, preview free to try.",
+        ],
+      },
+      {
+        heading: "Is Google's own GBP website enough?",
+        paragraphs: [
+          "Google's free Business Profile website is a thin single page — fine as a placeholder, not fine as the shop sign you send customers to with confidence.",
+          "It looks like every other Google stub, hides what makes you different, and gives you almost no room to explain services properly.",
+          "Refresh Kiwi builds a real site from the same listing data — clearer sections, stronger calls to action, a preview you can inspect before anything goes live. Not a CMS, not WordPress — a proper face for the business Google already knows.",
+        ],
+      },
+      {
+        heading: "Can I make a real site from my Google listing?",
+        paragraphs: [
+          "Yes — that is exactly what the Google path is for. We pull name, category, hours, contact details, reviews, and photos where available, then reshape them into a site that looks like yours, not Google's template.",
+          "About two minutes to preview. Your current site, if you have one, stays live until you choose to switch.",
+          "See [website redesign services](/website-redesign-services) for what changes on the page, and [website design packages](/website-design-packages) for Kiwi Pro pricing — one tier, £8/month, no maze.",
+        ],
+      },
+      {
+        heading: "Do I need a URL first?",
+        paragraphs: [
+          "No. The Google listing path exists precisely for owners who have Google but not a site they are proud of — or no site at all.",
+          "If you do have a URL, paste it — that is door one and often the fastest compare. If you do not, the listing is enough.",
+          "Door three still exists: talk or type what you do with no Google presence yet. Read our [voice website builder](/blog/voice-website-builder) guide for that path.",
+        ],
+      },
+      {
+        heading: "How does Refresh Kiwi build from a Google listing?",
+        paragraphs: [
+          "You type the business name, we match your Google Business Profile, and generate a separate preview — nothing changes on Google or on any live site until you publish.",
+          "Same ~two-minute flow as URL refresh. Same unlimited plain-English or voice edits on Kiwi Pro. No drag-and-drop, no credits, no tokens.",
+          "Free to try the preview. CJS Global LTD, Caerphilly. info@refresh.kiwi. Remote, no fake local offices.",
+        ],
+      },
+      {
+        heading: "What about refresh and start-from-scratch?",
+        paragraphs: [
+          "Google listing is one door, not the whole house. Paste a URL if you already have a site worth saving — refresh beats rebuild. No listing and no site? Talk into the mic or type what you do — scratch path, same output speed.",
+          "All three land on the same preview-first model and the same £8/month Pro tier.",
+          "Comparing builders instead? The full set — [Wix](/blog/wix-alternative), [Squarespace](/blog/squarespace-alternatives), [GoDaddy Airo](/blog/godaddy-airo), [Hostinger](/blog/hostinger-alternatives), [WordPress](/blog/wordpress-alternatives), and the rest — lives in our comparison guides. Different keywords, same honest voice.",
+        ],
+      },
+      {
+        heading: "Refresh Kiwi vs Google's free GBP site: which should you use?",
+        paragraphs: [
+          "Use Google's stub if you need a placeholder for five minutes. Use Refresh Kiwi if you want a site that looks like a business, not a grey Google card.",
+          "Type the name, preview in about two minutes, host on Pro when ready. [Pay-monthly website design](/website-design-pay-monthly) spells out what £8/month includes.",
+          "You already did the hard part — the listing, the reviews, the real phone number. We just stop making customers squint at a generic Google page.",
+        ],
+        callout:
+          "Google gave you a listing. Refresh Kiwi turns it into a site you would actually hand to a customer — not the free stub you hope nobody clicks.",
+      },
+    ],
+  },
+  {
+    slug: "voice-website-builder",
+    title: "Voice Website Builder: Talk or Type Your Way to a Business Site",
+    description:
+      "A voice website builder for UK small businesses — describe what you do, get a site in about two minutes, no drag-and-drop and no URL required.",
+    excerpt:
+      "No URL, no Google listing, no builder. Talk into the mic or type what you do — Refresh Kiwi turns it into a site in about two minutes.",
+    publishedAt: "2026-08-17",
+    updatedAt: "2026-08-17",
+    author: blogAuthor.name,
+    category: "Getting Started",
+    readingTime: "9 min read",
+    primaryKeyword: "voice website builder",
+    secondaryKeywords: [
+      "can I talk to create a website",
+      "create a website by describing my business",
+      "start a website from scratch without a URL",
+    ],
+    intent: "comparison",
+    funnelStage: "conversion",
+    priority: 17,
+    sections: [
+      {
+        heading: "What is a voice website builder?",
+        paragraphs: [
+          "A voice website builder lets you describe your business aloud — or in plain text — and turns that into a website without opening a drag-and-drop editor.",
+          "Refresh Kiwi transcribes what you say, structures it into pages, and shows you a preview in about two minutes.",
+          "That is door three: no URL required, no Google listing required. Same Kiwi Pro at £8/month to host with unlimited voice and plain-English edits. Not a CMS. Not WordPress.",
+        ],
+      },
+      {
+        heading: "Can I talk to create a website?",
+        paragraphs: [
+          "Yes. Talk into the microphone on Refresh Kiwi — we transcribe, you review the preview, your current site stays live if you already have one.",
+          "Free to try. No credits, no tokens, no tier maze.",
+          "If you would rather type, that works too. Voice is for owners standing in a van, not owners who enjoy typing.",
+        ],
+      },
+      {
+        heading: "Can I create a website by describing my business?",
+        paragraphs: [
+          "Yes. Tell us what you do, where you work, how to contact you — plain English, no web design vocabulary required.",
+          "About two minutes to a preview. Unlimited edits on Pro, including \"move the phone number up\" by voice or text.",
+          "See [website redesign services](/website-redesign-services) for what the output includes, and [pay-monthly website design](/website-design-pay-monthly) for Kiwi Pro at £8/month.",
+        ],
+      },
+      {
+        heading: "Do I need a URL or Google listing first?",
+        paragraphs: [
+          "No. Scratch by voice or text is built for owners with nothing to paste — new businesses, side hustles, tradespeople who have never got round to a site.",
+          "If you do have a URL, paste it — door one, refresh path. If you have a Google listing but no site, type the business name — door two. Pick the door you actually have.",
+          "Full walkthrough for door two: [create a website from your Google Business Profile](/blog/create-website-from-google-business-profile).",
+        ],
+      },
+      {
+        heading: "How is Refresh Kiwi different from a drag-and-drop builder?",
+        paragraphs: [
+          "Builders hand you a canvas — templates, blocks, credits on some AI tools, tiers on others. Refresh Kiwi hands you a preview.",
+          "You describe the business; we structure it. You edit in plain English or voice on Pro — no widget drawer, no beige-hero archaeology unless you ask for it.",
+          "We win at not being a builder. Speed and simplicity, not another Wix-shaped Tuesday evening.",
+        ],
+      },
+      {
+        heading: "What are the three paths on Refresh Kiwi?",
+        paragraphs: [
+          "One: paste a URL and refresh what you have. Two: type your business name and build from your Google listing. Three: talk or type from scratch — this page.",
+          "All three hit the same ~two-minute preview, same free-to-try rule, same £8/month Pro with unlimited edits. Current site stays live until you switch.",
+          "CJS Global LTD, Caerphilly. info@refresh.kiwi. Remote, no fake offices. No Shopify claims, no cart fiction.",
+        ],
+      },
+      {
+        heading: "Voice website builder vs competitor AI tools",
+        paragraphs: [
+          "Plenty of AI builders let you prompt a new site — often on credits, often inside their hosting world. Refresh Kiwi's scratch path is describe-and-preview, not generate-and-meter.",
+          "Fair compare: [Lovable](/blog/lovable-alternative), [Durable](/blog/durable-alternative), [GoDaddy Airo](/blog/godaddy-airo) — we cover those honestly. Different job if you already have a URL worth saving.",
+          "Full comparison set: [Wix](/blog/wix-alternative), [Squarespace](/blog/squarespace-alternatives), [Hostinger](/blog/hostinger-alternatives), [Webflow](/blog/webflow-alternatives), [WordPress](/blog/wordpress-alternatives), [Weebly](/blog/weebly-alternative), [10Web](/blog/10web-alternative). [Website design packages](/website-design-packages) for pricing.",
+        ],
+        callout:
+          "No URL, no listing, no builder — just tell us what you do out loud and see a site in about two minutes. That is door three.",
       },
     ],
   },
