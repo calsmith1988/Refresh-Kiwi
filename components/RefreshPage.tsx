@@ -1152,14 +1152,6 @@ export default function RefreshPage({
   // Once a visitor explicitly taps a tab, typed text stops auto-switching
   // tabs — their choice wins until they pick another tab.
   const [heroTabPinned, setHeroTabPinned] = useState(false);
-  // The three hero tabs each need their own story below the fold — "fresh"
-  // copy that still talks about describing a business confuses a Google path.
-  const pageStory: "refresh" | "fresh" | "google" =
-    flowMode === "refresh"
-      ? "refresh"
-      : freshEntry === "google"
-        ? "google"
-        : "fresh";
   const [gbpQuery, setGbpQuery] = useState("");
   const [freshPrompt, setFreshPrompt] = useState("");
   const [freshLogo, setFreshLogo] = useState<File | null>(null);
@@ -2577,8 +2569,8 @@ export default function RefreshPage({
       !refreshInputLooksLikeUrl &&
       !selectedGbpPlace &&
       !forceUrlRefresh);
-  // The active composer tab is a view over flowMode/freshEntry, so pageStory,
-  // analytics, and every existing submit handler stay wired exactly as before.
+  // The active composer tab is a view over flowMode/freshEntry, so analytics
+  // and every existing submit handler stay wired exactly as before.
   const heroTab: "refresh" | "google" | "scratch" =
     flowMode === "refresh"
       ? "refresh"
@@ -3844,78 +3836,33 @@ export default function RefreshPage({
               <h2 className="font-fraunces text-3xl font-semibold tracking-tight sm:text-4xl">
                 Three steps. No tech skills.
               </h2>
-              <p className="mt-3 max-w-md text-base leading-7 text-black/55">
-                {pageStory === "google"
-                  ? "If you're already on Google Business, we can turn that listing into a proper website in about 2 minutes."
-                  : pageStory === "fresh"
-                    ? "From a few sentences to a proper website in about 2 minutes. We do the building."
-                    : "If you can copy and paste, you can do this. We do the rest."}
+              <p className="mt-3 max-w-xl text-base leading-7 text-black/55">
+                Three ways in. Same ~2-minute website out. Paste your URL,
+                find your business on Google, or talk into the mic and tell us
+                what you do.
               </p>
 
               <div className="mt-10 grid gap-4 md:grid-cols-3 md:gap-10">
-                {(pageStory === "google"
-                  ? [
-                      {
-                        n: "01",
-                        title: "Find your Google listing",
-                        body: "Search your business name. We pull in your details, hours, reviews, and photos from Google.",
-                        vignette: "brief" as const,
-                      },
-                      {
-                        n: "02",
-                        title: "Get your new website",
-                        body: "In about 2 minutes we turn that listing into a modern website with words, design, colours, and buttons ready to go.",
-                        vignette: "building" as const,
-                      },
-                      {
-                        n: "03",
-                        title: "Take it online when you're happy",
-                        body: "Save it, ask for changes in normal everyday language, add pages, and put it online when you're ready.",
-                        vignette: "online" as const,
-                      },
-                    ]
-                  : pageStory === "fresh"
-                    ? [
-                        {
-                          n: "01",
-                          title: "Describe your business",
-                          body: "Say what you do and who it's for — talk it through or type a few sentences. Add a logo or photos if you have them.",
-                          vignette: "brief" as const,
-                        },
-                        {
-                          n: "02",
-                          title: "Get your new website",
-                          body: "In about 2 minutes we turn your notes into a modern website with words, design, colours, and buttons ready to go.",
-                          vignette: "building" as const,
-                        },
-                        {
-                          n: "03",
-                          title: "Take it online when you're happy",
-                          body: "Save it, ask for changes in normal everyday language, add pages, and put it online when you're ready.",
-                          vignette: "online" as const,
-                        },
-                      ]
-                    : [
-                        {
-                          n: "01",
-                          title: "Paste your address",
-                          body: "Pop in your current website — Wix, WordPress, anything. No account, no card.",
-                          vignette: "url" as const,
-                        },
-                        {
-                          n: "02",
-                          title: "Watch the redesign happen",
-                          body: "In about 2 minutes we rebuild it with a clean, modern design. Your words and photos stay.",
-                          vignette: "building" as const,
-                        },
-                        {
-                          n: "03",
-                          title: "Take it online when you're happy",
-                          body: `${pricing.proPriceMonthly} puts it online with as many changes as you need — just ask normally.`,
-                          vignette: "online" as const,
-                        },
-                      ]
-                ).map((step, index) => (
+                {[
+                  {
+                    n: "01",
+                    title: "Pick your door",
+                    body: "Paste your website address, search your business name on Google, or describe what you do — type it or talk into the mic. No account, no card.",
+                    vignette: "url" as const,
+                  },
+                  {
+                    n: "02",
+                    title: "Get your new website",
+                    body: "In about 2 minutes we turn that into a proper site — words, layout, colours, buttons. Already live somewhere? That site stays put until you switch.",
+                    vignette: "building" as const,
+                  },
+                  {
+                    n: "03",
+                    title: "Take it online when you're happy",
+                    body: `${pricing.proPriceMonthly} puts it online with unlimited edits in plain English — no drag-and-drop, no credits, no tier maze.`,
+                    vignette: "online" as const,
+                  },
+                ].map((step, index) => (
                   <div
                     key={step.n}
                     className={`relative rounded-3xl border bg-white p-6 transition duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/10 sm:p-7 ${
@@ -3955,18 +3902,12 @@ export default function RefreshPage({
           >
             <div className="mx-auto w-full max-w-6xl">
               <h2 className="font-fraunces text-3xl font-semibold tracking-tight sm:text-4xl">
-                {pageStory === "google"
-                  ? "From a Google listing to a real website."
-                  : pageStory === "fresh"
-                    ? "See what we make."
-                    : "Old website in. Fresh website out."}
+                Same businesses. Fresher websites.
               </h2>
-              <p className="mt-3 max-w-md text-base leading-7 text-white/55">
-                {pageStory === "google"
-                  ? "Sites like these, built for local businesses — clear services, trust, and an easy way to get in touch."
-                  : pageStory === "fresh"
-                    ? "Sites like these, made from a few sentences about the business — then changed by simply asking."
-                    : "Real redesign examples — same business, same details, much fresher look."}
+              <p className="mt-3 max-w-xl text-base leading-7 text-white/55">
+                These are refresh examples — paste a URL and we rebuild what
+                you&apos;ve got. You can also start from your Google listing or
+                a few sentences about the business.
               </p>
 
               <div
@@ -4023,7 +3964,7 @@ export default function RefreshPage({
                     after={example.after}
                     beforeAlt={example.beforeAlt}
                     afterAlt={example.afterAlt}
-                    compare={pageStory === "refresh"}
+                    compare
                     className="border-white/10 bg-white/10 shadow-black/20"
                     aspectClassName="aspect-[1905/953]"
                     imageClassName="object-cover object-left-top"
@@ -4032,28 +3973,20 @@ export default function RefreshPage({
                   <div className="mt-5 px-1">
                     <h3 className="text-lg font-bold">{example.name}</h3>
                     <p className="mt-2 max-w-2xl text-sm leading-6 text-white/60">
-                      {pageStory === "refresh"
-                        ? example.detail
-                        : example.resultDetail}
+                      {example.detail}
                     </p>
                   </div>
                 </article>
               ))}
 
               <p className="mt-9 text-sm text-white/55">
-                {pageStory === "google"
-                  ? "Got a Google Business listing? "
-                  : pageStory === "fresh"
-                    ? "Curious what yours would look like? "
-                    : "The best example is your own website — "}
+                Paste your URL, find your business on Google, or start from
+                scratch —{" "}
                 <a
                   href="#hero"
                   onClick={(event) => {
                     event.preventDefault();
-                    chooseHeroMode(
-                      pageStory === "refresh" ? "refresh" : "fresh",
-                      pageStory === "google" ? "google" : "describe",
-                    );
+                    scrollHeroIntoView();
                   }}
                   className="font-semibold text-kiwi-green underline underline-offset-4"
                 >
@@ -4072,10 +4005,11 @@ export default function RefreshPage({
               <h2 className="text-center font-fraunces text-3xl font-semibold tracking-tight sm:text-4xl">
                 Simple pricing. Free to try.
               </h2>
-              <p className="mx-auto mt-3 max-w-md text-center text-base leading-7 text-black/55">
-                {flowMode === "fresh"
-                  ? "See your website for free. Only pay when you want to put it online and keep making changes."
-                  : "See your website redesigned for free. You only pay when you want your new website online — no surprises."}
+              <p className="mx-auto mt-3 max-w-lg text-center text-base leading-7 text-black/55">
+                Free to try, whichever door you use. Kiwi Pro is{" "}
+                {pricing.proPriceMonthly} — we host it, and you can change it as
+                often as you like in plain English or voice. No drag-and-drop.
+                No credits. No tier maze.
               </p>
 
               <div className="mt-5 flex justify-center">
@@ -4094,12 +4028,7 @@ export default function RefreshPage({
                     {pricing.freePrice}
                   </p>
                   <ul className="mt-6 space-y-3 text-sm leading-6 text-black/60">
-                    <li>
-                      ✓{" "}
-                      {flowMode === "fresh"
-                        ? "See your new website — no signup"
-                        : "See your website redesigned — no signup"}
-                    </li>
+                    <li>✓ See your new website — no signup</li>
                     <li>✓ Keep it for 7 days with a free account</li>
                     <li>✓ 3 free changes included</li>
                   </ul>
@@ -4107,12 +4036,7 @@ export default function RefreshPage({
                     href="#hero"
                     onClick={(event) => {
                       event.preventDefault();
-                      chooseHeroMode(
-                        flowMode,
-                        flowMode === "fresh" && freshEntry === "google"
-                          ? "google"
-                          : "describe",
-                      );
+                      scrollHeroIntoView();
                     }}
                     className="mt-7 inline-flex h-12 items-center rounded-full border border-black/15 bg-white px-6 text-sm font-semibold transition hover:border-black/30"
                   >
@@ -4132,13 +4056,8 @@ export default function RefreshPage({
                     </span>
                   </p>
                   <ul className="mt-6 space-y-3 text-sm leading-6 text-white/70">
-                    <li>
-                      ✓{" "}
-                      {flowMode === "fresh"
-                        ? "Your new website online — we host it"
-                        : "Your redesigned website online — we host it"}
-                    </li>
-                    <li>✓ Ask for as many changes as you need</li>
+                    <li>✓ Your website online — we host it</li>
+                    <li>✓ Unlimited edits — type or talk, plain English</li>
                     <li>✓ Add your own web address (www.yourbusiness.com)</li>
                     <li>✓ Add extra pages whenever you need them</li>
                     <li>✓ Cancel anytime — no contracts</li>
@@ -4147,18 +4066,11 @@ export default function RefreshPage({
                     href="#hero"
                     onClick={(event) => {
                       event.preventDefault();
-                      chooseHeroMode(
-                        flowMode,
-                        flowMode === "fresh" && freshEntry === "google"
-                          ? "google"
-                          : "describe",
-                      );
+                      scrollHeroIntoView();
                     }}
                     className="mt-7 inline-flex h-12 items-center rounded-full bg-kiwi-green px-6 text-sm font-bold text-black transition hover:bg-kiwi-green-hover"
                   >
-                    {flowMode === "fresh"
-                      ? "Create my website free"
-                      : "Start with a free preview"}
+                    Try it free
                   </a>
                 </div>
               </div>
@@ -4176,119 +4088,48 @@ export default function RefreshPage({
               </h2>
 
               <div className="mt-8 divide-y divide-black/5">
-                {(pageStory === "google"
-                  ? [
-                      {
-                        q: "Does it really take 2 minutes?",
-                        a: "About that, yes. Pick your listing, press one button, and your new website is usually ready to look at in around 2 minutes.",
-                      },
-                      {
-                        q: "Do I need an old website?",
-                        a: "No. If you're on Google Business, search for your listing and we'll build a new website from those details and photos.",
-                      },
-                      {
-                        q: "What if I don't have photos yet?",
-                        a: "We'll use photos from your Google listing when they're available. If there aren't any, we can still make a clean, professional website from your business details.",
-                      },
-                      {
-                        q: "Is this a full new website?",
-                        a: "Yes. You get a new website you can save, change, add pages to, and take online when you're ready — not just another Google listing.",
-                      },
-                      {
-                        q: "What does it cost?",
-                        a: `You can see your new website for free. If you want it online, Kiwi Pro is ${pricing.proPriceMonthly} with changes included and no long contract.`,
-                      },
-                      {
-                        q: "How is this different from local web design companies?",
-                        a: "Most local web design companies need meetings, quotes, and weeks of back-and-forth. Refresh Kiwi builds from the listing you already have, then lets you ask for changes whenever you need them.",
-                      },
-                      {
-                        q: "I'm not good with computers. Is this for me?",
-                        a: "Yes. Search your business name, pick your listing, and press one button. If you want a change later, type it like you would say it.",
-                      },
-                      {
-                        q: `What happens after I pay ${pricing.proPriceMonthly}?`,
-                        a: "Your website goes online and we host it for you. You can ask for changes, add extra pages, and connect your own web address. Cancel anytime.",
-                      },
-                      {
-                        q: "What if I don't like the result?",
-                        a: "Then it costs you nothing. You can walk away, try a different listing, or start from a short description instead.",
-                      },
-                    ]
-                  : pageStory === "fresh"
-                    ? [
-                        {
-                          q: "Does it really take 2 minutes?",
-                          a: "About that, yes. Once you've said a little about your business, your new website is usually ready to look at in around 2 minutes.",
-                        },
-                        {
-                          q: "Do I need an old website?",
-                          a: "No. Describe your business — talk it through or type it — add a logo or photos if you have them, and we create a new website for you.",
-                        },
-                        {
-                          q: "What if I don't have photos yet?",
-                          a: "That's fine. We can still make a clean, professional website using your business details, colours, layout, and simple visual design.",
-                        },
-                        {
-                          q: "Is this a full new website?",
-                          a: "Yes. You get a new website you can save, change, add pages to, and take online when you're ready.",
-                        },
-                        {
-                          q: "What does it cost?",
-                          a: `You can see your new website for free. If you want it online, Kiwi Pro is ${pricing.proPriceMonthly} with changes included and no long contract.`,
-                        },
-                        {
-                          q: "How is this different from local web design companies?",
-                          a: "Most local web design companies need meetings, quotes, and weeks of back-and-forth. Refresh Kiwi gives you a website quickly, then lets you ask for changes whenever you need them.",
-                        },
-                        {
-                          q: "I'm not good with computers. Is this for me?",
-                          a: "Yes. You describe what you want in normal everyday language — or just talk into the mic. If you want a change later, type it like you would say it.",
-                        },
-                        {
-                          q: `What happens after I pay ${pricing.proPriceMonthly}?`,
-                          a: "Your website goes online and we host it for you. You can ask for changes, add extra pages, and connect your own web address. Cancel anytime.",
-                        },
-                        {
-                          q: "What if I don't like the result?",
-                          a: "Then it costs you nothing. You can walk away, change your description, or try again.",
-                        },
-                      ]
-                  : [
-                      {
-                        q: "Does it really take 2 minutes?",
-                        a: "About that, yes. Paste your web address, press one button, and your redesigned website is usually ready to look at in around 2 minutes.",
-                      },
-                      {
-                        q: "Will this change my real website?",
-                        a: "No. We make a separate redesigned version. Your current website stays exactly as it is until you decide to switch.",
-                      },
-                      {
-                        q: "Do I lose my words and photos?",
-                        a: "No — that's the whole point. We keep your business details, services, photos and phone number, and give them a cleaner, more modern home.",
-                      },
-                      {
-                        q: "Is this a web redesign service or a full new build?",
-                        a: "Refresh Kiwi is a web redesign service. We use your existing site as the starting point, then create a fresher version you can preview, edit and take online.",
-                      },
-                      {
-                        q: "What is the website redesign cost?",
-                        a: `You can see the redesign for free. If you want the redesigned website online, Kiwi Pro is ${pricing.proPriceMonthly} with changes included and no long contract.`,
-                      },
-                      {
-                        q: "I'm not good with computers. Is this for me?",
-                        a: "Yes. You paste your web address and press one button. If you want a change later, type it like you would say it, such as \"make the phone number bigger\".",
-                      },
-                      {
-                        q: `What happens after I pay ${pricing.proPriceMonthly}?`,
-                        a: "Your new website goes online and we host it for you. You can ask for changes, add extra pages, and connect your own web address. Cancel anytime.",
-                      },
-                      {
-                        q: "What if I don't like the result?",
-                        a: "Then it costs you nothing. You can simply walk away, ask for changes, or try again.",
-                      },
-                    ]
-                ).map((item) => (
+                {[
+                  {
+                    q: "Does it really take 2 minutes?",
+                    a: "About that, yes. Paste a URL, pick a Google listing, or describe your business — press one button and you're usually looking at a new site in around 2 minutes.",
+                  },
+                  {
+                    q: "Will this change my real website?",
+                    a: "If you paste a URL, we make a separate version. Your current site stays exactly as it is until you decide to switch. Starting from Google or scratch? There's no live site to disturb.",
+                  },
+                  {
+                    q: "Do I need an old website?",
+                    a: "No. Paste a URL if you've got one, find your business on Google, or start from scratch — talk into the mic or type what you do.",
+                  },
+                  {
+                    q: "Is this a web redesign service or a full new build?",
+                    a: "Both, depending on which door you use. Got a site? We refresh it. Got a Google listing or a rough idea? We build from that. We're not a CMS and we're not another drag-and-drop builder page.",
+                  },
+                  {
+                    q: "What does Kiwi Pro cost?",
+                    a: `Free to try. Kiwi Pro is ${pricing.proPriceMonthly} — unlimited edits including voice and plain English. We host it. No credits, no token maze.`,
+                  },
+                  {
+                    q: "What if I don't have photos yet?",
+                    a: "We pull from your site or Google listing when we can. Starting from scratch? We still make something clean from what you tell us.",
+                  },
+                  {
+                    q: "How is this different from local web design companies?",
+                    a: "Most want meetings, quotes, and weeks. We give you a website in about 2 minutes, then you ask for changes whenever — in normal words.",
+                  },
+                  {
+                    q: "I'm not good with computers. Is this for me?",
+                    a: "Yes. Paste a URL, pick your Google listing, or talk into the mic. Changes later? Say them like you'd say them to a friend.",
+                  },
+                  {
+                    q: `What happens after I pay ${pricing.proPriceMonthly}?`,
+                    a: "Your site goes online. We host it. Change anything in plain English, add pages, connect your domain. Cancel anytime.",
+                  },
+                  {
+                    q: "What if I don't like the result?",
+                    a: "Then it costs you nothing. Walk away, try a different door, or ask for changes.",
+                  },
+                ].map((item) => (
                   <details key={item.q} className="group py-5">
                     <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-base font-semibold [&::-webkit-details-marker]:hidden">
                       {item.q}
@@ -4323,35 +4164,22 @@ export default function RefreshPage({
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_48%_54%_at_50%_47%,rgba(255,255,255,0.74)_0%,rgba(255,255,255,0.48)_36%,rgba(255,255,255,0)_72%)]" />
                 <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.22),transparent_28%,transparent_72%,rgba(20,24,17,0.06))]" />
                 <h2 className="relative mx-auto max-w-2xl font-fraunces text-4xl font-semibold tracking-tight text-[#11150f] sm:text-5xl">
-                  {pageStory === "google"
-                    ? "Your Google listing, turned into a website."
-                    : pageStory === "fresh"
-                      ? "Two minutes from now, you could be looking at it."
-                      : "Your website called. It wants a redesign."}
+                  Three doors. About two minutes.
                 </h2>
-                <p className="relative mx-auto mt-4 max-w-md text-base font-medium leading-7 text-[#11150f]/65">
-                  {pageStory === "google"
-                    ? "Find your business on Google and get a proper website you can save, change, and take online when you're ready."
-                    : pageStory === "fresh"
-                      ? "See the website we'd make for your business. Save it, change it, and take it online when you're ready."
-                      : "Free to try. It takes about 2 minutes, and nothing changes until you say so."}
+                <p className="relative mx-auto mt-4 max-w-lg text-base font-medium leading-7 text-[#11150f]/65">
+                  Paste your URL, find your business on Google, or tell us what
+                  you do. Free to try — and if you&apos;ve already got a site,
+                  it stays live until you switch.
                 </p>
                 <a
                   href="#hero"
                   onClick={(event) => {
                     event.preventDefault();
-                    chooseHeroMode(
-                      pageStory === "refresh" ? "refresh" : "fresh",
-                      pageStory === "google" ? "google" : "describe",
-                    );
+                    scrollHeroIntoView();
                   }}
                   className="relative mt-8 inline-flex items-center rounded-full bg-[#141811] px-8 py-4 text-sm font-bold text-white shadow-xl shadow-black/15 ring-1 ring-white/20 transition hover:bg-black"
                 >
-                  {pageStory === "google"
-                    ? "Build from my Google listing — free"
-                    : pageStory === "fresh"
-                      ? "Create my website — free"
-                      : "Refresh my website — free"}
+                  Try it free
                 </a>
               </div>
             </section>
