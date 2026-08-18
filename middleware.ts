@@ -5,6 +5,7 @@ import {
   isSitesApexHost,
   sitesSlugFromHost,
 } from "@/lib/sites/domain";
+import { INDEXNOW_KEY_PATH } from "@/lib/seo/indexnow";
 import { CUSTOM_DOMAIN_HOST_HEADER } from "@/lib/security/headers";
 
 const APP_HOSTS = new Set([
@@ -19,6 +20,7 @@ const MARKETING_METADATA_PATHS = new Set([
   "/sitemap.xml",
   "/robots.txt",
   "/llms.txt",
+  INDEXNOW_KEY_PATH,
 ]);
 
 function normalizeHostname(raw: string): string {
@@ -102,7 +104,8 @@ export function middleware(request: NextRequest) {
   requestHeaders.delete(CUSTOM_DOMAIN_HOST_HEADER);
 
   // Marketing metadata routes must always reach the app handlers (sitemap,
-  // robots, llms.txt), never the custom-domain rewrite (which can error when
+  // robots, llms.txt, IndexNow key file), never the custom-domain rewrite (which
+  // can error when
   // the Host header and public URL disagree behind a proxy).
   if (MARKETING_METADATA_PATHS.has(pathname) && isMarketingRequest(request)) {
     return NextResponse.next({ request: { headers: requestHeaders } });

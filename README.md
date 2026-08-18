@@ -305,6 +305,12 @@ Two Render cron jobs POST to the app with the `CRON_SECRET` bearer token:
 - `/api/cron/check-domains` - verifies pending custom domains.
 - `/api/cron/lifecycle-emails` - sends the 24-hour free-plan follow-up.
 
+Optional post-deploy (or manual) IndexNow ping for **refresh.kiwi marketing URLs only** (Bing, Yandex, etc. — not Google):
+
+- `/api/cron/indexnow` - POST the current marketing sitemap URL list to IndexNow.
+- Key file: `https://refresh.kiwi/e3f5de666e3b58ee2dcff3f763dbddd8.txt` (plain text, public).
+- Local/script alternative: `INDEXNOW_SUBMIT=1 npx tsx scripts/submit-indexnow.ts`
+
 They live in the Render dashboard, not in this repo, so keep these commands in
 sync there:
 
@@ -313,6 +319,11 @@ curl -fsS -X POST "$NEXT_PUBLIC_APP_URL/api/cron/check-domains" \
   -H "Authorization: Bearer $CRON_SECRET" \
   --connect-timeout 15 --max-time 180 \
   --retry 5 --retry-delay 30 --retry-connrefused
+
+# After a marketing deploy (optional — run manually or as a one-off Render cron):
+curl -fsS -X POST "$NEXT_PUBLIC_APP_URL/api/cron/indexnow" \
+  -H "Authorization: Bearer $CRON_SECRET" \
+  --connect-timeout 15 --max-time 60
 ```
 
 The retry flags matter: without them a brief window where the app is
