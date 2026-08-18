@@ -15,14 +15,51 @@ const APP_HOSTS = new Set([
   "refresh-kiwi.onrender.com",
 ]);
 
-function normalizeHost(request: NextRequest): string {
-  const host =
-    request.headers.get("host") ?? request.headers.get("x-forwarded-host") ?? "";
+const MARKETING_METADATA_PATHS = new Set([
+  "/sitemap.xml",
+  "/robots.txt",
+  "/llms.txt",
+]);
 
-  return host.split(":")[0]?.toLowerCase().replace(/\.+$/, "") ?? "";
+function normalizeHostname(raw: string): string {
+  return raw.split(":")[0]?.toLowerCase().replace(/\.+$/, "") ?? "";
 }
 
-function isMarketingHost(host: string): boolean {
+function collectHostCandidates(request: NextRequest): string[] {
+  const candidates = new Set<string>();
+
+  const hostHeader = request.headers.get("host");
+
+  if (hostHeader) {
+    candidates.add(normalizeHostname(hostHeader));
+  }
+
+  const forwardedHost = request.headers.get("x-forwarded-host");
+
+  if (forwardedHost) {
+    for (const part of forwardedHost.split(",")) {
+      const normalized = normalizeHostname(part.trim());
+
+      if (normalized) {
+        candidates.add(normalized);
+      }
+    }
+  }
+
+  const urlHost = normalizeHostname(request.nextUrl.hostname);
+
+  if (urlHost) {
+    candidates.add(urlHost);
+  }
+
+  return [...candidates];
+}
+
+function normalizeHost(request: NextRequest): string {
+  return collectHostCandidates(request)[0] ?? "";
+}
+
+function isMarketingHostName(host: string): boolean {
   if (!host || APP_HOSTS.has(host)) {
     return !host || APP_HOSTS.has(host);
   }
@@ -36,6 +73,10 @@ function isMarketingHost(host: string): boolean {
   } catch {
     return false;
   }
+}
+
+function isMarketingRequest(request: NextRequest): boolean {
+  return collectHostCandidates(request).some(isMarketingHostName);
 }
 
 export function middleware(request: NextRequest) {
@@ -60,12 +101,10 @@ export function middleware(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.delete(CUSTOM_DOMAIN_HOST_HEADER);
 
-  // Marketing metadata routes must always reach app/sitemap.ts and app/robots.ts,
-  // never the custom-domain rewrite (which can 500 on infrastructure errors).
-  if (
-    (pathname === "/sitemap.xml" || pathname === "/robots.txt") &&
-    isMarketingHost(host)
-  ) {
+  // Marketing metadata routes must always reach the app handlers (sitemap,
+  // robots, llms.txt), never the custom-domain rewrite (which can error when
+  // the Host header and public URL disagree behind a proxy).
+  if (MARKETING_METADATA_PATHS.has(pathname) && isMarketingRequest(request)) {
     return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
