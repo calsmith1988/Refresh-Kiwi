@@ -28,6 +28,7 @@ import njlmAfterPreview from "../example-designs/NJLM-after-screenshot.png";
 import njlmBeforePreview from "../example-designs/NJLM-before-screenshot.png";
 import kiwiGroupBackground from "../kiwi-group-background.png";
 import ActivityToast from "@/components/ActivityToast";
+import { kiwiProCostFaqAnswer } from "@/lib/seo/marketing";
 import CookieSettingsButton from "@/components/CookieSettingsButton";
 import CurrencySelector from "@/components/CurrencySelector";
 import ModalCloseButton from "@/components/ModalCloseButton";
@@ -4107,7 +4108,7 @@ export default function RefreshPage({
                   },
                   {
                     q: "What does Kiwi Pro cost?",
-                    a: `Free to try. Kiwi Pro is ${pricing.proPriceMonthly} — unlimited edits including voice and plain English. We host it. No credits, no token maze.`,
+                    a: kiwiProCostFaqAnswer,
                   },
                   {
                     q: "What if I don't have photos yet?",
@@ -4122,7 +4123,7 @@ export default function RefreshPage({
                     a: "Yes. Paste a URL, pick your Google listing, or talk into the mic. Changes later? Say them like you'd say them to a friend.",
                   },
                   {
-                    q: `What happens after I pay ${pricing.proPriceMonthly}?`,
+                    q: "What happens after I pay for Kiwi Pro?",
                     a: "Your site goes online. We host it. Change anything in plain English, add pages, connect your domain. Cancel anytime.",
                   },
                   {
