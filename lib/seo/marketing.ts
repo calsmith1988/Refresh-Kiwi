@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { getAbsoluteUrl } from "@/lib/blog/articles";
 import type { LegalPageContent } from "@/lib/legal/pages";
+import { type SupportedCurrency } from "@/lib/pricing/regions";
 
 export const marketingCompany = {
   name: "CJS Global LTD",
@@ -14,47 +15,76 @@ export const marketingCompany = {
 
 export const homepageOgImagePath = "/refresh-kiwi-og.png";
 
-/** Default refresh-flow FAQ copy for structured data (matches homepage messaging). */
+const KIWI_PRO_OFFER_CURRENCIES: SupportedCurrency[] = [
+  "GBP",
+  "USD",
+  "CAD",
+  "AUD",
+];
+
+const KIWI_PRO_OFFER_MINOR_AMOUNTS: Record<SupportedCurrency, number> = {
+  GBP: 8,
+  USD: 11,
+  CAD: 15,
+  AUD: 17,
+};
+
+const KIWI_PRO_OFFER_DESCRIPTION =
+  "Hosting, unlimited plain-English or voice edits, custom domain, extra pages, cancel anytime.";
+
+/** Visible homepage FAQ copy — shared with JSON-LD so schema matches rendered text. */
+export const kiwiProCostFaqAnswer =
+  "Free to try. Kiwi Pro is £8/month, US$11/month, CA$15/month, or AU$17/month — unlimited edits including voice and plain English. We host it. No credits, no token maze.";
+
 export const homepageFaqs = [
   {
     question: "Does it really take 2 minutes?",
     answer:
-      "About that, yes. Paste your web address, press one button, and your redesigned website is usually ready to look at in around 2 minutes.",
+      "About that, yes. Paste a URL, pick a Google listing, or describe your business — press one button and you're usually looking at a new site in around 2 minutes.",
   },
   {
     question: "Will this change my real website?",
     answer:
-      "No. We make a separate redesigned version. Your current website stays exactly as it is until you decide to switch.",
+      "If you paste a URL, we make a separate version. Your current site stays exactly as it is until you decide to switch. Starting from Google or scratch? There's no live site to disturb.",
   },
   {
-    question: "Do I lose my words and photos?",
+    question: "Do I need an old website?",
     answer:
-      "No — that's the whole point. We keep your business details, services, photos and phone number, and give them a cleaner, more modern home.",
+      "No. Paste a URL if you've got one, find your business on Google, or start from scratch — talk into the mic or type what you do.",
   },
   {
     question: "Is this a web redesign service or a full new build?",
     answer:
-      "Refresh Kiwi is a web redesign service. We use your existing site as the starting point, then create a fresher version you can preview, edit and take online.",
+      "Both, depending on which door you use. Got a site? We refresh it. Got a Google listing or a rough idea? We build from that. We're not a CMS and we're not another drag-and-drop builder page.",
   },
   {
-    question: "What is the website redesign cost?",
+    question: "What does Kiwi Pro cost?",
+    answer: kiwiProCostFaqAnswer,
+  },
+  {
+    question: "What if I don't have photos yet?",
     answer:
-      "You can see the redesign for free. If you want the redesigned website online, Kiwi Pro is £8/month with changes included and no long contract.",
+      "We pull from your site or Google listing when we can. Starting from scratch? We still make something clean from what you tell us.",
+  },
+  {
+    question: "How is this different from local web design companies?",
+    answer:
+      "Most want meetings, quotes, and weeks. We give you a website in about 2 minutes, then you ask for changes whenever — in normal words.",
   },
   {
     question: "I'm not good with computers. Is this for me?",
     answer:
-      'Yes. You paste your web address and press one button. If you want a change later, type it like you would say it, such as "make the phone number bigger".',
+      "Yes. Paste a URL, pick your Google listing, or talk into the mic. Changes later? Say them like you'd say them to a friend.",
   },
   {
-    question: "What happens after I pay £8/month?",
+    question: "What happens after I pay for Kiwi Pro?",
     answer:
-      "Your new website goes online and we host it for you. You can ask for changes, add extra pages, and connect your own web address. Cancel anytime.",
+      "Your site goes online. We host it. Change anything in plain English, add pages, connect your domain. Cancel anytime.",
   },
   {
     question: "What if I don't like the result?",
     answer:
-      "Then it costs you nothing. You can simply walk away, ask for changes, or try again.",
+      "Then it costs you nothing. Walk away, try a different door, or ask for changes.",
   },
 ] as const;
 
@@ -89,55 +119,47 @@ export function legalPageMetadata(page: LegalPageContent): Metadata {
   };
 }
 
+function buildKiwiProOffers() {
+  return KIWI_PRO_OFFER_CURRENCIES.map((currency) => {
+    const price = String(KIWI_PRO_OFFER_MINOR_AMOUNTS[currency]);
+
+    return {
+      "@type": "Offer" as const,
+      name: "Kiwi Pro",
+      price,
+      priceCurrency: currency,
+      description: KIWI_PRO_OFFER_DESCRIPTION,
+      availability: "https://schema.org/InStock",
+      priceSpecification: {
+        "@type": "UnitPriceSpecification" as const,
+        price,
+        priceCurrency: currency,
+        unitText: "MONTH",
+        referenceQuantity: {
+          "@type": "QuantitativeValue" as const,
+          value: 1,
+          unitCode: "MON",
+        },
+      },
+    };
+  });
+}
+
 export function buildHomepageJsonLd() {
   const siteUrl = getAbsoluteUrl("/");
-  const logoUrl = getAbsoluteUrl("/refresh-kiwi-favicon-v2.png");
   const ogImageUrl = getAbsoluteUrl(homepageOgImagePath);
-
-  const organization = {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    name: marketingCompany.tradingName,
-    legalName: marketingCompany.name,
-    url: siteUrl,
-    email: marketingCompany.email,
-    logo: logoUrl,
-    address: {
-      "@type": "PostalAddress",
-      streetAddress: "8 Henfron, Energlyn",
-      addressLocality: "Caerphilly",
-      postalCode: "CF83 2NU",
-      addressCountry: "GB",
-    },
-  };
 
   const softwareApplication = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    name: marketingCompany.tradingName,
+    name: "Refresh Kiwi",
     applicationCategory: "BusinessApplication",
     operatingSystem: "Web",
     url: siteUrl,
     description:
-      "Paste your web address and get a fresh, modern version of your website in about 2 minutes. Built for local businesses.",
-    offers: {
-      "@type": "Offer",
-      name: "Kiwi Pro",
-      price: "8",
-      priceCurrency: "GBP",
-      priceSpecification: {
-        "@type": "UnitPriceSpecification",
-        price: "8",
-        priceCurrency: "GBP",
-        unitText: "MONTH",
-      },
-    },
+      "A small-business website in about two minutes. Start from a URL, a Google listing, or a description of your business by type or voice.",
+    offers: buildKiwiProOffers(),
     image: ogImageUrl,
-    provider: {
-      "@type": "Organization",
-      name: marketingCompany.tradingName,
-      url: siteUrl,
-    },
   };
 
   const faqPage = {
@@ -153,5 +175,5 @@ export function buildHomepageJsonLd() {
     })),
   };
 
-  return [organization, softwareApplication, faqPage];
+  return [softwareApplication, faqPage];
 }
