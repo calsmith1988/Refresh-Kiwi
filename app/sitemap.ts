@@ -21,6 +21,11 @@ const staticRoutes = [
     changeFrequency: "yearly" as const,
   },
   {
+    path: "/ai-info",
+    priority: 0.5,
+    changeFrequency: "yearly" as const,
+  },
+  {
     path: "/blog",
     priority: 0.8,
     changeFrequency: "weekly" as const,

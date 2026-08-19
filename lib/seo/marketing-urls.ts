@@ -7,6 +7,7 @@ export const marketingPublicPaths = [
   "/",
   "/about-us",
   "/contact-us",
+  "/ai-info",
   "/blog",
   ...marketingLandingPages.map((page) => `/${page.slug}`),
   ...legalPageList.map((page) => `/${page.slug}`),
