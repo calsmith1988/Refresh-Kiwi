@@ -26,6 +26,11 @@ const staticRoutes = [
     changeFrequency: "yearly" as const,
   },
   {
+    path: "/website-cost-calculator",
+    priority: 0.85,
+    changeFrequency: "monthly" as const,
+  },
+  {
     path: "/blog",
     priority: 0.8,
     changeFrequency: "weekly" as const,

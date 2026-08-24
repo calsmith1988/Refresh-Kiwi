@@ -155,7 +155,7 @@ export default function BlogIndexPage() {
             </p>
           </div>
           <Link
-            href="/#refresh-input"
+            href="/#hero"
             className="rounded-full bg-[#141811] px-6 py-3 text-sm font-bold text-white transition hover:bg-black"
           >
             Try Refresh Kiwi
