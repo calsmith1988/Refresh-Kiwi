@@ -1,4 +1,13 @@
 import { buildAppUrl, getEmailFrom, getResendApiKey } from "@/lib/email/config";
+import {
+  ADD_ON_OPTIONS,
+  calculatorDisclaimer,
+  formatGbpRange,
+  KIWI_PRO_MONTHLY_GBP,
+  pageBandLabel,
+  type CalculatorInputs,
+  type CalculatorResult,
+} from "@/lib/marketing/website-cost-calculator";
 
 async function sendEmail(params: {
   to: string;
@@ -6,14 +15,18 @@ async function sendEmail(params: {
   text: string;
   html: string;
   replyTo?: string;
-}) {
+  attachments?: Array<{
+    filename: string;
+    content: string;
+  }>;
+}): Promise<boolean> {
   const apiKey = getResendApiKey();
 
   if (!apiKey) {
     console.warn(
       `[refresh-kiwi] RESEND_API_KEY missing; skipped email "${params.subject}" to ${params.to}`,
     );
-    return;
+    return false;
   }
 
   const response = await fetch("https://api.resend.com/emails", {
@@ -29,6 +42,7 @@ async function sendEmail(params: {
       text: params.text,
       html: params.html,
       reply_to: params.replyTo,
+      attachments: params.attachments,
     }),
   });
 
@@ -36,7 +50,10 @@ async function sendEmail(params: {
     console.error(
       `[refresh-kiwi] Resend email failed (${response.status}) for "${params.subject}" to ${params.to}`,
     );
+    return false;
   }
+
+  return true;
 }
 
 function shell(
@@ -459,6 +476,62 @@ export async function sendFreeFollowUpEmail(params: {
  * window closes. Transactional (a service-state change), so it is not gated
  * on marketing consent.
  */
+export async function sendWebsiteCostCalculatorBreakdownEmail(params: {
+  to: string;
+  inputs: CalculatorInputs;
+  result: CalculatorResult;
+  pdfBase64: string;
+}): Promise<boolean> {
+  const selectedAddOns = ADD_ON_OPTIONS.filter((option) => params.inputs[option.key]).map(
+    (option) => option.label,
+  );
+  const totalRange = formatGbpRange(params.result.total);
+  const tryUrl = buildAppUrl("/#hero");
+
+  const textLines = [
+    "Your UK website cost breakdown",
+    "",
+    `Pages: ${pageBandLabel(params.inputs.pages)}`,
+    `Add-ons: ${selectedAddOns.length ? selectedAddOns.join(", ") : "None"}`,
+    "",
+    `Typical UK build range: ${totalRange}`,
+    calculatorDisclaimer,
+    "",
+    `Refresh Kiwi: £${KIWI_PRO_MONTHLY_GBP}/month — hosting, unlimited plain-English or voice edits.`,
+    "",
+    `Try Refresh Kiwi free: ${tryUrl}`,
+  ];
+
+  return sendEmail({
+    to: params.to,
+    subject: "Your UK website cost breakdown",
+    text: textLines.join("\n"),
+    html: shell(`
+      ${heading("Your UK website cost breakdown")}
+      <p><strong>Pages:</strong> ${escapeHtml(pageBandLabel(params.inputs.pages))}</p>
+      <p><strong>Add-ons:</strong> ${escapeHtml(selectedAddOns.length ? selectedAddOns.join(", ") : "None")}</p>
+      ${card(`
+        <p style="margin:0 0 8px;font-weight:700">Typical UK build range</p>
+        <p style="margin:0;font-size:24px;font-weight:700">${escapeHtml(totalRange)}</p>
+        <p style="margin:12px 0 0;font-size:13px;color:#666">${escapeHtml(calculatorDisclaimer)}</p>
+      `)}
+      ${card(`
+        <p style="margin:0 0 8px;font-weight:700">Refresh Kiwi</p>
+        <p style="margin:0;font-size:20px;font-weight:700">£${KIWI_PRO_MONTHLY_GBP}/month</p>
+        <p style="margin:12px 0 0">Hosting, unlimited plain-English or voice edits, extra pages, custom domain.</p>
+      `)}
+      <p>${button(tryUrl, "Try Refresh Kiwi free")}</p>
+      <p style="font-size:13px;color:#666">Your PDF breakdown is attached.</p>
+    `),
+    attachments: [
+      {
+        filename: "refresh-kiwi-website-cost-breakdown.pdf",
+        content: params.pdfBase64,
+      },
+    ],
+  });
+}
+
 export async function sendExpiryReminderEmail(params: {
   to: string;
   brandName?: string | null;

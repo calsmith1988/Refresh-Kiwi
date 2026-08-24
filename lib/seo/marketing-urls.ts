@@ -8,6 +8,7 @@ export const marketingPublicPaths = [
   "/about-us",
   "/contact-us",
   "/ai-info",
+  "/website-cost-calculator",
   "/blog",
   ...marketingLandingPages.map((page) => `/${page.slug}`),
   ...legalPageList.map((page) => `/${page.slug}`),
