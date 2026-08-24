@@ -1,6 +1,5 @@
 import Link from "next/link";
 
-import BlogRefreshForm from "@/components/BlogRefreshForm";
 import SiteLogo from "@/components/SiteLogo";
 import {
   buildFaqJsonLd,
@@ -115,13 +114,19 @@ export default function MarketingLandingPage({ page }: MarketingLandingPageProps
 
         <section className="mt-12 rounded-[2rem] bg-kiwi-green p-8">
           <h2 className="font-fraunces text-3xl font-semibold tracking-tight">
-            Paste your URL. See it refreshed in about two minutes.
+            See what your website could look like refreshed.
           </h2>
           <p className="mt-3 max-w-2xl text-sm leading-7 text-black/65">
-            Free preview. Your live site stays exactly where it is until you
-            decide to publish. No signup required.
+            Try it free on the homepage — start from your website address, your
+            Google listing, or a short description of your business. Refreshing
+            a URL never changes your live site.
           </p>
-          <BlogRefreshForm />
+          <Link
+            href="/#hero"
+            className="mt-6 inline-flex items-center rounded-full bg-[#141811] px-6 py-3 text-sm font-bold text-white transition hover:bg-black"
+          >
+            Try Refresh Kiwi free
+          </Link>
         </section>
 
         {page.relatedLinks.length ? (
