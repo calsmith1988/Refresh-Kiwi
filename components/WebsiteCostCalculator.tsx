@@ -120,7 +120,7 @@ export default function WebsiteCostCalculator() {
 
           <section
             aria-label="Website cost calculator"
-            className="mt-8 rounded-[1.75rem] border border-black/10 bg-[#faf8f1] p-5 sm:p-6"
+            className="mt-8 rounded-3xl border border-black/10 bg-[#faf8f1] p-5 sm:p-6"
           >
             <fieldset>
               <legend className="text-sm font-semibold text-black/75">
@@ -162,7 +162,7 @@ export default function WebsiteCostCalculator() {
                       key={option.key}
                       className={`flex cursor-pointer items-start gap-3 rounded-2xl border px-4 py-3 transition ${
                         active
-                          ? "border-[#c5e66a] bg-[#eef8c8]"
+                          ? "border-kiwi-green bg-kiwi-green/30"
                           : "border-black/10 bg-white hover:border-black/20"
                       }`}
                     >
@@ -190,7 +190,7 @@ export default function WebsiteCostCalculator() {
               Pick your options — typical range, not an invoice.
             </p>
 
-            <div className="mt-6 rounded-[1.5rem] border border-black/10 bg-white p-5">
+            <div className="mt-6 rounded-3xl border border-black/10 bg-white p-5">
               <h2 className="font-fraunces text-2xl font-semibold tracking-tight">
                 Typical UK range for what you picked
               </h2>
@@ -248,7 +248,7 @@ export default function WebsiteCostCalculator() {
               </div>
             </div>
 
-            <div className="mt-4 rounded-[1.5rem] bg-[#c5e66a] p-5">
+            <div className="mt-4 rounded-3xl bg-kiwi-green p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-black/55">
                 Refresh Kiwi
               </p>
@@ -270,7 +270,7 @@ export default function WebsiteCostCalculator() {
             </div>
           </section>
 
-          <section className="mt-8 rounded-[1.75rem] border border-black/10 bg-[#faf8f1] p-5 sm:p-6">
+          <section className="mt-8 rounded-3xl border border-black/10 bg-[#faf8f1] p-5 sm:p-6">
             <h2 className="font-fraunces text-2xl font-semibold tracking-tight">
               Want the numbers in a PDF you can keep?
             </h2>
@@ -301,7 +301,7 @@ export default function WebsiteCostCalculator() {
               {submitMessage ? (
                 <p
                   className={`text-sm leading-6 ${
-                    submitState === "error" ? "text-[#B4451F]" : "text-black/65"
+                    submitState === "error" ? "text-red-700" : "text-black/65"
                   }`}
                   role="status"
                 >
@@ -311,7 +311,7 @@ export default function WebsiteCostCalculator() {
             </form>
           </section>
 
-          <section className="mt-10 rounded-[1.75rem] bg-[#141811] p-6 text-white sm:p-8">
+          <section className="mt-10 rounded-3xl bg-[#141811] p-6 text-white sm:p-8">
             <h2 className="font-fraunces text-2xl font-semibold tracking-tight sm:text-3xl">
               See your site for £{KIWI_PRO_MONTHLY_GBP} a month
             </h2>
@@ -320,7 +320,7 @@ export default function WebsiteCostCalculator() {
             </p>
             <Link
               href="/#hero"
-              className="mt-5 inline-flex rounded-full bg-[#c5e66a] px-5 py-3 text-sm font-semibold text-black transition hover:bg-[#d4f07a]"
+              className="mt-5 inline-flex rounded-full bg-kiwi-green px-5 py-3 text-sm font-bold text-black transition hover:bg-kiwi-green-hover"
             >
               Try Refresh Kiwi free
             </Link>
