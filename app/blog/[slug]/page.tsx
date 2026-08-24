@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import BlogRefreshForm from "@/components/BlogRefreshForm";
 import SiteLogo from "@/components/SiteLogo";
 import {
   blogAuthor,
@@ -181,7 +180,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
             </Link>
           </div>
           <Link
-            href="/#refresh-input"
+            href="/#hero"
             className="rounded-full bg-kiwi-green px-4 py-2 text-sm font-bold transition hover:bg-kiwi-green-hover"
           >
             Refresh my website
@@ -279,11 +278,16 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
             See what your website could look like refreshed.
           </h2>
           <p className="mt-3 max-w-2xl text-sm leading-7 text-black/65">
-            Paste your current website address and Refresh Kiwi will create a
-            separate preview. Your real website stays unchanged until you choose
-            to publish.
+            Try it free on the homepage — start from your website address, your
+            Google listing, or a short description of your business. Refreshing
+            a URL never changes your live site.
           </p>
-          <BlogRefreshForm />
+          <Link
+            href="/#hero"
+            className="mt-6 inline-flex items-center rounded-full bg-[#141811] px-6 py-3 text-sm font-bold text-white transition hover:bg-black"
+          >
+            Try Refresh Kiwi free
+          </Link>
         </section>
 
         {related.length ? (
