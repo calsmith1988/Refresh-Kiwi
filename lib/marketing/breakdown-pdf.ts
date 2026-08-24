@@ -1,9 +1,14 @@
 import type { CalculatorInputs, CalculatorResult } from "@/lib/marketing/website-cost-calculator";
 import {
-  ADD_ON_OPTIONS,
+  ADD_ON_REFERENCE,
   calculatorDisclaimer,
+  calculatorPdfTitle,
+  formatGbpAddOn,
   formatGbpRange,
   KIWI_PRO_MONTHLY_GBP,
+  ONGOING_AGENCY_CARE_RANGE,
+  ONGOING_DIY_RANGE,
+  PAGE_BAND_REFERENCE,
   pageBandLabel,
 } from "@/lib/marketing/website-cost-calculator";
 
@@ -59,31 +64,36 @@ export function buildWebsiteCostBreakdownPdfBytes(params: {
   inputs: CalculatorInputs;
   result: CalculatorResult;
 }): Uint8Array {
-  const selectedAddOns = ADD_ON_OPTIONS.filter((option) => params.inputs[option.key]).map(
-    (option) => option.label,
-  );
-
   const bodyLines = [
-    "Refresh Kiwi — UK Website Cost Breakdown",
+    calculatorPdfTitle,
     "",
-    "Your inputs",
-    `Pages: ${pageBandLabel(params.inputs.pages)}`,
-    `Add-ons: ${selectedAddOns.length ? selectedAddOns.join(", ") : "None"}`,
+    "1. How to read this",
+    calculatorDisclaimer,
     "",
-    "Typical UK agency / freelancer build (2026)",
-    ...params.result.lines.map(
-      (line) => `  ${line.label}: ${formatGbpRange(line.range)}`,
+    "2. Your band",
+    `You picked: ${pageBandLabel(params.inputs.pages)}.`,
+    `Typical range for what you picked: ${formatGbpRange(params.result.total)}.`,
+    "Locked page-count ranges:",
+    ...PAGE_BAND_REFERENCE.map(
+      (band) => `  ${band.label} pages: ${formatGbpRange(band.range)}`,
     ),
     "",
-    `Total typical range: ${formatGbpRange(params.result.total)}`,
+    "3. The extras that inflate the invoice",
+    ...ADD_ON_REFERENCE.map(
+      (addOn) => `  ${addOn.label}: ${formatGbpAddOn(addOn.range)}`,
+    ),
     "",
-    "Refresh Kiwi alternative",
-    `Kiwi Pro: £${KIWI_PRO_MONTHLY_GBP}/month`,
-    "Hosting, unlimited plain-English or voice edits, extra pages, custom domain.",
-    "Start from your URL, Google listing, or describe the business (type or voice).",
-    "About two minutes to a preview. Your live site is not changed until you switch.",
+    "4. The monthly bit people forget",
+    `  DIY builders: ${formatGbpRange(ONGOING_DIY_RANGE)}/month`,
+    `  Agency care: ${formatGbpRange(ONGOING_AGENCY_CARE_RANGE)}/month`,
     "",
-    calculatorDisclaimer,
+    "5. Refresh Kiwi at £8 a month",
+    `  £${KIWI_PRO_MONTHLY_GBP}/month (US$11 / CA$15 / AU$17). Hosting + unlimited plain-English or voice edits. One plan.`,
+    "  Start from a URL, a Google listing, or a description.",
+    "  Refreshing a URL does not touch the live site.",
+    "",
+    "6. When £8 is the wrong tool",
+    "  CMS, theme store, cart-first shop.",
     "",
     "Try Refresh Kiwi free: https://refresh.kiwi",
   ];
@@ -155,7 +165,8 @@ export function downloadWebsiteCostBreakdownPdf(params: {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = params.filename ?? "refresh-kiwi-website-cost-breakdown.pdf";
+  anchor.download =
+    params.filename ?? "what-a-uk-website-usually-costs-refresh-kiwi.pdf";
   anchor.click();
   URL.revokeObjectURL(url);
 }

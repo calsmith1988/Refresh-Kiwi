@@ -1,10 +1,9 @@
 import { buildAppUrl, getEmailFrom, getResendApiKey } from "@/lib/email/config";
 import {
-  ADD_ON_OPTIONS,
   calculatorDisclaimer,
+  calculatorPdfTitle,
   formatGbpRange,
   KIWI_PRO_MONTHLY_GBP,
-  pageBandLabel,
   type CalculatorInputs,
   type CalculatorResult,
 } from "@/lib/marketing/website-cost-calculator";
@@ -482,50 +481,42 @@ export async function sendWebsiteCostCalculatorBreakdownEmail(params: {
   result: CalculatorResult;
   pdfBase64: string;
 }): Promise<boolean> {
-  const selectedAddOns = ADD_ON_OPTIONS.filter((option) => params.inputs[option.key]).map(
-    (option) => option.label,
-  );
   const totalRange = formatGbpRange(params.result.total);
   const tryUrl = buildAppUrl("/#hero");
 
   const textLines = [
-    "Your UK website cost breakdown",
+    calculatorPdfTitle,
     "",
-    `Pages: ${pageBandLabel(params.inputs.pages)}`,
-    `Add-ons: ${selectedAddOns.length ? selectedAddOns.join(", ") : "None"}`,
-    "",
-    `Typical UK build range: ${totalRange}`,
+    `Typical UK range for what you picked: ${totalRange}`,
     calculatorDisclaimer,
     "",
-    `Refresh Kiwi: £${KIWI_PRO_MONTHLY_GBP}/month — hosting, unlimited plain-English or voice edits.`,
+    `Refresh Kiwi: £${KIWI_PRO_MONTHLY_GBP}/month (US$11 / CA$15 / AU$17). Hosting + unlimited plain-English or voice edits. One plan.`,
     "",
     `Try Refresh Kiwi free: ${tryUrl}`,
   ];
 
   return sendEmail({
     to: params.to,
-    subject: "Your UK website cost breakdown",
+    subject: calculatorPdfTitle,
     text: textLines.join("\n"),
     html: shell(`
-      ${heading("Your UK website cost breakdown")}
-      <p><strong>Pages:</strong> ${escapeHtml(pageBandLabel(params.inputs.pages))}</p>
-      <p><strong>Add-ons:</strong> ${escapeHtml(selectedAddOns.length ? selectedAddOns.join(", ") : "None")}</p>
+      ${heading(calculatorPdfTitle)}
       ${card(`
-        <p style="margin:0 0 8px;font-weight:700">Typical UK build range</p>
+        <p style="margin:0 0 8px;font-weight:700">Typical UK range for what you picked</p>
         <p style="margin:0;font-size:24px;font-weight:700">${escapeHtml(totalRange)}</p>
         <p style="margin:12px 0 0;font-size:13px;color:#666">${escapeHtml(calculatorDisclaimer)}</p>
       `)}
       ${card(`
         <p style="margin:0 0 8px;font-weight:700">Refresh Kiwi</p>
         <p style="margin:0;font-size:20px;font-weight:700">£${KIWI_PRO_MONTHLY_GBP}/month</p>
-        <p style="margin:12px 0 0">Hosting, unlimited plain-English or voice edits, extra pages, custom domain.</p>
+        <p style="margin:12px 0 0">US$11 / CA$15 / AU$17. Hosting + unlimited plain-English or voice edits. One plan.</p>
       `)}
       <p>${button(tryUrl, "Try Refresh Kiwi free")}</p>
       <p style="font-size:13px;color:#666">Your PDF breakdown is attached.</p>
     `),
     attachments: [
       {
-        filename: "refresh-kiwi-website-cost-breakdown.pdf",
+        filename: "what-a-uk-website-usually-costs-refresh-kiwi.pdf",
         content: params.pdfBase64,
       },
     ],

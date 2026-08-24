@@ -7,12 +7,17 @@ import SiteLogo from "@/components/SiteLogo";
 import { breakdownPdfBase64, downloadWebsiteCostBreakdownPdf } from "@/lib/marketing/breakdown-pdf";
 import {
   ADD_ON_OPTIONS,
+  ADD_ON_REFERENCE,
   calculateWebsiteCost,
   calculatorDisclaimer,
   calculatorFaqs,
+  formatGbpAddOn,
   formatGbpRange,
   KIWI_PRO_MONTHLY_GBP,
+  ONGOING_AGENCY_CARE_RANGE,
+  ONGOING_DIY_RANGE,
   PAGE_BAND_OPTIONS,
+  PAGE_BAND_REFERENCE,
   type CalculatorAddOnKey,
   type CalculatorInputs,
   type PageBand,
@@ -74,13 +79,13 @@ export default function WebsiteCostCalculator() {
 
       if (payload.emailSent) {
         setSubmitState("success");
-        setSubmitMessage("Check your inbox — your PDF breakdown is on its way.");
+        setSubmitMessage("Check your inbox — your PDF is on its way.");
         return;
       }
 
       downloadWebsiteCostBreakdownPdf({ inputs, result });
       setSubmitState("success");
-      setSubmitMessage("Downloaded your PDF. We saved your email for a follow-up.");
+      setSubmitMessage("Downloaded your PDF.");
     } catch (error) {
       downloadWebsiteCostBreakdownPdf({ inputs, result });
       setSubmitState("error");
@@ -98,17 +103,19 @@ export default function WebsiteCostCalculator() {
         <SiteLogo wordmark="always" />
 
         <article className="mt-10 rounded-[2rem] border border-black/10 bg-white p-6 shadow-xl shadow-black/5 sm:p-10">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-black/40">
-            UK website cost calculator
-          </p>
-          <h1 className="mt-3 font-fraunces text-4xl font-semibold tracking-tight sm:text-5xl">
+          <h1 className="font-fraunces text-4xl font-semibold tracking-tight sm:text-5xl">
             Website cost calculator
           </h1>
+          <p className="mt-3 text-sm font-medium leading-7 text-black/70 sm:text-base">
+            Typical UK prices for a small-business site. Not a quote. Not a
+            four-figure surprise after the third call.
+          </p>
           <p className="mt-4 text-sm leading-7 text-black/60 sm:text-base">
-            Wondering how much a website costs in the UK? Drag the sliders below —
-            well, tap the buttons — and see typical 2026 agency and freelancer ranges.
-            Then compare Kiwi Pro at £{KIWI_PRO_MONTHLY_GBP}/month. No meetings, no
-            four-figure surprise.
+            Tell us how many pages you need and what you want bolted on. This
+            website cost calculator shows the band a UK agency would usually
+            charge in 2026. Then it shows Refresh Kiwi: £{KIWI_PRO_MONTHLY_GBP} a
+            month. Free to try. Start from a URL, a Google listing, or a short
+            description of the business.
           </p>
 
           <section
@@ -117,7 +124,7 @@ export default function WebsiteCostCalculator() {
           >
             <fieldset>
               <legend className="text-sm font-semibold text-black/75">
-                How many pages?
+                Page band
               </legend>
               <div className="mt-3 grid gap-2 sm:grid-cols-3">
                 {PAGE_BAND_OPTIONS.map((option) => {
@@ -144,7 +151,7 @@ export default function WebsiteCostCalculator() {
 
             <fieldset className="mt-6">
               <legend className="text-sm font-semibold text-black/75">
-                Extras agencies often charge for
+                Extras
               </legend>
               <div className="mt-3 space-y-2">
                 {ADD_ON_OPTIONS.map((option) => {
@@ -177,10 +184,16 @@ export default function WebsiteCostCalculator() {
               </div>
             </fieldset>
 
+            <p className="mt-6 text-sm leading-6 text-black/60">
+              Ongoing: DIY builders ~{formatGbpRange(ONGOING_DIY_RANGE)}/month,
+              agency care ~{formatGbpRange(ONGOING_AGENCY_CARE_RANGE)}/month.
+              Pick your options — typical range, not an invoice.
+            </p>
+
             <div className="mt-6 rounded-[1.5rem] border border-black/10 bg-white p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-black/45">
-                Typical UK build range
-              </p>
+              <h2 className="font-fraunces text-2xl font-semibold tracking-tight">
+                Typical UK range for what you picked
+              </h2>
               <p className="mt-2 font-fraunces text-4xl font-semibold tracking-tight">
                 {formatGbpRange(result.total)}
               </p>
@@ -194,7 +207,45 @@ export default function WebsiteCostCalculator() {
                   </li>
                 ))}
               </ul>
-              <p className="mt-4 text-xs leading-5 text-black/50">{calculatorDisclaimer}</p>
+              <p className="mt-4 text-sm leading-6 text-black/60">{calculatorDisclaimer}</p>
+
+              <div className="mt-6 border-t border-black/10 pt-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-black/45">
+                  Build bands
+                </p>
+                <ul className="mt-2 space-y-1 text-sm leading-6 text-black/60">
+                  {PAGE_BAND_REFERENCE.map((band) => (
+                    <li key={band.label}>
+                      {band.label} pages: {formatGbpRange(band.range)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="mt-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-black/45">
+                  Add-ons
+                </p>
+                <ul className="mt-2 space-y-1 text-sm leading-6 text-black/60">
+                  {ADD_ON_REFERENCE.map((addOn) => (
+                    <li key={addOn.label}>
+                      {addOn.label}: {formatGbpAddOn(addOn.range)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="mt-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-black/45">
+                  Ongoing
+                </p>
+                <ul className="mt-2 space-y-1 text-sm leading-6 text-black/60">
+                  <li>DIY builders: ~{formatGbpRange(ONGOING_DIY_RANGE)}/month</li>
+                  <li>
+                    Agency care: ~{formatGbpRange(ONGOING_AGENCY_CARE_RANGE)}/month
+                  </li>
+                </ul>
+              </div>
             </div>
 
             <div className="mt-4 rounded-[1.5rem] bg-[#c5e66a] p-5">
@@ -204,28 +255,29 @@ export default function WebsiteCostCalculator() {
               <p className="mt-2 font-fraunces text-3xl font-semibold tracking-tight">
                 £{KIWI_PRO_MONTHLY_GBP}/month
               </p>
-              <p className="mt-2 text-sm leading-6 text-black/70">
-                Hosting, unlimited plain-English or voice edits, extra pages, custom
-                domain. Start from your URL, Google listing, or describe the business
-                — type or talk. About two minutes to a preview. Not a drag-and-drop
-                builder, not a CMS, not ecommerce-first.
+              <p className="mt-1 text-sm leading-6 text-black/70">
+                US$11 / CA$15 / AU$17. Hosting + unlimited plain-English or voice
+                edits. One plan.
               </p>
-              <Link
-                href="/#hero"
-                className="mt-4 inline-flex rounded-full bg-black px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#141811]"
-              >
-                Try Refresh Kiwi free
-              </Link>
+              <p className="mt-3 text-sm leading-6 text-black/70">
+                If you refresh a URL, your existing website does not change. You
+                look at a new version first. Take the old one down later if you
+                want.
+              </p>
+              <p className="mt-3 text-sm leading-6 text-black/70">
+                Not a CMS. Not a shop platform. Not a drag-and-drop builder.
+              </p>
             </div>
           </section>
 
           <section className="mt-8 rounded-[1.75rem] border border-black/10 bg-[#faf8f1] p-5 sm:p-6">
             <h2 className="font-fraunces text-2xl font-semibold tracking-tight">
-              Email me the PDF breakdown
+              Want the numbers in a PDF you can keep?
             </h2>
             <p className="mt-2 text-sm leading-6 text-black/60">
-              Optional. Your on-page result stays visible either way. We will send a
-              PDF with your inputs, the typical UK range, and how Refresh Kiwi compares.
+              Drop your email. We send the breakdown for the range you just saw,
+              plus what sits inside £{KIWI_PRO_MONTHLY_GBP} a month. No quote. No
+              sales call.
             </p>
             <form className="mt-4 space-y-3" onSubmit={handleBreakdownSubmit}>
               <label className="block">
@@ -244,7 +296,7 @@ export default function WebsiteCostCalculator() {
                 disabled={submitState === "loading"}
                 className="rounded-full bg-[#141811] px-5 py-3 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {submitState === "loading" ? "Sending…" : "Send PDF breakdown"}
+                {submitState === "loading" ? "Sending…" : "Send my PDF"}
               </button>
               {submitMessage ? (
                 <p
@@ -259,23 +311,22 @@ export default function WebsiteCostCalculator() {
             </form>
           </section>
 
-          <section className="mt-10">
-            <h2 className="font-fraunces text-2xl font-semibold tracking-tight">
-              How much does a website cost in the UK?
+          <section className="mt-10 rounded-[1.75rem] bg-[#141811] p-6 text-white sm:p-8">
+            <h2 className="font-fraunces text-2xl font-semibold tracking-tight sm:text-3xl">
+              See your site for £{KIWI_PRO_MONTHLY_GBP} a month
             </h2>
-            <p className="mt-4 text-sm leading-7 text-black/60 sm:text-base">
-              Most small businesses still get quoted a lump sum — design, build,
-              hosting setup, maybe copy and photos on top. In 2026, a straightforward
-              brochure site often lands somewhere between a few thousand pounds and,
-              with ecommerce or booking bolted on, quite a bit more. That is the
-              website cost UK owners bump into when they ask agencies for a quote.
+            <p className="mt-3 text-sm leading-7 text-white/70 sm:text-base">
+              Paste a URL, find the business on Google, or type what you do.
             </p>
-            <p className="mt-4 text-sm leading-7 text-black/60 sm:text-base">
-              Refresh Kiwi sits elsewhere on the map. Paste a URL, pick your Google
-              listing, or describe the business — typed or spoken. About two minutes
-              later you have a preview. Refreshing a URL does not change your live
-              site. Kiwi Pro is £{KIWI_PRO_MONTHLY_GBP}/month when you want hosting and
-              unlimited edits in plain English.
+            <Link
+              href="/#hero"
+              className="mt-5 inline-flex rounded-full bg-[#c5e66a] px-5 py-3 text-sm font-semibold text-black transition hover:bg-[#d4f07a]"
+            >
+              Try Refresh Kiwi free
+            </Link>
+            <p className="mt-4 text-sm leading-6 text-white/55">
+              No signup to preview. If you already have a site, it stays as it is
+              until you take it down.
             </p>
           </section>
 
@@ -300,15 +351,6 @@ export default function WebsiteCostCalculator() {
               ))}
             </div>
           </section>
-
-          <div className="mt-10 border-t border-black/10 pt-8">
-            <Link
-              href="/#hero"
-              className="text-sm font-semibold text-black/60 underline-offset-2 transition hover:text-black hover:underline"
-            >
-              Try Refresh Kiwi free
-            </Link>
-          </div>
         </article>
       </div>
     </main>

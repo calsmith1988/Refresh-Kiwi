@@ -6,9 +6,9 @@ import { buildFaqJsonLd } from "@/lib/marketing/landing-pages";
 import { calculatorFaqs } from "@/lib/marketing/website-cost-calculator";
 import { marketingCanonical } from "@/lib/seo/marketing";
 
-const pageTitle = "Website Cost Calculator UK (2026) | Refresh Kiwi";
+const pageTitle = "Website Cost Calculator — Typical UK Prices vs £8/month";
 const pageDescription =
-  "Free UK website cost calculator for 2026. Estimate typical agency and freelancer build ranges, then compare Refresh Kiwi at £8/month — hosting and unlimited plain-English edits.";
+  "A website cost calculator for UK small businesses. See a typical agency range for your pages and extras, then compare it with Refresh Kiwi at £8 a month. Ranges, not a quote.";
 
 export const metadata: Metadata = {
   title: pageTitle,

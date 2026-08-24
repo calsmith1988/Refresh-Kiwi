@@ -40,27 +40,27 @@ const ADD_ON_BANDS: Record<
   { label: string; range: CostRange }
 > = {
   ecommerce: {
-    label: "Ecommerce (shop & checkout)",
+    label: "Ecommerce",
     range: { low: 2500, high: 8000 },
   },
   booking: {
-    label: "Online booking",
+    label: "Booking",
     range: { low: 500, high: 2000 },
   },
   copywriting: {
-    label: "Professional copywriting",
+    label: "Copy",
     range: { low: 300, high: 1500 },
   },
   photos: {
-    label: "Professional photography",
+    label: "Photoshoot",
     range: { low: 200, high: 800 },
   },
 };
 
 export const PAGE_BAND_OPTIONS: { value: PageBand; label: string }[] = [
-  { value: "1-5", label: "1–5 pages" },
-  { value: "6-10", label: "6–10 pages" },
-  { value: "11+", label: "11+ pages" },
+  { value: "1-5", label: "1–5" },
+  { value: "6-10", label: "6–10" },
+  { value: "11+", label: "11+" },
 ];
 
 export const ADD_ON_OPTIONS: {
@@ -71,27 +71,47 @@ export const ADD_ON_OPTIONS: {
   {
     key: "ecommerce",
     label: "Ecommerce",
-    description: "Product pages, cart, and checkout",
+    description:
+      "Shown so the typical UK range is honest — we are not ecommerce-first.",
   },
   {
     key: "booking",
-    label: "Online booking",
-    description: "Appointments, calendars, or reservations",
+    label: "Booking",
+    description: "Appointments, calendars, or reservations.",
   },
   {
     key: "copywriting",
     label: "Copywriting",
-    description: "Someone writes the words for you",
+    description: "Someone writes the words for you.",
   },
   {
     key: "photos",
-    label: "Professional photos",
-    description: "A photographer, not your phone",
+    label: "Photoshoot",
+    description: "A photographer, not your phone.",
   },
 ];
 
+export const PAGE_BAND_REFERENCE = PAGE_BAND_OPTIONS.map((option) => ({
+  label: option.label,
+  range: PAGE_BANDS[option.value],
+}));
+
+export const ADD_ON_REFERENCE = ADD_ON_OPTIONS.map((option) => ({
+  label: ADD_ON_BANDS[option.key].label,
+  range: ADD_ON_BANDS[option.key].range,
+}));
+
+export const ONGOING_DIY_RANGE: CostRange = { low: 9, high: 29 };
+export const ONGOING_AGENCY_CARE_RANGE: CostRange = { low: 40, high: 200 };
+
+export const calculatorPdfTitle =
+  "What a UK website usually costs (and what £8 a month covers)";
+
 export function pageBandLabel(pages: PageBand): string {
-  return PAGE_BAND_OPTIONS.find((option) => option.value === pages)?.label ?? pages;
+  const label =
+    PAGE_BAND_OPTIONS.find((option) => option.value === pages)?.label ?? pages;
+
+  return `${label} pages`;
 }
 
 export function calculateWebsiteCost(inputs: CalculatorInputs): CalculatorResult {
@@ -135,35 +155,41 @@ export function formatGbpRange(range: CostRange): string {
   return `${formatter.format(range.low)}–${formatter.format(range.high)}`;
 }
 
+export function formatGbpAddOn(range: CostRange): string {
+  return `+${formatGbpRange(range)}`;
+}
+
 export const calculatorFaqs = [
   {
-    question: "How much does a website cost in the UK?",
-    answer:
-      "For a typical small-business site in 2026, UK agencies and freelancers often quote roughly £1,200–£3,000 for a simple 1–5 page build, £2,500–£5,000 for 6–10 pages, and £4,000–£8,000 for larger sites — before extras like ecommerce, booking, copy, or photography. Use the calculator above for your mix.",
+    question: "Is this a quote?",
+    answer: "No. Typical UK 2026 ranges from published guides.",
   },
   {
-    question: "Is this calculator a quote?",
-    answer:
-      "No. The ranges are typical 2026 UK market figures from published guides and agency rate cards — a ballpark, not a price from Refresh Kiwi or any specific agency. Your actual quote depends on scope, design, integrations, and who you hire.",
+    question: "Why so wide?",
+    answer: "Extras move the band. A five-page brochure is not a five-page shop.",
   },
   {
-    question: "Why is Refresh Kiwi £8/month?",
+    question: "What does Refresh Kiwi cost?",
     answer:
-      "Refresh Kiwi is not a custom agency build. You start from your URL, Google listing, or a short description of the business — typed or spoken — and get a fresh site in about two minutes. Kiwi Pro is £8/month for hosting, unlimited plain-English or voice edits, extra pages, and a custom domain. It is not ecommerce-first and not a drag-and-drop builder.",
+      "£8/month UK. US$11 / CA$15 / AU$17. Free to preview. One plan.",
   },
   {
-    question: "Will refreshing my URL change my live website?",
+    question: "Does my live site change?",
     answer:
-      "No. Pasting your current web address makes a separate preview. Your existing site stays exactly as it is until you decide to switch.",
+      "No. Refreshing a URL does not change the site you already have.",
   },
   {
-    question: "What if I need a shop or complex ecommerce?",
+    question: "Can this replace ecommerce?",
     answer:
-      "Refresh Kiwi is built for local service businesses — plumbers, salons, cafés, clinics, builders. It is not an ecommerce-first platform. If you need a full online shop, the calculator’s ecommerce band reflects what agencies typically charge; Refresh Kiwi may not be the right fit.",
+      "Not as a shop-first product. The add-on line is there so the range is honest.",
+  },
+  {
+    question: "Do I need a URL?",
+    answer: "No. URL, Google listing, or describe what you do.",
   },
 ] as const;
 
 export const KIWI_PRO_MONTHLY_GBP = 8;
 
 export const calculatorDisclaimer =
-  "Typical 2026 UK ranges from published guides — not a quote and not what Refresh Kiwi charges for a custom agency build.";
+  "These are typical 2026 ranges from published UK guides. They are not a quote.";
