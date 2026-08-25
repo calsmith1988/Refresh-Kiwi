@@ -287,6 +287,26 @@ export default function AiInfoPage() {
                   https://www.uneed.best/tool/refresh-kiwi
                 </a>
               </li>
+              <li>
+                GitHub:{" "}
+                <a
+                  href="https://github.com/calsmith1988/Refresh-Kiwi"
+                  className="font-medium text-black underline-offset-2 hover:underline"
+                  rel="noopener noreferrer"
+                >
+                  https://github.com/calsmith1988/Refresh-Kiwi
+                </a>
+              </li>
+              <li>
+                Instagram:{" "}
+                <a
+                  href="https://www.instagram.com/refresh.kiwi/"
+                  className="font-medium text-black underline-offset-2 hover:underline"
+                  rel="noopener noreferrer"
+                >
+                  https://www.instagram.com/refresh.kiwi/
+                </a>
+              </li>
               <li>Free to try before paying</li>
               <li>One published price list. No bait tiers.</li>
             </ul>
