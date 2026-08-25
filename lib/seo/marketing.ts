@@ -32,6 +32,14 @@ const KIWI_PRO_OFFER_MINOR_AMOUNTS: Record<SupportedCurrency, number> = {
 const KIWI_PRO_OFFER_DESCRIPTION =
   "Hosting, unlimited plain-English or voice edits, custom domain, extra pages, cancel anytime.";
 
+/** Verified official profiles only — each URL HEAD-checked before inclusion. */
+const OFFICIAL_PROFILE_URLS = [
+  "https://www.producthunt.com/products/refresh-kiwi",
+  "https://www.uneed.best/tool/refresh-kiwi",
+  "https://github.com/calsmith1988/Refresh-Kiwi",
+  "https://www.instagram.com/refresh.kiwi/",
+] as const;
+
 /** Visible homepage FAQ copy — shared with JSON-LD so schema matches rendered text. */
 export const kiwiProCostFaqAnswer =
   "Free to try. Kiwi Pro is £8/month, US$11/month, CA$15/month, or AU$17/month — unlimited edits including voice and plain English. We host it. No credits, no token maze.";
@@ -160,6 +168,7 @@ export function buildHomepageJsonLd() {
       "A small-business website in about two minutes. Start from a URL, a Google listing, or a description of your business by type or voice.",
     offers: buildKiwiProOffers(),
     image: ogImageUrl,
+    sameAs: [...OFFICIAL_PROFILE_URLS],
   };
 
   const faqPage = {
