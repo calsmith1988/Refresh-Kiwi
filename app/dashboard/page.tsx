@@ -11,7 +11,11 @@ import SiteLogo from "@/components/SiteLogo";
 import { usePricing } from "@/components/usePricing";
 import kiwiGroupBackground from "../../kiwi-group-background.png";
 import { friendlyEditRequestSummary } from "@/lib/assets/placement";
-import { customDomainStatusLabel } from "@/lib/domains/status";
+import {
+  CLOUDFLARE_DNS_PURGE_URL,
+  customDomainStatusLabel,
+  GOOGLE_DNS_PURGE_URL,
+} from "@/lib/domains/status";
 import {
   isNewPageEditRequest,
   NEW_PAGE_EDIT_MESSAGE,
@@ -3910,13 +3914,16 @@ export default function DashboardPage() {
                                   <p className="mt-1 text-xs leading-5 text-black/55">
                                     {website.customDomainStatus === "provisioning" ? (
                                       <>
-                                        We can see the records
-                                        {website.customDomainProvider.name
-                                          ? ` on ${website.customDomainProvider.name}`
-                                          : ""}
-                                        . The security certificate usually
-                                        finishes in a few minutes — we&apos;ll
-                                        email you when the domain opens.
+                                        {website.customDomainError &&
+                                        !website.customDomainError.startsWith(
+                                          "We can see your DNS records",
+                                        )
+                                          ? website.customDomainError
+                                          : `We can see the records${
+                                              website.customDomainProvider.name
+                                                ? ` on ${website.customDomainProvider.name}`
+                                                : ""
+                                            }. The security certificate usually finishes in a few minutes — we'll email you when the domain opens.`}
                                         {website.status === "live" ? (
                                           <>
                                             {" "}
@@ -4001,6 +4008,33 @@ export default function DashboardPage() {
                                 They do not need access to your Refresh Kiwi
                                 account.
                               </p>
+                              {website.customDomainStatus === "pending" ||
+                              website.customDomainStatus === "provisioning" ? (
+                                <p className="mt-2 text-xs leading-5 text-black/45">
+                                  If the domain used to live on another host and
+                                  the certificate is taking a long time, leftover
+                                  A/AAAA records on www are the usual cause. After
+                                  those are gone, flush{" "}
+                                  <a
+                                    href={CLOUDFLARE_DNS_PURGE_URL}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="font-semibold text-black underline decoration-black/25 underline-offset-2"
+                                  >
+                                    Cloudflare DNS
+                                  </a>{" "}
+                                  and{" "}
+                                  <a
+                                    href={GOOGLE_DNS_PURGE_URL}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="font-semibold text-black underline decoration-black/25 underline-offset-2"
+                                  >
+                                    Google DNS
+                                  </a>{" "}
+                                  for {website.customDomain}.
+                                </p>
+                              ) : null}
                               <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                                 {website.customDomainHelpUrl ? (
                                   <>

@@ -1,3 +1,4 @@
+import { diagnoseCustomDomain, type DomainDiagnosis } from "@/lib/domains/diagnose";
 import { isDomainHttpsReady } from "@/lib/domains/https";
 import { relatedCustomHosts } from "@/lib/domains/records";
 import {
@@ -15,17 +16,21 @@ export type DomainReadiness = {
   renderDomain: RenderCustomDomain;
   status: InProgressDomainStatus | "connected";
   error: string | null;
+  diagnosis: DomainDiagnosis;
 };
 
 /**
  * Render "verified" only means they can see the DNS records. The certificate
  * can still be missing, so we also probe HTTPS before calling the domain
- * connected.
+ * connected. Diagnosis explains leftover A/AAAA, CAA, and stale public DNS.
  */
 export async function assessCustomDomain(
   domain: string,
 ): Promise<DomainReadiness> {
-  const renderDomain = await refreshRenderCustomDomain(domain);
+  const [renderDomain, diagnosis] = await Promise.all([
+    refreshRenderCustomDomain(domain),
+    diagnoseCustomDomain(domain),
+  ]);
 
   // Render only verifies (and issues a certificate for) the exact hostname
   // asked. We store www, so nudge the apex too or it sits unverified forever.
@@ -45,7 +50,8 @@ export async function assessCustomDomain(
     return {
       renderDomain,
       status: "pending",
-      error: DOMAIN_DNS_PENDING_MESSAGE,
+      error: diagnosis.ownerMessage ?? DOMAIN_DNS_PENDING_MESSAGE,
+      diagnosis,
     };
   }
 
@@ -53,7 +59,8 @@ export async function assessCustomDomain(
     return {
       renderDomain,
       status: "provisioning",
-      error: DOMAIN_CERT_PROVISIONING_MESSAGE,
+      error: diagnosis.ownerMessage ?? DOMAIN_CERT_PROVISIONING_MESSAGE,
+      diagnosis,
     };
   }
 
@@ -61,5 +68,6 @@ export async function assessCustomDomain(
     renderDomain,
     status: "connected",
     error: null,
+    diagnosis,
   };
 }

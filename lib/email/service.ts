@@ -426,6 +426,44 @@ export async function sendSubscriptionCanceledEmail(params: { to: string }) {
   });
 }
 
+export async function sendDomainCertificateStuckEmail(params: {
+  domain: string;
+  ownerEmail: string | null;
+  slug: string;
+  brandName: string | null;
+  stuckMinutes: number;
+  playbookLines: string[];
+}) {
+  const to =
+    process.env.SUPPORT_EMAIL?.trim() || "info@refresh.kiwi";
+  const adminUrl = buildAppUrl("/admin");
+  const liveUrl = `https://${params.domain}`;
+  const playbook = params.playbookLines.join("\n");
+
+  await sendEmail({
+    to,
+    subject: `Domain certificate stuck: ${params.domain}`,
+    text: [
+      `${params.domain} has been issuing a certificate for about ${params.stuckMinutes} minutes.`,
+      "",
+      `Owner: ${params.ownerEmail ?? "unknown"}`,
+      `Website: ${params.brandName ?? params.slug} (${params.slug})`,
+      `Open: ${liveUrl}`,
+      `Admin: ${adminUrl}`,
+      "",
+      playbook,
+    ].join("\n"),
+    html: shell(`
+      ${heading("Domain certificate still issuing.")}
+      <p><strong>${escapeHtml(params.domain)}</strong> has been issuing a certificate for about ${params.stuckMinutes} minutes.</p>
+      <p>Owner: ${escapeHtml(params.ownerEmail ?? "unknown")}<br />
+      Website: ${escapeHtml(params.brandName ?? params.slug)} (${escapeHtml(params.slug)})</p>
+      <p>${button(adminUrl, "Open admin domains")}</p>
+      ${card(`<pre style="white-space:pre-wrap;font-size:13px;margin:0">${escapeHtml(playbook)}</pre>`)}
+    `),
+  });
+}
+
 export async function sendDomainConnectedEmail(params: {
   to: string;
   domain: string;

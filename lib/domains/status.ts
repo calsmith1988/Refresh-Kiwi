@@ -19,6 +19,12 @@ export const DOMAIN_DNS_PENDING_MESSAGE =
 export const DOMAIN_CERT_PROVISIONING_MESSAGE =
   "We can see your DNS records. The security certificate usually finishes in a few minutes — we'll email you when the domain opens.";
 
+/** How long a domain may sit on "issuing certificate" before ops gets the playbook. */
+export const DOMAIN_CERT_STUCK_MS = 45 * 60 * 1000;
+
+export const CLOUDFLARE_DNS_PURGE_URL = "https://one.one.one.one/purge-cache/";
+export const GOOGLE_DNS_PURGE_URL = "https://dns.google/cache";
+
 export function isInProgressDomainStatus(
   status: string,
 ): status is InProgressDomainStatus {

@@ -9,6 +9,20 @@ export type DomainProviderInfo = {
   steps: string[];
 };
 
+const LEFTOVER_RECORD_STEP =
+  "If the domain used to point at Shopify, Afrihost, or another host, delete leftover A and AAAA records on www — www must be CNAME only.";
+
+function withLeftoverStep(provider: DomainProviderInfo): DomainProviderInfo {
+  if (provider.steps.includes(LEFTOVER_RECORD_STEP)) {
+    return provider;
+  }
+
+  return {
+    ...provider,
+    steps: [...provider.steps, LEFTOVER_RECORD_STEP],
+  };
+}
+
 const GENERIC_PROVIDER: DomainProviderInfo = {
   id: "generic",
   name: "your domain provider",
@@ -18,6 +32,7 @@ const GENERIC_PROVIDER: DomainProviderInfo = {
     "Open DNS settings, DNS records, or Manage DNS.",
     "Add the two records exactly as shown below.",
     "Save your changes, then Refresh Kiwi will check the connection automatically.",
+    LEFTOVER_RECORD_STEP,
   ],
 };
 
@@ -83,6 +98,25 @@ const PROVIDERS: Array<DomainProviderInfo & { nameserverMatches: string[] }> = [
     ],
   },
   {
+    id: "afrihost",
+    name: "Afrihost",
+    loginUrl: "https://clientzone.afrihost.com/",
+    nameserverMatches: [
+      "dns1.co.za",
+      "dns2.co.za",
+      "otherdns.com",
+      "otherdns.net",
+      "aserv.co.za",
+    ],
+    steps: [
+      "Log in to Afrihost Client Zone and open your domain.",
+      "Open DNS / Zone Manager.",
+      "Add the two records exactly as shown below.",
+      "Delete leftover A and AAAA records on www — Afrihost often leaves an old A pointing at their hosting. www must be CNAME only.",
+      "Save your changes. Afrihost can take a little while to update.",
+    ],
+  },
+  {
     id: "hostinger",
     name: "Hostinger",
     loginUrl: "https://hpanel.hostinger.com/",
@@ -121,7 +155,7 @@ const PROVIDERS: Array<DomainProviderInfo & { nameserverMatches: string[] }> = [
 ];
 
 export function genericDomainProvider(): DomainProviderInfo {
-  return GENERIC_PROVIDER;
+  return withLeftoverStep(GENERIC_PROVIDER);
 }
 
 // The dashboard polls /api/websites frequently, so cache NS lookups and cap
@@ -147,15 +181,15 @@ async function lookupProvider(domain: string): Promise<DomainProviderInfo> {
   );
 
   if (!provider) {
-    return GENERIC_PROVIDER;
+    return withLeftoverStep(GENERIC_PROVIDER);
   }
 
-  return {
+  return withLeftoverStep({
     id: provider.id,
     name: provider.name,
     loginUrl: provider.loginUrl,
     steps: provider.steps,
-  };
+  });
 }
 
 export async function detectDomainProvider(

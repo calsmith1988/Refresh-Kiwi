@@ -9,6 +9,7 @@ import {
   ensureWwwDomain,
   relatedCustomHosts,
 } from "@/lib/domains/records";
+import { maybeNotifyStuckCertificate } from "@/lib/domains/stuck-notify";
 import { assessCustomDomain } from "@/lib/domains/verify";
 import { buildAppUrl } from "@/lib/email/config";
 import {
@@ -155,6 +156,15 @@ export async function PATCH(_request: Request, context: RouteContext) {
     }
 
     const assessment = await assessCustomDomain(website.customDomain);
+    await maybeNotifyStuckCertificate({
+      websiteId,
+      userId: auth.user.id,
+      domain: website.customDomain,
+      status: assessment.status,
+      previousStatus: website.customDomainStatus,
+      lastCheckedAt: website.customDomainLastCheckedAt,
+      diagnosis: assessment.diagnosis,
+    });
     const updated = await updateOwnedWebsiteDomainStatus({
       websiteId,
       userId: auth.user.id,

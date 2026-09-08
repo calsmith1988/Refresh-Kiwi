@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { getDb, schema } from "@/lib/db";
 import { DOMAIN_STATUSES_IN_PROGRESS } from "@/lib/domains/status";
+import { maybeNotifyStuckCertificate } from "@/lib/domains/stuck-notify";
 import { assessCustomDomain } from "@/lib/domains/verify";
 import { sendOnce } from "@/lib/email/events";
 import { sendDomainConnectedEmail } from "@/lib/email/service";
@@ -55,6 +56,7 @@ export async function POST(request: Request) {
         userId: websites.userId,
         domain: websites.customDomain,
         status: websites.customDomainStatus,
+        lastCheckedAt: websites.customDomainLastCheckedAt,
         email: users.email,
       })
       .from(websites)
@@ -92,6 +94,16 @@ export async function POST(request: Request) {
       try {
         checked += 1;
         const assessment = await assessCustomDomain(domain);
+
+        await maybeNotifyStuckCertificate({
+          websiteId: candidate.websiteId,
+          userId,
+          domain,
+          status: assessment.status,
+          previousStatus: candidate.status,
+          lastCheckedAt: candidate.lastCheckedAt,
+          diagnosis: assessment.diagnosis,
+        });
 
         // Unchanged: no DB write, so customDomainLastCheckedAt keeps marking
         // when the user last acted and the 7-day cap holds.

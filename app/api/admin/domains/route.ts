@@ -4,6 +4,7 @@ import { recordAdminAction } from "@/lib/admin/audit";
 import { requireAdmin } from "@/lib/admin/guard";
 import { getAdminWebsite, listAdminDomains } from "@/lib/admin/service";
 import { isDomainHttpsReady } from "@/lib/domains/https";
+import { maybeNotifyStuckCertificate } from "@/lib/domains/stuck-notify";
 import { assessCustomDomain } from "@/lib/domains/verify";
 import {
   deleteRenderCustomDomain,
@@ -125,6 +126,15 @@ export async function PATCH(request: Request) {
 
   try {
     const assessment = await assessCustomDomain(website.customDomain);
+    await maybeNotifyStuckCertificate({
+      websiteId: website.id,
+      userId: website.userId,
+      domain: website.customDomain,
+      status: assessment.status,
+      previousStatus: website.customDomainStatus,
+      lastCheckedAt: website.customDomainLastCheckedAt,
+      diagnosis: assessment.diagnosis,
+    });
     const updated = await updateOwnedWebsiteDomainStatus({
       websiteId: website.id,
       userId: website.userId,

@@ -38,6 +38,7 @@ export default async function DomainHelpPage({ params }: PageProps) {
       brandName: websites.brandName,
       customDomain: websites.customDomain,
       customDomainStatus: websites.customDomainStatus,
+      customDomainError: websites.customDomainError,
     })
     .from(websites)
     .where(eq(websites.id, payload.websiteId))
@@ -79,9 +80,11 @@ export default async function DomainHelpPage({ params }: PageProps) {
           >
             {isConnected
               ? "Connected: the domain is live on Refresh Kiwi."
-              : isProvisioning
-                ? "Issuing certificate: the DNS records are in place. The security certificate usually finishes in a few minutes — Refresh Kiwi will email the website owner when the domain opens."
-                : "Waiting for DNS: add the records below, then Refresh Kiwi will keep checking automatically."}
+              : website.customDomainError
+                ? website.customDomainError
+                : isProvisioning
+                  ? "Issuing certificate: the DNS records are in place. The security certificate usually finishes in a few minutes — Refresh Kiwi will email the website owner when the domain opens."
+                  : "Waiting for DNS: add the records below, then Refresh Kiwi will keep checking automatically."}
           </div>
 
           <div className="mt-6 rounded-2xl bg-[#fbfaf6] p-4">
