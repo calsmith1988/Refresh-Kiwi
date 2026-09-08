@@ -218,7 +218,7 @@ export async function connectOwnedWebsiteDomain(params: {
 export async function updateOwnedWebsiteDomainStatus(params: {
   websiteId: string;
   userId: string;
-  status: "pending" | "connected" | "failed";
+  status: "pending" | "provisioning" | "connected" | "failed";
   error?: string | null;
   renderDomainId?: string | null;
 }) {
@@ -240,7 +240,11 @@ export async function updateOwnedWebsiteDomainStatus(params: {
       customDomainVerifiedAt:
         params.status === "connected"
           ? new Date()
-          : website.customDomainVerifiedAt,
+          : params.status === "pending" ||
+              params.status === "provisioning" ||
+              params.status === "failed"
+            ? null
+            : website.customDomainVerifiedAt,
       customDomainLastCheckedAt: new Date(),
       updatedAt: new Date(),
     })

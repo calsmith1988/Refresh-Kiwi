@@ -302,7 +302,7 @@ Do not reintroduce Next.js `after()` for long-running work. Enqueue a `backgroun
 
 Two Render cron jobs POST to the app with the `CRON_SECRET` bearer token:
 
-- `/api/cron/check-domains` - verifies pending custom domains.
+- `/api/cron/check-domains` - verifies pending/provisioning custom domains. Marks connected and sends the confirmation email only after HTTPS actually works (Render "verified" is not enough — the certificate can still be missing).
 - `/api/cron/lifecycle-emails` - sends the 24-hour free-plan follow-up.
 
 Optional post-deploy (or manual) IndexNow ping for **refresh.kiwi marketing URLs only** (Bing, Yandex, etc. — not Google):
@@ -329,7 +329,7 @@ curl -fsS -X POST "$NEXT_PUBLIC_APP_URL/api/cron/indexnow" \
 The retry flags matter: without them a brief window where the app is
 unreachable makes `curl` hang for ~2 minutes and then exit 28, which sends a
 false-alarm failure email. Both endpoints take an advisory lock and dedupe
-their side effects (`sendOnce`, and no DB write for still-pending domains), so
+their side effects (`sendOnce`, and no DB write for unchanged pending/provisioning domains), so
 a skipped or retried run is harmless — the next run picks up the same
 candidates.
 

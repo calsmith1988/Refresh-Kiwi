@@ -2,13 +2,19 @@ import { NextResponse } from "next/server";
 
 import { recordAdminAction } from "@/lib/admin/audit";
 import { requireAdmin } from "@/lib/admin/guard";
-import { listAdminDomains } from "@/lib/admin/service";
+import { getAdminWebsite, listAdminDomains } from "@/lib/admin/service";
+import { isDomainHttpsReady } from "@/lib/domains/https";
+import { assessCustomDomain } from "@/lib/domains/verify";
 import {
   deleteRenderCustomDomain,
   isRenderDomainVerified,
   listRenderCustomDomains,
 } from "@/lib/render/domains";
-import { normalizeCustomDomain } from "@/lib/websites/service";
+import {
+  normalizeCustomDomain,
+  toWebsiteResponse,
+  updateOwnedWebsiteDomainStatus,
+} from "@/lib/websites/service";
 
 export const runtime = "nodejs";
 
@@ -26,6 +32,13 @@ export async function GET() {
   const dbDomains = await listAdminDomains();
   const dbDomainNames = new Set(
     dbDomains.map((row) => row.domain?.toLowerCase()).filter(Boolean),
+  );
+
+  const domains = await Promise.all(
+    dbDomains.map(async (row) => ({
+      ...row,
+      httpsReady: row.domain ? await isDomainHttpsReady(row.domain) : false,
+    })),
   );
 
   let renderDomains: Array<{
@@ -47,7 +60,7 @@ export async function GET() {
           verified: isRenderDomainVerified(entry),
           kind: APP_DOMAINS.has(domain)
             ? ("app" as const)
-            : dbDomainNames.has(domain)
+            : isLinkedCustomerDomain(domain, dbDomainNames)
               ? ("linked" as const)
               : ("orphaned" as const),
         };
@@ -59,10 +72,87 @@ export async function GET() {
   }
 
   return NextResponse.json({
-    domains: dbDomains,
+    domains,
     render: renderDomains,
     renderError,
   });
+}
+
+function isLinkedCustomerDomain(domain: string, dbDomainNames: Set<string>) {
+  if (dbDomainNames.has(domain)) {
+    return true;
+  }
+
+  // We store www; the apex A record is part of the same connection.
+  if (dbDomainNames.has(`www.${domain}`)) {
+    return true;
+  }
+
+  return domain.startsWith("www.") && dbDomainNames.has(domain.slice(4));
+}
+
+export async function PATCH(request: Request) {
+  const auth = await requireAdmin();
+
+  if ("response" in auth) {
+    return auth.response;
+  }
+
+  let body: { websiteId?: string };
+
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  const websiteId = body.websiteId?.trim();
+
+  if (!websiteId) {
+    return NextResponse.json({ error: "websiteId is required" }, { status: 400 });
+  }
+
+  const website = await getAdminWebsite(websiteId);
+
+  if (!website?.customDomain || !website.userId) {
+    return NextResponse.json(
+      { error: "That website has no custom domain to check." },
+      { status: 400 },
+    );
+  }
+
+  try {
+    const assessment = await assessCustomDomain(website.customDomain);
+    const updated = await updateOwnedWebsiteDomainStatus({
+      websiteId: website.id,
+      userId: website.userId,
+      status: assessment.status,
+      error: assessment.error,
+      renderDomainId: assessment.renderDomain.id ?? null,
+    });
+
+    await recordAdminAction({
+      adminUserId: auth.user.id,
+      adminEmail: auth.user.email,
+      action: "recheck_custom_domain",
+      targetType: "website",
+      targetId: website.id,
+      details: {
+        domain: website.customDomain,
+        status: assessment.status,
+      },
+    });
+
+    return NextResponse.json({
+      website: toWebsiteResponse(updated),
+      connected: assessment.status === "connected",
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Failed to check domain";
+
+    return NextResponse.json({ error: message }, { status: 502 });
+  }
 }
 
 /** Removes an orphaned domain from the Render service. */
@@ -100,9 +190,15 @@ export async function DELETE(request: Request) {
 
   // Safety: never detach a domain that a live customer website still uses.
   const dbDomains = await listAdminDomains();
-  const linked = dbDomains.find(
-    (row) => row.domain?.toLowerCase() === domain,
-  );
+  const linked = dbDomains.find((row) => {
+    const stored = row.domain?.toLowerCase();
+
+    return (
+      stored === domain ||
+      stored === `www.${domain}` ||
+      domain === `www.${stored}`
+    );
+  });
 
   if (linked) {
     return NextResponse.json(

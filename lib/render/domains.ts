@@ -1,6 +1,6 @@
 const RENDER_API_BASE = "https://api.render.com/v1";
 
-type RenderCustomDomain = {
+export type RenderCustomDomain = {
   id?: string;
   name?: string;
   domain?: string;

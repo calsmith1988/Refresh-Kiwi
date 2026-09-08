@@ -137,6 +137,7 @@ type DomainsResponse = {
     domainError: string | null;
     verifiedAt: string | null;
     lastCheckedAt: string | null;
+    httpsReady: boolean;
   }>;
   render: Array<{
     domain: string;
@@ -606,6 +607,21 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
         body: JSON.stringify({ prompt }),
       });
       setNotice(`Edit queued for ${website.slug}.`);
+    });
+  };
+
+  const recheckDomain = (websiteId: string, domain: string) => {
+    void run(async () => {
+      const payload = await api<{ connected: boolean }>("/api/admin/domains", {
+        method: "PATCH",
+        body: JSON.stringify({ websiteId }),
+      });
+      setDomains(await api<DomainsResponse>("/api/admin/domains"));
+      setNotice(
+        payload.connected
+          ? `${domain} opens over HTTPS.`
+          : `${domain} is not opening over HTTPS yet — status updated.`,
+      );
     });
   };
 
@@ -1152,7 +1168,8 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
                 Refresh
               </button>
               <span className="text-xs text-gray-600">
-                Cross-references website domains against the Render service.
+                Database status can say connected while HTTPS is still failing.
+                Recheck probes the live hostname.
               </span>
             </div>
 
@@ -1166,8 +1183,10 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
                       <th className={th}>Website</th>
                       <th className={th}>Owner</th>
                       <th className={th}>Status</th>
+                      <th className={th}>HTTPS</th>
                       <th className={th}>Verified</th>
                       <th className={th}>Last checked</th>
+                      <th className={th}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1182,8 +1201,25 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
                           {row.domainStatus}
                           {row.domainError ? ` — ${row.domainError}` : ""}
                         </td>
+                        <td className={td}>
+                          {row.httpsReady ? "opens" : "TLS failing"}
+                        </td>
                         <td className={`${td} whitespace-nowrap`}>{formatDate(row.verifiedAt)}</td>
                         <td className={`${td} whitespace-nowrap`}>{formatDate(row.lastCheckedAt)}</td>
+                        <td className={td}>
+                          {row.domain ? (
+                            <button
+                              type="button"
+                              className={btn}
+                              disabled={busy}
+                              onClick={() => recheckDomain(row.websiteId, row.domain ?? "")}
+                            >
+                              Recheck
+                            </button>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

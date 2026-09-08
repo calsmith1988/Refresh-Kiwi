@@ -1,13 +1,11 @@
-import { and, eq, gt, lt, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, lt, or, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 import { getDb, schema } from "@/lib/db";
+import { DOMAIN_STATUSES_IN_PROGRESS } from "@/lib/domains/status";
+import { assessCustomDomain } from "@/lib/domains/verify";
 import { sendOnce } from "@/lib/email/events";
 import { sendDomainConnectedEmail } from "@/lib/email/service";
-import {
-  isRenderDomainVerified,
-  refreshRenderCustomDomain,
-} from "@/lib/render/domains";
 import { updateOwnedWebsiteDomainStatus } from "@/lib/websites/service";
 
 export const runtime = "nodejs";
@@ -44,11 +42,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ skipped: true, reason: "already running" });
     }
 
-    // customDomainLastCheckedAt is only written when the user connects or
-    // manually checks — the cron deliberately does not touch it for
-    // still-pending domains, so it anchors both windows below: skip domains
-    // connected in the last 10 minutes, and give up on domains that have been
-    // pending for over 7 days.
+    // customDomainLastCheckedAt is only written when the user connects,
+    // manually checks, or the status actually changes — the cron does not
+    // touch it for unchanged pending/provisioning rows, so it anchors both
+    // windows below: skip domains acted on in the last 10 minutes, and give
+    // up on domains that have been waiting for over 7 days.
     const checkCutoff = new Date(Date.now() - 10 * 60 * 1000);
     const retryCutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const candidates = await tx
@@ -56,21 +54,30 @@ export async function POST(request: Request) {
         websiteId: websites.id,
         userId: websites.userId,
         domain: websites.customDomain,
+        status: websites.customDomainStatus,
         email: users.email,
       })
       .from(websites)
       .innerJoin(users, eq(websites.userId, users.id))
       .where(
         and(
-          eq(websites.customDomainStatus, "pending"),
-          lt(websites.customDomainLastCheckedAt, checkCutoff),
-          gt(websites.customDomainLastCheckedAt, retryCutoff),
           sql`${websites.customDomain} IS NOT NULL`,
+          lt(websites.customDomainLastCheckedAt, checkCutoff),
+          or(
+            and(
+              inArray(websites.customDomainStatus, [...DOMAIN_STATUSES_IN_PROGRESS]),
+              gt(websites.customDomainLastCheckedAt, retryCutoff),
+            ),
+            // Recently marked connected can still be a dead HTTPS link —
+            // re-check so admin does not stay on "connected" while TLS fails.
+            eq(websites.customDomainStatus, "connected"),
+          ),
         ),
       )
       .limit(25);
 
     let connected = 0;
+    let provisioning = 0;
     let checked = 0;
     let failed = 0;
 
@@ -84,21 +91,30 @@ export async function POST(request: Request) {
 
       try {
         checked += 1;
-        const renderDomain = await refreshRenderCustomDomain(domain);
+        const assessment = await assessCustomDomain(domain);
 
-        // Still pending: no DB write, so customDomainLastCheckedAt keeps
-        // marking when the user last acted and the 7-day cap holds.
-        if (!isRenderDomainVerified(renderDomain)) {
+        // Unchanged: no DB write, so customDomainLastCheckedAt keeps marking
+        // when the user last acted and the 7-day cap holds.
+        if (assessment.status === candidate.status) {
           continue;
         }
 
         await updateOwnedWebsiteDomainStatus({
           websiteId: candidate.websiteId,
           userId,
-          status: "connected",
-          error: null,
-          renderDomainId: renderDomain.id ?? null,
+          status: assessment.status,
+          error: assessment.error,
+          renderDomainId: assessment.renderDomain.id ?? null,
         });
+
+        if (assessment.status === "provisioning") {
+          provisioning += 1;
+          continue;
+        }
+
+        if (assessment.status !== "connected") {
+          continue;
+        }
 
         connected += 1;
         await sendOnce(
@@ -123,6 +139,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       checked,
       connected,
+      provisioning,
       failed,
       candidates: candidates.length,
     });

@@ -11,6 +11,7 @@ import SiteLogo from "@/components/SiteLogo";
 import { usePricing } from "@/components/usePricing";
 import kiwiGroupBackground from "../../kiwi-group-background.png";
 import { friendlyEditRequestSummary } from "@/lib/assets/placement";
+import { customDomainStatusLabel } from "@/lib/domains/status";
 import {
   isNewPageEditRequest,
   NEW_PAGE_EDIT_MESSAGE,
@@ -60,7 +61,13 @@ type Website = {
   freeEditsLimit: number;
   freeEditsRemaining: number;
   customDomain: string | null;
-  customDomainStatus: "none" | "pending" | "connected" | "failed" | string;
+  customDomainStatus:
+    | "none"
+    | "pending"
+    | "provisioning"
+    | "connected"
+    | "failed"
+    | string;
   customDomainError: string | null;
   customDomainVerifiedAt: string | null;
   customDomainLastCheckedAt: string | null;
@@ -3806,8 +3813,10 @@ export default function DashboardPage() {
                               {website.customDomain ? (
                                 <p className="mt-3 text-xs font-semibold text-black/60">
                                   Status:{" "}
-                                  <span className="capitalize">
-                                    {website.customDomainStatus}
+                                  <span>
+                                    {customDomainStatusLabel(
+                                      website.customDomainStatus,
+                                    )}
                                   </span>
                                 </p>
                               ) : null}
@@ -3894,15 +3903,47 @@ export default function DashboardPage() {
                               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                 <div>
                                   <p className="text-sm font-semibold text-black">
-                                    One last step — point your domain at us
+                                    {website.customDomainStatus === "provisioning"
+                                      ? "DNS is in place — issuing the certificate"
+                                      : "One last step — point your domain at us"}
                                   </p>
                                   <p className="mt-1 text-xs leading-5 text-black/55">
-                                    Your domain looks like it&apos;s with{" "}
-                                    <span className="font-semibold text-black/70">
-                                      {website.customDomainProvider.name}
-                                    </span>
-                                    . Add these two records and Refresh Kiwi will
-                                    keep checking in the background.
+                                    {website.customDomainStatus === "provisioning" ? (
+                                      <>
+                                        We can see the records
+                                        {website.customDomainProvider.name
+                                          ? ` on ${website.customDomainProvider.name}`
+                                          : ""}
+                                        . The security certificate usually
+                                        finishes in a few minutes — we&apos;ll
+                                        email you when the domain opens.
+                                        {website.status === "live" ? (
+                                          <>
+                                            {" "}
+                                            Your site is already live at{" "}
+                                            <a
+                                              href={publicWebsiteHref(website)}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="font-semibold text-black underline decoration-black/25 underline-offset-2"
+                                            >
+                                              {website.subdomain ?? website.slug}.
+                                              {sitesDomain()}
+                                            </a>
+                                            .
+                                          </>
+                                        ) : null}
+                                      </>
+                                    ) : (
+                                      <>
+                                        Your domain looks like it&apos;s with{" "}
+                                        <span className="font-semibold text-black/70">
+                                          {website.customDomainProvider.name}
+                                        </span>
+                                        . Add these two records and Refresh Kiwi
+                                        will keep checking in the background.
+                                      </>
+                                    )}
                                   </p>
                                 </div>
                                 {website.customDomainProvider.loginUrl ? (

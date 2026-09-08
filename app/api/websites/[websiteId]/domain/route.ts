@@ -3,14 +3,18 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/session";
 import { createDomainHelpToken } from "@/lib/domains/help-token";
 import { detectDomainProvider } from "@/lib/domains/providers";
-import { buildDomainDnsRecords, ensureWwwDomain } from "@/lib/domains/records";
+import {
+  apexDomainFromWww,
+  buildDomainDnsRecords,
+  ensureWwwDomain,
+  relatedCustomHosts,
+} from "@/lib/domains/records";
+import { assessCustomDomain } from "@/lib/domains/verify";
 import { buildAppUrl } from "@/lib/email/config";
 import {
   addRenderCustomDomain,
   deleteRenderCustomDomain,
-  isRenderDomainVerified,
   RenderApiError,
-  refreshRenderCustomDomain,
 } from "@/lib/render/domains";
 import {
   connectOwnedWebsiteDomain,
@@ -98,6 +102,11 @@ export async function POST(request: Request, context: RouteContext) {
     const domain = ensureWwwDomain(body.domain);
 
     const renderDomain = await addRenderCustomDomain(domain);
+    try {
+      await addRenderCustomDomain(apexDomainFromWww(domain));
+    } catch {
+      // Apex is best-effort — www is what we store and verify.
+    }
     let website = await connectOwnedWebsiteDomain({
       websiteId,
       userId: auth.user.id,
@@ -145,21 +154,18 @@ export async function PATCH(_request: Request, context: RouteContext) {
       );
     }
 
-    const renderDomain = await refreshRenderCustomDomain(website.customDomain);
-    const connected = isRenderDomainVerified(renderDomain);
+    const assessment = await assessCustomDomain(website.customDomain);
     const updated = await updateOwnedWebsiteDomainStatus({
       websiteId,
       userId: auth.user.id,
-      status: connected ? "connected" : "pending",
-      error: connected
-        ? null
-        : "We cannot see the DNS change yet. It can take a little while to update.",
-      renderDomainId: renderDomain.id ?? null,
+      status: assessment.status,
+      error: assessment.error,
+      renderDomainId: assessment.renderDomain.id ?? null,
     });
 
     return NextResponse.json({
       website: toWebsiteResponse(updated),
-      connected,
+      connected: assessment.status === "connected",
       ...(await domainResponseMetadata(updated.id, website.customDomain)),
     });
   } catch (error) {
@@ -201,7 +207,13 @@ export async function DELETE(_request: Request, context: RouteContext) {
     const website = auth.website;
 
     if (website.customDomain) {
-      await deleteRenderCustomDomain(website.customDomain);
+      for (const host of relatedCustomHosts(website.customDomain)) {
+        try {
+          await deleteRenderCustomDomain(host);
+        } catch {
+          // The apex may never have been attached.
+        }
+      }
     }
 
     const updated = await removeOwnedWebsiteDomain({

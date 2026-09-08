@@ -50,6 +50,7 @@ export default async function DomainHelpPage({ params }: PageProps) {
   const provider = await detectDomainProvider(website.customDomain);
   const records = buildDomainDnsRecords();
   const isConnected = website.customDomainStatus === "connected";
+  const isProvisioning = website.customDomainStatus === "provisioning";
 
   return (
     <main className="min-h-screen bg-[#faf8f1] px-5 py-8 text-[#141811]">
@@ -77,8 +78,10 @@ export default async function DomainHelpPage({ params }: PageProps) {
             }`}
           >
             {isConnected
-              ? "Connected: Refresh Kiwi can see the DNS records."
-              : "Pending: add the records below, then Refresh Kiwi will keep checking automatically."}
+              ? "Connected: the domain is live on Refresh Kiwi."
+              : isProvisioning
+                ? "Issuing certificate: the DNS records are in place. The security certificate usually finishes in a few minutes — Refresh Kiwi will email the website owner when the domain opens."
+                : "Waiting for DNS: add the records below, then Refresh Kiwi will keep checking automatically."}
           </div>
 
           <div className="mt-6 rounded-2xl bg-[#fbfaf6] p-4">
@@ -139,9 +142,11 @@ export default async function DomainHelpPage({ params }: PageProps) {
           </div>
 
           <p className="mt-5 text-xs leading-5 text-black/45">
-            DNS updates often work within minutes, but some providers can take up to
-            a day. Refresh Kiwi will email the website owner when the domain is
-            connected.
+            {isConnected
+              ? "This domain is connected and opening over HTTPS."
+              : isProvisioning
+                ? "The domain will open over HTTPS once the certificate finishes. Refresh Kiwi emails the website owner at that point — not when DNS first appears."
+                : "DNS updates often work within minutes, but some providers can take up to a day. After that, the security certificate usually takes a few more minutes. Refresh Kiwi will email the website owner when the domain is connected."}
           </p>
         </section>
       </div>

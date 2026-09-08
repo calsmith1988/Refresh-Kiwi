@@ -68,6 +68,14 @@ export function apexDomainFromWww(domain: string): string {
   return normalized.replace(/^www\./, "");
 }
 
+/** www host plus the apex, when we asked the customer to point both at us. */
+export function relatedCustomHosts(domain: string): string[] {
+  const www = ensureWwwDomain(domain);
+  const apex = apexDomainFromWww(www);
+
+  return www === `www.${apex}` ? [www, apex] : [www];
+}
+
 export function buildDomainDnsRecords(): DomainDnsRecord[] {
   return [
     {
