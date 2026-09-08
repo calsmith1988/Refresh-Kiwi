@@ -9,12 +9,15 @@ import { createHash } from "node:crypto";
  */
 export interface DesignDirection {
   name: string;
+  /** What this direction optimises for and what it gives up. */
+  thesis: string;
   prompt: string;
 }
 
 export const DESIGN_DIRECTIONS: readonly DesignDirection[] = [
   {
     name: "split-stage",
+    thesis: "Most balanced and cinematic; least a single dominant focal point.",
     prompt: [
       "- Layout: split hero — headline, subheadline, and CTAs on one side; a large image or visual composition on the other. Alternate section alignment (left/right) down the page.",
       "- Typography: expressive high-contrast serif for display headlines, clean humanist sans for body. Generous headline sizes.",
@@ -24,6 +27,7 @@ export const DESIGN_DIRECTIONS: readonly DesignDirection[] = [
   },
   {
     name: "editorial-centered",
+    thesis: "Most type-confident and calm; least social-proof and least product-grid.",
     prompt: [
       "- Layout: centered editorial column — a confident centered hero, then narrow readable sections that occasionally break out to full-width imagery or stat bands.",
       "- Typography: refined serif throughout with italic accents for emphasis; smaller, well-tracked uppercase labels above headings.",
@@ -33,6 +37,7 @@ export const DESIGN_DIRECTIONS: readonly DesignDirection[] = [
   },
   {
     name: "bold-grid",
+    thesis: "Most information-dense and scannable; least editorial calm.",
     prompt: [
       "- Layout: modular bento-style grid — services, proof points, and stats arranged as varied-size tiles in a tight grid; hero is a full-width statement above it.",
       "- Typography: bold geometric sans everywhere; oversized numerals for stats.",
@@ -42,6 +47,7 @@ export const DESIGN_DIRECTIONS: readonly DesignDirection[] = [
   },
   {
     name: "full-bleed-cinema",
+    thesis: "Most atmospheric and photo-led; weakest if the photography cannot carry it.",
     prompt: [
       "- Layout: full-bleed image hero with a dark scrim and large overlaid headline; subsequent sections alternate full-width imagery bands with contained text sections.",
       "- Typography: condensed or display sans for headlines at very large sizes; quiet body type.",
@@ -51,6 +57,7 @@ export const DESIGN_DIRECTIONS: readonly DesignDirection[] = [
   },
   {
     name: "asymmetric-drift",
+    thesis: "Most distinctive composition; least conventional or 'safe business' rhythm.",
     prompt: [
       "- Layout: asymmetric composition — offset columns, overlapping image and text blocks, and deliberate negative space; avoid perfectly mirrored sections.",
       "- Typography: pair a characterful display face for headlines with a neutral grotesque for body.",
@@ -60,6 +67,7 @@ export const DESIGN_DIRECTIONS: readonly DesignDirection[] = [
   },
   {
     name: "crisp-swiss",
+    thesis: "Most precise and structured; least warmth and decoration.",
     prompt: [
       "- Layout: strict 12-column Swiss grid — clean aligned sections, clear column rhythm, flush-left text, structured service/pricing tables.",
       "- Typography: a single neutral grotesque sans at a disciplined type scale; weight and size carry all hierarchy.",
@@ -69,6 +77,7 @@ export const DESIGN_DIRECTIONS: readonly DesignDirection[] = [
   },
   {
     name: "soft-organic",
+    thesis: "Most friendly and approachable; least sharp or luxury-minimal.",
     prompt: [
       "- Layout: flowing sections separated by curved SVG dividers or organic wave shapes; hero pairs friendly copy with a rounded image mask.",
       "- Typography: rounded or soft-terminal sans for headings, warm readable sans for body.",
@@ -78,6 +87,7 @@ export const DESIGN_DIRECTIONS: readonly DesignDirection[] = [
   },
   {
     name: "brutalist-edge",
+    thesis: "Most graphic and unapologetic; least soft or traditional.",
     prompt: [
       "- Layout: confident blocky sections with visible structure — thick borders, stacked full-width bands, and an unapologetically large hero statement.",
       "- Typography: heavy grotesque or mono-influenced display for headlines, sometimes uppercase; plain readable body.",
@@ -87,6 +97,7 @@ export const DESIGN_DIRECTIONS: readonly DesignDirection[] = [
   },
   {
     name: "glass-layers",
+    thesis: "Most depth and modern-tech feel; least tactile or craft.",
     prompt: [
       "- Layout: layered depth — a soft gradient backdrop with frosted-glass content panels; hero card floats over the background, sections stack as translucent surfaces.",
       "- Typography: modern geometric sans with a wide-tracked small-caps label style for section eyebrows.",
@@ -96,6 +107,7 @@ export const DESIGN_DIRECTIONS: readonly DesignDirection[] = [
   },
   {
     name: "classic-craft",
+    thesis: "Most trustworthy and familiar; least surprising.",
     prompt: [
       "- Layout: traditional and trustworthy — contained hero with image beside copy, then clearly-titled sections in a steady rhythm: services, about, testimonials, contact CTA.",
       "- Typography: sturdy slab or transitional serif for headings, dependable sans body; comfortable reading sizes.",
@@ -116,12 +128,14 @@ export const DESIGN_DIRECTIONS: readonly DesignDirection[] = [
  */
 export interface HeroRecipe {
   name: string;
+  thesis: string;
   prompt: string;
 }
 
 export const HERO_RECIPES: readonly HeroRecipe[] = [
   {
     name: "split-offset",
+    thesis: "Most familiar-plus-craft; least full-bleed drama.",
     prompt: [
       "- Two-column hero, but deliberately off-centre (roughly 60/40): copy on one side, imagery on the other, with the image bleeding to the viewport edge or overlapping the section below.",
       "- Break perfect symmetry — let one element (badge, image corner, decorative shape) cross the column boundary.",
@@ -129,14 +143,16 @@ export const HERO_RECIPES: readonly HeroRecipe[] = [
   },
   {
     name: "full-bleed-immersive",
+    thesis: "Most immersive; only if a real image can carry it — otherwise a colour field, not a weak photo.",
     prompt: [
       "- Full-viewport-width hero image with a tasteful scrim; headline overlaid at a very large size, CTAs immediately below it.",
-      "- Anchor a slim trust strip (rating, years in business, service area) to the bottom edge of the hero.",
+      "- Anchor a slim trust strip (rating, years in business, service area) to the bottom edge of the hero — only with facts you actually have; skip the strip rather than inventing ratings.",
       "- Only choose imagery strong enough to carry this; if nothing qualifies, use a full-bleed colour/gradient composition instead.",
     ].join("\n"),
   },
   {
     name: "centered-statement",
+    thesis: "Most type-confident; least photographic.",
     prompt: [
       "- No hero image at all: a massive centered headline (clamp up to ~5-6rem on desktop), one short supporting line, CTAs beneath.",
       "- Let typography and a subtle background motif (texture, faint pattern, soft gradient) carry the impact; the first photography appears in the following section.",
@@ -144,6 +160,7 @@ export const HERO_RECIPES: readonly HeroRecipe[] = [
   },
   {
     name: "floating-card",
+    thesis: "Most layered depth; least edge-to-edge.",
     prompt: [
       "- Full-width hero background (photo or strong colour wash) with the hero copy inside a floating card or panel offset to one side.",
       "- Let the card overlap the boundary into the next section so the layers read as intentional depth.",
@@ -151,6 +168,7 @@ export const HERO_RECIPES: readonly HeroRecipe[] = [
   },
   {
     name: "mosaic",
+    thesis: "Most visual variety; needs two or more real images or it collapses.",
     prompt: [
       "- Headline and CTAs beside a collage of 2-4 real images arranged as varied-size tiles with mixed masks or radii — not a uniform grid.",
       "- Only use images that actually exist for this business; with fewer than 2 good images, fall back to one strong image plus a decorative tile.",
@@ -158,6 +176,7 @@ export const HERO_RECIPES: readonly HeroRecipe[] = [
   },
   {
     name: "editorial-cover",
+    thesis: "Most magazine-like; least instant CTA-forward.",
     prompt: [
       "- Magazine-cover feel: small eyebrow line, then a huge headline set across the full content width, then a byline-style meta row (location · phone · hours or similar real facts).",
       "- One wide cinematic image sits directly below this cover block, like a feature-article opener.",
@@ -165,6 +184,7 @@ export const HERO_RECIPES: readonly HeroRecipe[] = [
   },
   {
     name: "diagonal-energy",
+    thesis: "Most kinetic; least conservative.",
     prompt: [
       "- Compose the hero on a diagonal: an angled or curved divider between the hero and the next section, with imagery or shapes cut along that line.",
       "- Give the content directional momentum (copy anchored one side, visual weight flowing toward the divider). Keep the angle consistent as a motif further down the page.",
@@ -172,13 +192,15 @@ export const HERO_RECIPES: readonly HeroRecipe[] = [
   },
   {
     name: "proof-ledge",
+    thesis: "Most proof-led; only with real facts — inventing tiles is worse than dropping the ledge.",
     prompt: [
       "- Hero copy and CTA up top, with a 'ledge' tucked into the hero's bottom edge: a row of 2-4 compact proof tiles (review score, key services, guarantee, service area) that overlaps into the next section.",
-      "- The ledge should feel like part of the hero composition, not a separate stats band.",
+      "- The ledge should feel like part of the hero composition, not a separate stats band. Every tile must be a real fact; if you have fewer than two, drop the ledge and strengthen the headline instead.",
     ].join("\n"),
   },
   {
     name: "framed-portal",
+    thesis: "Most iconic single image; least multi-image.",
     prompt: [
       "- One strong image inside a dramatic mask — an arch, oval, circle, or heavily rounded portal shape — with the copy composed beside it; echo the mask shape once as a thin decorative outline or ring elsewhere in the hero.",
       "- Exactly one image, one mask. If no photo is strong enough for the portal, fill it with a bold brand-colour composition or an oversized icon/monogram instead.",
@@ -186,6 +208,7 @@ export const HERO_RECIPES: readonly HeroRecipe[] = [
   },
   {
     name: "split-horizon",
+    thesis: "Most graphic seam; least photographic continuity.",
     prompt: [
       "- Split the hero horizontally: a solid band (brand colour or deep neutral) carrying the headline and CTAs on top, with a full-width image band below — and one element (the headline's last line, a CTA cluster, or a small card) deliberately straddling the seam between the two.",
       "- The seam is the design: keep it a crisp straight line, and let the straddling element be the only thing that crosses it.",
@@ -193,6 +216,7 @@ export const HERO_RECIPES: readonly HeroRecipe[] = [
   },
   {
     name: "vertical-rail",
+    thesis: "Most architectural; needs a tall image or a colour rail, never a squeezed sliver.",
     prompt: [
       "- Pin a tall, narrow image rail to one viewport edge (roughly 25-35% of the width, full hero height); the headline, supporting line, and CTAs occupy the remaining width with confident whitespace.",
       "- Add one quiet detail along the rail's inner edge: a rotated micro-label, a thin brand-colour rule, or a small caption. On mobile the rail becomes a wide banner above or below the copy — never a squeezed sliver.",
@@ -200,6 +224,7 @@ export const HERO_RECIPES: readonly HeroRecipe[] = [
   },
   {
     name: "type-interlock",
+    thesis: "Most typographic craft; least simple.",
     prompt: [
       "- Typography-led hero where an oversized display headline and a single image physically interlock: the image tucks into an indent in the text block, or slightly overlaps/underlaps one headline line.",
       "- Keep every word fully legible — overlap decorative edges of the image, never the text itself. With no usable photo, interlock the headline with a bold brand-colour shape instead.",
@@ -207,13 +232,15 @@ export const HERO_RECIPES: readonly HeroRecipe[] = [
   },
   {
     name: "ticker-tape",
+    thesis: "Most energetic and catalogue-like; only with real repeating items.",
     prompt: [
       "- A big, confident statement headline with CTAs, and a horizontally scrolling marquee strip along the hero's bottom edge — repeating real items only (services, areas served, credentials) separated by a small motif or dot.",
-      "- The marquee must pause under prefers-reduced-motion (show it as a static strip) and loop seamlessly with duplicated content in plain CSS/JS — no libraries.",
+      "- The marquee must pause under prefers-reduced-motion (show it as a static strip) and loop seamlessly with duplicated content in plain CSS/JS — no libraries. If you have nothing real to repeat, drop the marquee.",
     ].join("\n"),
   },
   {
     name: "poster-frame",
+    thesis: "Most art-directed; least full-bleed.",
     prompt: [
       "- Compose the entire hero inside a thin border frame inset from the viewport edges (like a poster margin) — headline, supporting line, CTAs, and imagery all live within the frame, art-directed like a print cover.",
       "- Let exactly one element (an image corner, a badge, or one word of the headline) break out of the frame to keep it lively; the frame colour comes from the brand palette.",
@@ -458,13 +485,19 @@ export function buildDesignRecipeSection(slug: string): string {
     "",
     "This recipe is assigned to this build so different businesses get visibly different sites. Follow it. It never overrides the brand and colour rules elsewhere in this prompt, factual content, or accessibility/contrast requirements. If a specific point clashes badly with the business's content or imagery, adapt that point tastefully rather than abandoning the recipe.",
     "",
+    "Commit to the tradeoffs below. If you cannot tell this page apart from a generic services → stats → testimonials → CTA template, you have abandoned the recipe.",
+    "",
     `### Overall direction — "${recipe.direction.name}"`,
+    "",
+    `Thesis (what this optimises for, and what it gives up): ${recipe.direction.thesis}`,
     "",
     recipe.direction.prompt,
     "",
     `### Hero recipe — "${recipe.hero.name}"`,
     "",
-    "For the hero section itself this recipe wins over the direction; the direction governs the rest of the page.",
+    `Thesis: ${recipe.hero.thesis}`,
+    "",
+    "For the hero section itself this recipe wins over the direction; the direction governs the rest of the page. Spend most of the craft here and on the next two sections — later sections can be cleaner.",
     "",
     recipe.hero.prompt,
     "",

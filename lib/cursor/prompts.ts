@@ -63,6 +63,36 @@ function publicOrigin(): string {
   return configured;
 }
 
+/**
+ * The source/brief is facts and copy — not a layout to clone.
+ * Assigned recipe wins on structure; real data wins on what you may show.
+ */
+const CONTENT_NOT_STYLE = [
+  "## Source is content, not a style mandate",
+  "",
+  "- Take facts, offer, images, nav labels, phone, hours, and real reviews from the source or brief. Rewrite copy shorter; do not paste every paragraph.",
+  "- Do not clone the old site's layout, hero formula, section order, or card pattern. Structure comes from the assigned design recipe — the source (or brief) is content, not a style to copy.",
+  "- Brand colours, logo, and light/dark character still come from the business. Wow comes from layout, type, spacing, and motion — not a new identity.",
+].join("\n");
+
+const HONEST_DATA = [
+  "## Honest data — do not draw what you cannot support",
+  "",
+  "- Never invent reviews, star ratings, review counts, awards, years in business, customer numbers, or other stats. If a proof tile or testimonial is not a fact you actually saw, omit the section.",
+  "- Use real testimonials only when the source or brief quotes them. Do not write placeholder reviews, fake names, or \"Coming soon\" quote cards.",
+  "- Products and prices may be listed. Do not make them look shoppable unless the source or brief already gives a real buy path (a hosted payment link, Shopify Buy Button / storefront, PayPal/Yoco/PayFast URL, or equivalent public checkout the owner already has).",
+  "- If there is no real buy path: the CTA is enquire, WhatsApp, call, or email — never Add to bag, Buy now, Checkout, a cart, or a card form. Do not invent Stripe, payment APIs, or success states.",
+  "- Aspirational UI (a shop that is not wired, a booking calendar that is not connected) is worse than a simpler honest page.",
+].join("\n");
+
+const SPEND_THE_RUN = [
+  "## Spend the run where it shows",
+  "",
+  "- The hero and the next two sections carry the site. Make those unmistakably designed.",
+  "- Later sections (FAQ, footer, extra cards) should be clean and complete, not the place you spend the remaining time.",
+  "- If you are short on time, finish a strong hero + two sections + contact rather than six average ones.",
+].join("\n");
+
 function buildFormRules(slug: string): string {
   return [
     "## Contact forms",
@@ -131,7 +161,7 @@ OUTPUT: sites/${slug}/
 
 1. Visit the source URL once. Read the homepage only — do not crawl other pages yet.
 2. Build a single static homepage using plain index.html, styles.css, and optional script.js. Avoid build tools unless absolutely necessary.
-3. Use the source for facts, offer details, testimonials, phone numbers, service areas, and brand clues. Do not paste every paragraph.
+3. Use the source for facts, offer details, real testimonials, phone numbers, service areas, and brand clues. Do not paste every paragraph. Do not invent proof.
 4. Write sites/${slug}/site.json:
    - brandName, slug ("${slug}"), sourceUrl
    - pages: [{ "path": "/", "title": "Home", "gated": false }]
@@ -202,7 +232,13 @@ ${GIT_RULES}
 - If there is no clear branding, or the colours are genuinely poor, choose your own tasteful modern palette instead.
 - Either way, make the wow factor come from layout, typography, spacing, and motion — not from swapping the brand's identity.
 
+${CONTENT_NOT_STYLE}
+
 ${buildDesignRecipeSection(slug)}
+
+${HONEST_DATA}
+
+${SPEND_THE_RUN}
 
 ## Header navigation — mirror the source site's menu
 
@@ -217,7 +253,7 @@ ${buildDesignRecipeSection(slug)}
 Create a proper landing page redesign:
 - Above-the-fold hero following the assigned hero recipe, with a clear headline, a supporting line, and an obvious primary action.
 - Strong responsive layout with spacing, contrast, hierarchy, and sections that feel intentionally designed.
-- Convert long source copy into short marketing copy, cards, stats, badges, testimonial blocks, and CTAs.
+- Convert long source copy into short marketing copy, cards, and CTAs. Include stats, badges, or testimonials only when they are real facts from the source.
 - Choose the strongest 4-6 content sections for this business (services, trust proof, coverage/location, offer, process, gallery, FAQs, testimonials, contact CTA) and order them the way the design direction suggests — do not default to the same services → stats → testimonials → CTA rhythm on every site.
 - If the business has a real phone number, keep a tap-to-call action always reachable on mobile: a tel: link in the sticky header, or a small fixed call button that never covers content. Do not invent a number if none exists.
 - Add micro-interactions, hover states, or subtle scroll animations if useful, but keep it static and fast.
@@ -229,6 +265,7 @@ Avoid:
 - A wall of text.
 - A generic Tailwind/AI landing page look.
 - Recreating the old site structure section-for-section.
+- Invented reviews, stats, or a shop that is not actually wired.
 - Broken image references — every image URL must come from the source site.
 - Never use localhost, 127.0.0.1, or port-based preview origins in links, scripts, forms, canonical tags, Open Graph URLs, or base tags. Your own files are always linked via /preview/${slug}/ paths (see "Linking your own files" above).
 
@@ -269,7 +306,7 @@ ${formatSeedAssets(seedAssets)}
 
 1. Do not crawl the web. The user brief and provided starter assets are the source of truth.
 2. Build a single static homepage using plain index.html, styles.css, and optional script.js. Avoid build tools unless absolutely necessary.
-3. Infer a clear brand name, audience, offer, services, proof points, tone, and calls to action from the brief. If details are missing, make conservative, useful assumptions and keep copy easy to edit later.
+3. Infer a clear brand name, audience, offer, services, tone, and calls to action from the brief. If details are missing, make conservative assumptions for copy only — never invent proof, reviews, stats, or a shop. Keep copy easy to edit later.
 4. Write sites/${slug}/site.json:
    - brandName, slug ("${slug}"), sourceUrl null
    - pages: [{ "path": "/", "title": "Home", "gated": false }]
@@ -315,14 +352,20 @@ ${GIT_RULES}
 - Exactly one <h1> per page. Meaningful alt text on content images; alt="" on decorative ones.
 - Do not write canonical tags, robots.txt, or sitemap.xml — the platform generates those.
 
+${CONTENT_NOT_STYLE}
+
 ${buildDesignRecipeSection(slug)}
+
+${HONEST_DATA}
+
+${SPEND_THE_RUN}
 
 ## Design bar
 
 Create a proper small-business landing page:
 - Above-the-fold hero following the assigned hero recipe, with a clear headline, a supporting line, and an obvious primary action.
 - Strong responsive layout with spacing, contrast, hierarchy, and sections that feel intentionally designed.
-- Turn the brief into short marketing copy, cards, stats, testimonials/placeholders only when credible, service blocks, FAQs, and CTAs. Choose the strongest 4-6 sections for this business and order them the way the design direction suggests — do not default to the same services → stats → testimonials → CTA rhythm on every site.
+- Turn the brief into short marketing copy, cards, service blocks, FAQs, and CTAs. Include stats or testimonials only when the brief supplies them. Choose the strongest 4-6 sections for this business and order them the way the design direction suggests — do not default to the same services → stats → testimonials → CTA rhythm on every site.
 - If contact details, locations, hours, prices, or social proof are present in the brief, include them. Do not invent phone numbers, addresses, awards, or testimonials.
 - If the brief includes a real phone number, keep a tap-to-call action always reachable on mobile: a tel: link in the sticky header, or a small fixed call button that never covers content.
 - Add micro-interactions, hover states, or subtle scroll animations if useful, but keep it static and fast.
@@ -334,6 +377,7 @@ Avoid:
 - A wall of text.
 - A generic Tailwind/AI landing page look.
 - Fake factual claims.
+- Invented reviews, stats, or a shop that is not actually wired.
 - Broken image references.
 - Never use localhost, 127.0.0.1, or port-based preview origins in links, scripts, forms, canonical tags, Open Graph URLs, or base tags. Your own files are always linked via /preview/${slug}/ paths (see "Linking your own files" above).
 
@@ -375,6 +419,8 @@ The homepage already exists. Your job is to expand it into a small multi-page we
 
 ${GIT_RULES}
 
+${HONEST_DATA}
+
 ${buildFormRules(slug)}
 
 ## Quality bar
@@ -415,6 +461,8 @@ The homepage already exists. Your job is to crawl the source website for importa
 11. Commit the finished multi-page site directly on main and push to origin main (no new branch, no pull request).
 
 ${GIT_RULES}
+
+${HONEST_DATA}
 
 ${buildFormRules(slug)}
 
@@ -481,6 +529,8 @@ The homepage already exists. Your job is to add exactly one polished page that m
 10. Commit the finished custom page directly on main and push to origin main (no new branch, no pull request).
 
 ${GIT_RULES}
+
+${HONEST_DATA}
 
 ${buildFormRules(slug)}
 
@@ -585,6 +635,8 @@ USER REQUEST: ${editPrompt}
 10. Commit the finished edit directly on main and push to origin main (no new branch, no pull request), then verify only the files you changed — a full-site review is not needed for a small edit.
 
 ${GIT_RULES}
+
+${HONEST_DATA}
 
 ${buildFormRules(slug)}
 
