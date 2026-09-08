@@ -31,7 +31,9 @@ export async function GET() {
 
   const dbDomains = await listAdminDomains();
   const dbDomainNames = new Set(
-    dbDomains.map((row) => row.domain?.toLowerCase()).filter(Boolean),
+    dbDomains
+      .map((row) => row.domain?.toLowerCase())
+      .filter((domain): domain is string => Boolean(domain)),
   );
 
   const domains = await Promise.all(
