@@ -2,6 +2,7 @@ import { and, count, desc, eq, inArray, isNull, ne, or } from "drizzle-orm";
 
 import { normalizeEmail } from "@/lib/auth/service";
 import { getDb, schema } from "@/lib/db";
+import { isInProgressDomainStatus } from "@/lib/domains/status";
 import { deleteRenderCustomDomain } from "@/lib/render/domains";
 import { getSitesDomain, isReservedSitesSubdomain } from "@/lib/sites/domain";
 import { deleteSiteDirectoryFromR2 } from "@/lib/storage/r2";
@@ -992,7 +993,18 @@ export async function getWebsiteAccessByCustomDomain(hostname: string) {
     (await findWebsite(domain)) ||
     (!domain.startsWith("www.") ? await findWebsite(`www.${domain}`) : null);
 
-  if (!website || website.customDomainStatus !== "connected") {
+  // A request can only arrive on this hostname if its DNS points at us, so a
+  // domain still marked pending/provisioning is served too — our status
+  // column lags behind the certificate by up to a cron interval, and a
+  // visitor should never see a 404 in that window. `customDomain` is unique,
+  // so this cannot serve one customer's site on another's domain.
+  if (
+    !website ||
+    !(
+      website.customDomainStatus === "connected" ||
+      isInProgressDomainStatus(website.customDomainStatus)
+    )
+  ) {
     return null;
   }
 
